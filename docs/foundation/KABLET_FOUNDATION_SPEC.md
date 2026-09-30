@@ -13049,3 +13049,1398 @@ Privacy & Tenant Isolation Principles establish:
 The next section establishes how Kablet may grow into new verticals, Components, Actions, surfaces, and intelligence capabilities without redefining its foundation:
 
 **11 — Extension Principles.**
+
+---
+
+# 11. Extension Principles
+
+## 11.1 Purpose
+
+Extension Principles define how Kablet may gain new:
+
+- verticals
+- Business Truth types
+- Components
+- Actions
+- customer-facing surfaces
+- integrations
+- Intelligence capabilities
+- learning capabilities
+
+without redefining its permanent foundations.
+
+Kablet must be capable of becoming substantially more powerful while preserving the conceptual contracts established in Foundations 01 through 10.
+
+The permanent principle is:
+
+**Extensions add capability. They do not bypass or redefine the Foundation.**
+
+---
+
+## 11.2 The Foundation Is Smaller Than the Product
+
+The Foundation defines the permanent concepts required for Kablet to operate correctly.
+
+The full Kablet product will eventually contain substantially more functionality.
+
+Therefore:
+
+Foundation
+≠
+Complete Product
+
+The Foundation exists so new product capabilities can be added without repeatedly redesigning the system's meaning.
+
+---
+
+## 11.3 Extensions Must Use Existing Foundation Concepts Where They Fit
+
+Before introducing a new foundational concept, Kablet should first determine whether the capability can be represented using existing primitives.
+
+For example:
+
+A dental appointment
+
+may still be represented through:
+
+Business Truth
++
+Visitor State
++
+Decision
++
+Experience
++
+Booking Action
++
+Outcome
+
+It does not require a new foundational architecture merely because the Business happens to be a dental clinic.
+
+---
+
+## 11.4 New Verticals Extend the Foundation
+
+A vertical may introduce specialized concepts.
+
+Examples:
+
+Healthcare / Aesthetics:
+- Treatment
+- Practitioner
+- Consultation
+- Treatment Area
+
+Ecommerce:
+- Product
+- Variant
+- Inventory
+- Cart
+
+SaaS:
+- Plan
+- Feature
+- Demo
+- Trial
+
+Real Estate:
+- Property Listing
+- Viewing
+- Agent
+
+These concepts may extend Kablet's domain language.
+
+They must continue to obey:
+
+- Identity & Ownership
+- Business Truth authority
+- Experience Contracts
+- Visitor State & Decision lineage
+- Event & Outcome semantics
+- Intelligence boundaries
+- Data ownership
+- versioning
+- privacy
+- tenant isolation
+
+---
+
+## 11.5 Vertical Concepts Must Not Redefine Universal Concepts
+
+A vertical may specialize a universal Kablet concept.
+
+It should not redefine that concept incompatibly.
+
+For example:
+
+Clinic Booking
+
+may specialize:
+
+Action
+
+but must not invent a separate concept of execution that bypasses Kablet Action authorization and Event lineage.
+
+Similarly:
+
+Ecommerce Purchase
+
+may specialize:
+
+Conversion / Outcome
+
+without creating a second incompatible Outcome architecture.
+
+---
+
+## 11.6 Universal Concepts Should Remain Universal
+
+Where a concept has stable meaning across Businesses, Kablet should prefer a universal abstraction.
+
+Examples:
+
+- Business
+- Visitor
+- Session
+- Decision
+- Experience
+- Component
+- Action
+- Event
+- Conversion
+- Outcome
+- Revenue
+
+These should not be duplicated independently for every vertical.
+
+For example:
+
+ClinicVisitor
+
+StoreVisitor
+
+SaaSVisitor
+
+should not automatically become three unrelated foundational identity systems.
+
+Vertical-specific attributes may extend the universal Visitor model where appropriate.
+
+---
+
+## 11.7 Do Not Generalize Prematurely
+
+The opposite mistake is also dangerous.
+
+Kablet should not force genuinely different vertical concepts into an abstraction so generic that it loses useful meaning.
+
+For example:
+
+Product Inventory
+
+and:
+
+Doctor Availability
+
+may both involve availability.
+
+That does not mean they necessarily require an identical domain model internally.
+
+The Foundation defines common boundaries.
+
+Vertical implementations may retain meaningful specialization.
+
+---
+
+## 11.8 Extensions Should Be Additive Where Practical
+
+New capabilities should preferably be introduced through:
+
+- new types
+- new optional fields
+- new Components
+- new Actions
+- new adapters
+- new policies
+- new Intelligence capabilities
+
+rather than changing existing semantics unnecessarily.
+
+This supports compatibility and reduces migration risk.
+
+---
+
+## 11.9 Extensions Must Preserve Ownership
+
+Every tenant-sensitive extension must fit the ownership model.
+
+A new resource must have determinable ownership context.
+
+For example:
+
+Practitioner
+    ↓
+Business
+
+Product
+    ↓
+Business
+
+Property Listing
+    ↓
+Business
+
+Campaign-specific Experience
+    ↓
+Business
+
+No extension may create an ambiguous tenant-sensitive resource that sits outside Kablet's ownership hierarchy.
+
+---
+
+## 11.10 Extensions Must Preserve Business Truth Authority
+
+New Business Truth types remain subject to Business authority.
+
+For example:
+
+Inventory
+Treatment Price
+Subscription Plan
+Property Availability
+
+may come from different authoritative systems.
+
+Kablet must preserve:
+
+- source
+- authority
+- provenance
+- Business ownership
+
+The addition of a new vertical does not grant Intelligence authority to fabricate that vertical's Truth.
+
+---
+
+## 11.11 Extensions Must Preserve Decision Lineage
+
+A new capability must remain compatible with:
+
+State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Action
+    ↓
+Outcome
+
+For example, a future Voice Agent should not become an invisible subsystem whose Decisions cannot be connected to Outcomes.
+
+A future Recommendation Engine should not bypass canonical Decision history merely because its algorithm differs from an LLM.
+
+---
+
+## 11.12 Extensions Must Preserve Event Lineage
+
+New capabilities must produce meaningful Events through the Event & Outcome Spine.
+
+For example:
+
+Voice conversation
+
+may introduce Events such as:
+
+voice.session.started
+
+or other future vocabulary.
+
+The exact Event type is not defined here.
+
+The extension must still preserve:
+
+- ownership
+- Session context
+- Decision context where relevant
+- Action context
+- Outcome lineage
+
+---
+
+## 11.13 New Components Extend the Experience Vocabulary
+
+Kablet should be able to introduce new semantic Components without redesigning Intelligence or the runtime architecture.
+
+Conceptually:
+
+Existing Component Registry
+├── Message
+├── Service
+├── Price
+├── Proof
+└── Booking
+
+later:
+
+Extended Component Registry
+├── Message
+├── Service
+├── Price
+├── Proof
+├── Booking
+├── Product Variant
+├── Practitioner
+├── Calendar
+└── Financing Option
+
+Intelligence gains new expressive capabilities through the registry.
+
+It does not gain arbitrary frontend execution.
+
+---
+
+## 11.14 Components Must Declare Their Contract
+
+A new Component should eventually define enough information for Kablet to understand:
+
+- semantic purpose
+- payload
+- supported Actions
+- constraints
+- applicable contexts
+- supported renderings
+- version
+
+The exact Component registry implementation belongs to Technical Architecture.
+
+The extension principle is that Component capabilities are explicit.
+
+---
+
+## 11.15 Vertical Components May Specialize Universal Components
+
+Some Components may be universal.
+
+Others may be vertical-specific.
+
+For example:
+
+Universal:
+- Message
+- Proof
+- Price
+- FAQ
+
+Clinic:
+- Practitioner
+- Treatment Comparison
+
+Ecommerce:
+- Product Variant
+- Cart Summary
+
+Real Estate:
+- Property Card
+- Viewing Availability
+
+Vertical-specific Components still participate in the same Experience Contract.
+
+---
+
+## 11.16 New Actions Extend the Action Vocabulary
+
+Kablet may gain new Actions such as:
+
+- BookAppointment
+- AddToCart
+- Purchase
+- RequestDemo
+- StartTrial
+- ScheduleViewing
+- RequestQuote
+- SendMessage
+
+Each Action expands what Kablet can accomplish.
+
+It does not expand Intelligence authority automatically.
+
+---
+
+## 11.17 New Actions Must Declare Authority Requirements
+
+A new Action should eventually define:
+
+- what capability it represents
+- which Business context owns it
+- required inputs
+- authorization requirements
+- applicable Visitor confirmation
+- constraints
+- expected results
+- failure semantics
+
+Adding an Action to the platform does not automatically authorize every Business or Intelligence configuration to use it.
+
+---
+
+## 11.18 Integrations Should Enter Through Adapters
+
+External systems should connect to Kablet through controlled integration boundaries.
+
+Conceptually:
+
+External System
+        ↓
+Adapter
+        ↓
+Kablet Contract
+        ↓
+Kablet Core
+
+rather than:
+
+External System
+        ↓
+Special Cases Throughout Kablet Core
+
+Examples may include:
+
+Shopify
+WooCommerce
+Salesforce
+HubSpot
+Calendly
+Stripe
+custom booking systems
+future systems
+
+Provider-specific behavior should remain as isolated as practical from permanent domain semantics.
+
+---
+
+## 11.19 External Providers Must Not Redefine Kablet Concepts
+
+Suppose two booking providers represent appointments differently.
+
+Kablet may require separate adapters.
+
+The core should still reason in terms of Kablet concepts such as:
+
+Availability
+Booking Action
+Booking Result
+Outcome
+
+rather than forcing the entire Kablet architecture to adopt one provider's vocabulary.
+
+The same principle applies to:
+
+- commerce
+- CRM
+- payment
+- messaging
+- analytics
+- AI
+
+---
+
+## 11.20 Provider-Specific Metadata May Be Preserved
+
+Abstraction does not require throwing away useful provider-specific information.
+
+Kablet may preserve:
+
+- external IDs
+- provider status
+- provider metadata
+- synchronization metadata
+- provider-specific capabilities
+
+where useful.
+
+That metadata should remain distinguishable from canonical Kablet meaning.
+
+---
+
+## 11.21 New Intelligence Implementations Plug Into the Intelligence Interface
+
+Future Intelligence systems may include:
+
+- different LLM providers
+- proprietary models
+- recommenders
+- classifiers
+- rules
+- bandits
+- retrieval systems
+- vertical models
+- optimization policies
+
+They should integrate behind Foundation 06 rather than requiring the runtime to know their implementation details.
+
+Conceptually:
+
+New Intelligence System
+        ↓
+Intelligence Adapter
+        ↓
+Kablet Intelligence Contract
+        ↓
+Decision
+
+---
+
+## 11.22 New Intelligence Does Not Bypass Validation
+
+A more capable future model does not earn the right to bypass:
+
+- Business Truth
+- authority
+- Experience Contract
+- Action authorization
+- ownership
+- privacy
+- Event lineage
+
+Capability improvement does not weaken Foundation boundaries.
+
+---
+
+## 11.23 Learned Policies Are Extensions to Decision Capability
+
+Future learning may produce increasingly sophisticated policies.
+
+Examples:
+
+Business-specific strategy
+
+Vertical strategy
+
+Network strategy
+
+Predictive conversion model
+
+Next-best-action model
+
+These extend Kablet's Decision capability.
+
+They do not redefine the meaning of:
+
+- Business Truth
+- Decision
+- Experience
+- Outcome
+
+---
+
+## 11.24 New Customer Surfaces Must Reuse Core Semantics
+
+Kablet may begin with a web frontend.
+
+Future surfaces may include:
+
+- mobile
+- embedded widgets
+- messaging
+- voice
+- kiosks
+- AI agents
+- commerce surfaces
+- partner surfaces
+- future interfaces
+
+The surface may change.
+
+The semantic loop should remain recognizable:
+
+Business Truth
+    ↓
+Visitor / Customer State
+    ↓
+Decision
+    ↓
+Experience / Interaction
+    ↓
+Action
+    ↓
+Outcome
+
+---
+
+## 11.25 Surface and Experience Are Different Concepts
+
+An Experience is semantic customer-facing state.
+
+A Surface is where that Experience is delivered.
+
+For example:
+
+the same underlying recommendation may eventually appear through:
+
+- web
+- mobile
+- voice
+- messaging
+
+The presentation contract may differ by Surface.
+
+The underlying Decision and Business Truth lineage should remain consistent.
+
+---
+
+## 11.26 Voice Must Not Become a Separate Product Architecture
+
+A future Voice capability may require specialized:
+
+- speech input
+- speech output
+- turn handling
+- latency management
+
+It should still use Kablet's foundational concepts where applicable.
+
+Conceptually:
+
+Voice Signal
+    ↓
+Visitor State
+    ↓
+Decision
+    ↓
+Voice-Compatible Experience
+    ↓
+Action
+    ↓
+Outcome
+
+Voice extends Kablet.
+
+It does not replace the core.
+
+---
+
+## 11.27 Agents Must Not Become an Architectural Escape Hatch
+
+Future agentic systems may perform multi-step reasoning or Actions.
+
+The label "agent" does not exempt them from:
+
+- ownership
+- authority
+- Business Truth
+- Decision lineage
+- Action validation
+- Event recording
+- privacy
+- tenant isolation
+
+An agent is an Intelligence/execution pattern inside Kablet's boundaries.
+
+It is not a second uncontrolled architecture.
+
+---
+
+## 11.28 Automation Must Use Authorized Capabilities
+
+Future Kablet automation may perform actions without immediate human intervention.
+
+Automation must operate through explicit:
+
+- triggers
+- policies
+- capabilities
+- authority
+- constraints
+
+Automation does not create its own authority.
+
+---
+
+## 11.29 Extensions Must Preserve Observability
+
+A new capability must not become invisible to Kablet's ability to understand system behavior.
+
+Meaningful extensions should eventually expose enough information for:
+
+- debugging
+- measurement
+- experimentation
+- Decision lineage
+- Outcome analysis
+
+The exact observability implementation belongs to Technical Architecture.
+
+---
+
+## 11.30 Extensions Must Preserve Experimentability
+
+Where commercially meaningful, new Experience capabilities should remain measurable and testable.
+
+For example:
+
+New Component:
+Financing Option
+
+Kablet should eventually be capable of determining:
+
+- when it was selected
+- when it was rendered
+- when it was viewed
+- whether it was interacted with
+- what Outcomes followed
+- whether controlled experimentation shows incremental effect
+
+New functionality should not create blind spots in the optimization loop.
+
+---
+
+## 11.31 Extensions Must Preserve Historical Meaning
+
+A new extension must follow Foundation 09.
+
+New:
+
+- Component versions
+- Action versions
+- Event versions
+- Intelligence configurations
+- policies
+
+must not silently reinterpret historical data.
+
+Extension and versioning therefore operate together.
+
+---
+
+## 11.32 Extensions Must Preserve Privacy and Isolation
+
+A new capability must follow Foundation 10.
+
+For example:
+
+Adding vector search
+
+does not permit cross-tenant retrieval.
+
+Adding a CRM integration
+
+does not permit unrestricted CRM access.
+
+Adding an agent
+
+does not permit arbitrary Business Actions.
+
+Adding network learning
+
+does not permit raw tenant data leakage.
+
+New capability does not weaken existing boundaries.
+
+---
+
+## 11.33 Extension Points Should Be Explicit
+
+Where Kablet expects frequent future expansion, Technical Architecture should provide explicit extension points.
+
+Potential examples include:
+
+- Business Truth type registry
+- Component registry
+- Action registry
+- Event schema registry
+- integration adapters
+- Intelligence adapters
+- Surface adapters
+
+The exact implementation is intentionally not defined here.
+
+The architectural principle is to extend through known boundaries rather than scatter conditional logic throughout the platform.
+
+---
+
+## 11.34 Registries Must Not Become Uncontrolled Plugin Systems
+
+Explicit extension points do not mean arbitrary code should be able to enter Kablet Core.
+
+Extensions still require:
+
+- contract validation
+- version compatibility
+- ownership semantics
+- authorization
+- observability
+- lifecycle management
+
+The exact future plugin model, if any, is outside Foundation v0.1.
+
+---
+
+## 11.35 Vertical Logic Should Be Isolated Where Practical
+
+Vertical-specific behavior should not spread unnecessarily across universal Kablet modules.
+
+Conceptually:
+
+Kablet Core
+    ↓
+Stable Contracts
+    ↓
+Vertical Extension
+
+rather than:
+
+Kablet Core
+├── if clinic
+├── if ecommerce
+├── if real estate
+├── if SaaS
+├── if restaurant
+└── ...
+
+This becomes increasingly important as Kablet expands across industries.
+
+---
+
+## 11.36 Shared Behavior May Graduate Into Core
+
+A capability may begin as vertical-specific.
+
+If repeated evidence shows it is genuinely universal, it may later become a Core concept.
+
+For example:
+
+Vertical A Extension
+        +
+Vertical B Extension
+        +
+Vertical C Extension
+        ↓
+Stable Shared Pattern
+        ↓
+Candidate Core Capability
+
+Promotion into Core should be deliberate.
+
+Core should represent stable universal meaning, not speculative abstraction.
+
+---
+
+## 11.37 Core Concepts Should Be Difficult to Add
+
+Adding a new Foundation-level primitive should require a high bar.
+
+Before adding one, Kablet should ask:
+
+1. Can existing primitives represent this correctly?
+2. Is the concept universal rather than vertical-specific?
+3. Is it likely to remain meaningful across future surfaces?
+4. Does failing to make it foundational create a structural problem?
+5. Would it materially simplify rather than fragment the architecture?
+
+The Foundation should remain small.
+
+---
+
+## 11.38 Core Concepts Should Be Difficult to Remove
+
+Once external systems, historical data, Intelligence, and learning depend on a foundational concept, removing it becomes expensive.
+
+This reinforces the principle:
+
+**Keep the Foundation small and stable. Extend around it.**
+
+---
+
+## 11.39 Extension Complexity Must Have a Home
+
+When complexity is introduced, Kablet should know where it belongs.
+
+Examples:
+
+Clinic-specific booking rules
+→ Clinic extension
+
+Stripe-specific payment mapping
+→ Stripe adapter
+
+Model-specific structured output behavior
+→ Intelligence adapter
+
+React rendering details
+→ Surface/runtime implementation
+
+Business authorization
+→ Core authority model
+
+This prevents infrastructure or provider details from leaking into unrelated layers.
+
+---
+
+## 11.40 Extensions Should Be Independently Testable
+
+A new extension should eventually have tests proving:
+
+- contract compatibility
+- ownership behavior
+- authorization behavior
+- Event behavior
+- failure behavior
+- version compatibility
+
+The exact testing strategy belongs to Technical Architecture.
+
+The principle is that extensions should not require testing the entire Kablet platform as an inseparable monolith.
+
+---
+
+## 11.41 Extensions Should Fail Locally Where Possible
+
+Failure in one extension should not unnecessarily corrupt unrelated platform behavior.
+
+For example:
+
+Booking Provider unavailable
+
+should not corrupt:
+
+Business Truth
+
+or:
+
+Visitor identity
+
+or:
+
+historical Decisions.
+
+Where possible, failures remain inside the capability boundary and trigger appropriate fallback behavior.
+
+---
+
+## 11.42 Optional Extensions Must Remain Optional
+
+A Business may not use every Kablet capability.
+
+For example:
+
+Business A:
+Booking
+
+Business B:
+Checkout
+
+Business C:
+Lead generation
+
+Business D:
+Booking + Checkout + Messaging
+
+Core Kablet should not require irrelevant vertical capabilities to operate.
+
+---
+
+## 11.43 Extension Availability Is Contextual
+
+A capability may exist globally but not be available in a particular context.
+
+For example:
+
+Kablet supports Checkout.
+
+Business A has not configured Checkout.
+
+Therefore:
+
+Checkout exists as a platform capability.
+
+It is not an available Action for Business A.
+
+Intelligence must reason from available capabilities, not merely globally implemented capabilities.
+
+---
+
+## 11.44 Extension Capability Does Not Imply Extension Authority
+
+This preserves an earlier foundational distinction.
+
+Kablet may technically support:
+
+Dynamic Discount
+
+A Business may choose not to authorize it.
+
+Therefore:
+
+Platform Capability
+≠
+Business Availability
+≠
+Delegated Authority
+
+These layers remain separate.
+
+---
+
+## 11.45 Extensions May Have Their Own Internal Architecture
+
+A sophisticated extension may eventually require internal:
+
+- domain models
+- workflows
+- state
+- integrations
+- policies
+
+That is acceptable.
+
+Its external relationship to Kablet Core must still respect Foundation contracts.
+
+Kablet does not require every extension to be internally simplistic.
+
+It requires stable boundaries.
+
+---
+
+## 11.46 Extensions Must Not Depend on Hidden Global State
+
+Extensions should receive or resolve the context required to operate.
+
+They must not silently assume:
+
+- current tenant
+- current Business
+- current Visitor
+- current authority
+
+from uncontrolled global state.
+
+This protects:
+
+- tenant isolation
+- testability
+- asynchronous execution
+- future distributed architecture
+
+The exact context-passing implementation belongs to Technical Architecture.
+
+---
+
+## 11.47 Extension Contracts Should Be Technology-Agnostic
+
+The semantic definition of an extension should not unnecessarily depend on:
+
+- React
+- Next.js
+- PostgreSQL
+- Redis
+- OpenAI
+- Vercel
+- a specific queue
+- a specific cloud
+
+Technology-specific adapters may implement the extension.
+
+The contract should describe Kablet meaning.
+
+---
+
+## 11.48 Kablet Must Be Able to Replace Extension Implementations
+
+For strategically important capabilities, Kablet should avoid making the domain dependent on one implementation.
+
+For example:
+
+Booking Action
+    ↓
+Booking Adapter
+    ↓
+Provider A
+
+may later become:
+
+Booking Action
+    ↓
+Booking Adapter
+    ↓
+Provider B
+
+without redefining what Booking means to Kablet.
+
+---
+
+## 11.49 Extension Architecture Must Support Kablet's Long-Term Direction
+
+Kablet begins as an intelligent customer-facing frontend.
+
+Its long-term architecture may support more surfaces and Actions.
+
+Extension design should therefore avoid assuming:
+
+- every Experience is a webpage
+- every interaction is a click
+- every Action is a form submission
+- every customer journey is visual
+- every Business uses the same transaction model
+
+The Foundation describes customer-facing intelligence more broadly than today's first implementation.
+
+---
+
+# 11.A Extension Model
+
+The preferred relationship is:
+
+                    KABLET CORE
+
+        Identity & Ownership
+                │
+          Business Truth
+                │
+          Visitor State
+                │
+          Intelligence
+                │
+             Decision
+                │
+           Experience
+                │
+             Action
+                │
+             Outcome
+                │
+              Events
+
+                  ↓
+
+        STABLE EXTENSION CONTRACTS
+
+        ┌────────┼─────────┐
+        │        │         │
+        ▼        ▼         ▼
+     Vertical  Surface  Integration
+    Extensions Extensions  Adapters
+
+        │        │         │
+        └────────┼─────────┘
+                 ▼
+         Additional Capability
+
+Extensions increase what Kablet can express and execute.
+
+They do not replace the Core semantic loop.
+
+---
+
+# 11.B Vertical Extension Example
+
+Aesthetic Clinic:
+
+Business Truth
+├── Service
+├── Treatment
+├── Practitioner
+├── Price
+├── Proof
+└── Availability
+
+Experience Components
+├── Treatment
+├── Practitioner
+├── Before / After Proof
+└── Booking
+
+Actions
+└── Book Consultation
+
+Outcome
+├── Booking
+├── Attendance
+└── Revenue
+
+All remain inside:
+
+Ownership
+→ Truth
+→ State
+→ Decision
+→ Experience
+→ Action
+→ Outcome
+→ Learning
+
+---
+
+# 11.C Future Ecommerce Extension Example
+
+Ecommerce:
+
+Business Truth
+├── Product
+├── Variant
+├── Price
+├── Inventory
+├── Offer
+└── Shipping Rule
+
+Experience Components
+├── Product
+├── Variant Selector
+├── Comparison
+├── Reviews
+└── Cart
+
+Actions
+├── Add To Cart
+└── Checkout
+
+Outcomes
+├── Purchase
+├── Revenue
+├── Cancellation
+└── Refund
+
+The commerce vocabulary expands.
+
+The Foundation does not change.
+
+---
+
+# 11.D Future Surface Extension Example
+
+Web:
+
+Decision
+    ↓
+Web Experience
+    ↓
+Click / Input
+    ↓
+Action
+
+Voice:
+
+Decision
+    ↓
+Voice Experience
+    ↓
+Speech
+    ↓
+Action
+
+Messaging:
+
+Decision
+    ↓
+Messaging Experience
+    ↓
+Reply / Selection
+    ↓
+Action
+
+Different surfaces.
+
+Same Kablet semantic loop.
+
+---
+
+# 11.E Core Extension Invariants
+
+1. Extensions add capability without bypassing Foundation contracts.
+2. Foundation is smaller than the complete Kablet product.
+3. Existing primitives should be used where they correctly represent new capability.
+4. Verticals extend rather than redefine the Foundation.
+5. Vertical specialization must preserve universal semantics.
+6. Universal concepts should not be unnecessarily duplicated by vertical.
+7. Kablet must avoid premature over-generalization.
+8. Additive extension is preferred where semantically appropriate.
+9. Extensions preserve ownership.
+10. Extensions preserve Business Truth authority.
+11. Extensions preserve Decision lineage.
+12. Extensions preserve Event and Outcome lineage.
+13. Components extend the controlled Experience vocabulary.
+14. Component contracts are explicit.
+15. Vertical Components participate in the universal Experience Contract.
+16. Actions extend the controlled execution vocabulary.
+17. Actions declare applicable authority and constraints.
+18. External systems integrate through controlled adapters.
+19. Provider semantics do not redefine Kablet domain semantics.
+20. Useful provider-specific metadata may be retained.
+21. New Intelligence implementations integrate behind the Intelligence Interface.
+22. More capable Intelligence does not bypass validation.
+23. Learned policies extend Decision capability rather than redefine canonical domain meaning.
+24. New customer Surfaces reuse Core semantics.
+25. Surface and Experience remain distinct concepts.
+26. Voice extends rather than replaces Kablet Core.
+27. Agents do not bypass Foundation boundaries.
+28. Automation operates through explicit capabilities and authority.
+29. Extensions preserve observability.
+30. Extensions preserve experimentability.
+31. Extensions preserve historical meaning.
+32. Extensions preserve privacy and tenant isolation.
+33. Frequent expansion should use explicit extension points.
+34. Extension points do not imply unrestricted arbitrary plugins.
+35. Vertical logic should remain isolated where practical.
+36. Repeated stable patterns may deliberately graduate into Core.
+37. New Foundation primitives require a high bar.
+38. Foundation concepts should remain small and stable.
+39. Extension complexity must have an explicit architectural home.
+40. Extensions should be independently testable.
+41. Extension failure should remain local where practical.
+42. Optional extensions remain optional.
+43. Capability availability is contextual.
+44. Platform capability, Business availability, and delegated authority remain distinct.
+45. Sophisticated extensions may have internal architecture while preserving external contracts.
+46. Extensions must not depend on uncontrolled hidden global context.
+47. Extension contracts should remain technology-agnostic.
+48. Strategically important extension implementations should remain replaceable.
+49. Extension architecture must support future Kablet surfaces and transaction models.
+
+---
+
+# 11.F Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- exact plugin architecture
+- plugin marketplace
+- SDK
+- public extension API
+- Component registry implementation
+- Action registry implementation
+- Event registry implementation
+- integration framework
+- adapter interfaces
+- vertical package structure
+- module loading
+- dependency injection
+- feature flags
+- package boundaries
+- monorepo structure
+- extension deployment
+- extension permissions UI
+- third-party developer model
+- billing for extensions
+- certification process
+- sandboxing implementation
+
+Those belong to Technical Architecture and future Platform specifications.
+
+This section defines how extension must behave conceptually.
+
+---
+
+# 11.G Foundation Dependency
+
+Foundations 01 through 10 establish Kablet's permanent semantics, ownership, history, and boundaries.
+
+Extension Principles establish:
+
+**How can Kablet become dramatically more capable without repeatedly redesigning its core?**
+
+The answer is:
+
+**Extend the vocabulary and capabilities while preserving the grammar.**
+
+The final section of Foundation Specification v0.1 defines what this document deliberately does not attempt to solve:
+
+**12 — Explicitly Out of Scope for Foundation v0.1.**
