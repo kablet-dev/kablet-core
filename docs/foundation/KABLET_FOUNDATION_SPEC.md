@@ -640,3 +640,679 @@ Those decisions belong to later foundation sections or the separate Kablet Techn
 The next section defines the first concrete Kablet foundation:
 
 **01 — Identity & Ownership.**
+
+---
+
+# 01. Identity & Ownership
+
+## 01.1 Purpose
+
+Identity & Ownership defines who exists inside Kablet, what they own, what they may access, and the boundaries within which data and actions operate.
+
+This foundation exists to ensure that every meaningful object in Kablet has an unambiguous ownership context.
+
+Kablet must support a simple business operating one intelligent frontend without preventing future support for:
+
+- multi-business organizations
+- multi-brand groups
+- multiple locations
+- franchises
+- agencies
+- enterprise organizations
+- teams
+- external collaborators
+- centralized administration
+- delegated access
+
+Identity & Ownership must therefore separate the entity that owns and administers resources from the business whose customer-facing experience Kablet powers.
+
+---
+
+## 01.2 Core Ownership Hierarchy
+
+The canonical ownership hierarchy is:
+
+Organization
+    ↓
+Business
+    ↓
+Property / Location
+
+Users participate in this hierarchy through Memberships rather than being the ownership hierarchy themselves.
+
+Conceptually:
+
+Organization
+├── Business
+│   ├── Property / Location
+│   └── Business-Owned Resources
+│
+└── Membership
+    └── User
+
+The hierarchy defines ownership.
+
+Memberships define access.
+
+These concepts must remain separate.
+
+---
+
+## 01.3 Organization
+
+### Definition
+
+An Organization is the primary tenant and ownership boundary inside Kablet.
+
+It represents the entity that owns, administers, or is responsible for one or more Businesses within the platform.
+
+An Organization may represent:
+
+- a company
+- a business group
+- a holding company
+- a franchise operator
+- an agency
+- an enterprise
+- a sole business operator
+
+An Organization exists even when it contains only one Business.
+
+### Why Kablet Needs It
+
+Without Organization as a separate primitive, Kablet would implicitly assume:
+
+one account = one business.
+
+That assumption would eventually break when supporting groups, multiple brands, agencies, franchises, consolidated administration, or enterprise customers.
+
+Organization provides a durable top-level boundary without forcing Business to carry account-level responsibilities.
+
+### Organization May Contain
+
+Conceptually, an Organization may contain or control:
+
+- Businesses
+- Organization Memberships
+- organization-level configuration
+- organization-level permissions
+- billing relationships
+- administrative policies
+- integrations that intentionally operate across Businesses
+- organization-level reporting
+- organization-level governance
+
+Not every capability must exist in the initial implementation.
+
+The ownership model must nevertheless permit them.
+
+### Invariants
+
+An Organization:
+
+1. has a stable identity;
+2. is an explicit tenant boundary;
+3. may own one or more Businesses;
+4. may have multiple Users through Memberships;
+5. must not implicitly gain access to another Organization's private resources;
+6. remains conceptually distinct from the Businesses it owns.
+
+---
+
+## 01.4 Business
+
+### Definition
+
+A Business is the commercial entity whose customer-facing experience Kablet understands, operates, and optimizes.
+
+Business is the primary commercial context for the Kablet runtime.
+
+It is the entity about which Business Truth exists and for which customer outcomes are generated.
+
+Examples may include:
+
+- a clinic
+- an ecommerce brand
+- a SaaS company
+- a law firm
+- a restaurant
+- a professional service business
+- another commercial operation
+
+### Organization vs Business
+
+Organization and Business are intentionally separate.
+
+Organization answers:
+
+**Who owns and administers this inside Kablet?**
+
+Business answers:
+
+**Which commercial entity is Kablet representing to customers?**
+
+For example:
+
+Organization: Acme Healthcare Group
+
+Businesses:
+- Dubai Skin Clinic
+- Abu Dhabi Dental
+- Acme Pharmacy
+
+For a simple customer:
+
+Organization: Glow Clinic LLC
+
+Business: Glow Clinic
+
+The fact that an Organization and Business may initially represent the same real-world company does not make them the same Kablet object.
+
+They must remain separate primitives.
+
+### Business Responsibilities
+
+Business is the primary ownership context for concepts such as:
+
+- Business Truth
+- customer-facing experiences
+- visitor state
+- decisions
+- actions
+- experiments
+- conversions
+- outcomes
+- business-specific learning
+
+Other foundations will define those concepts in detail.
+
+### Invariants
+
+A Business:
+
+1. belongs to exactly one Organization at a given ownership state;
+2. has its own stable identity;
+3. represents a customer-facing commercial entity;
+4. owns or scopes its Business Truth;
+5. provides the primary commercial context for runtime decisions;
+6. must remain distinguishable from its parent Organization;
+7. must not accidentally access another Business's private state merely because both use Kablet.
+
+---
+
+## 01.5 Property / Location
+
+### Definition
+
+A Property / Location represents an operational subdivision of a Business when customer experience, truth, actions, availability, or outcomes vary by that subdivision.
+
+The primitive must not be interpreted only as a physical address.
+
+A Property / Location may represent:
+
+- a physical branch
+- a clinic location
+- a store
+- a service territory
+- an operational location
+- another business subdivision requiring distinct runtime context
+
+### Why It Exists
+
+A Business may have multiple operational contexts.
+
+For example:
+
+Business: Glow Clinic
+
+Properties / Locations:
+- Dubai Marina
+- Jumeirah
+- Abu Dhabi
+
+Those locations may have different:
+
+- staff
+- services
+- availability
+- pricing
+- offers
+- booking destinations
+- contact information
+- policies
+- operating hours
+
+Kablet must be capable of understanding those differences without requiring each location to become an entirely separate Business.
+
+### Optionality
+
+A Business does not need multiple Properties / Locations.
+
+The model must support a Business whose experience operates entirely at the Business level.
+
+Property / Location therefore adds scope where needed; it must not create unnecessary complexity for simple businesses.
+
+### Invariants
+
+A Property / Location:
+
+1. belongs to exactly one Business;
+2. inherits its Organization context through that Business;
+3. may scope Business Truth and operational capabilities;
+4. must never become an independent tenant implicitly;
+5. exists only when subdivision-specific context is meaningful.
+
+---
+
+## 01.6 User
+
+### Definition
+
+A User represents a human identity capable of authenticating with and interacting with Kablet's business-facing systems.
+
+A User is not itself an Organization or Business.
+
+A User may participate in multiple ownership contexts through Memberships.
+
+### Why Membership Is Separate From User
+
+Kablet must not encode ownership or permissions directly into the User identity.
+
+The same person may eventually be:
+
+- owner of one Organization
+- administrator of another
+- analyst for a Business
+- external collaborator elsewhere
+
+Therefore:
+
+User = identity
+
+Membership = relationship and authority
+
+### Invariants
+
+A User:
+
+1. has a stable identity;
+2. may have multiple Memberships;
+3. does not inherently own every resource they can access;
+4. receives authority through explicit relationships;
+5. must not carry tenant-specific permissions globally.
+
+---
+
+## 01.7 Membership
+
+### Definition
+
+A Membership represents the relationship between a User and an ownership scope inside Kablet.
+
+Membership answers:
+
+**Who may act within this scope, and under what authority?**
+
+The initial implementation may support only Organization-level Memberships.
+
+The foundation must permit more granular scopes when needed.
+
+### Membership May Define
+
+A Membership may eventually contain concepts such as:
+
+- scope
+- role
+- permissions
+- status
+- invitation state
+- activation state
+- creation authority
+- temporal validity
+
+Exact authorization mechanics belong to the Technical Architecture.
+
+The foundational requirement is that access is explicit rather than inferred from identity alone.
+
+### Invariants
+
+A Membership:
+
+1. connects a User to an explicit scope;
+2. defines or references the User's authority within that scope;
+3. may be revoked without deleting the User;
+4. must not grant authority outside its intended scope;
+5. must be distinguishable from ownership itself.
+
+---
+
+## 01.8 Ownership and Access Are Different
+
+Kablet must maintain a permanent distinction between:
+
+**Ownership**
+
+and
+
+**Access**
+
+An Organization may own a Business.
+
+A User may have access to that Organization.
+
+Those statements are not equivalent.
+
+Similarly, a future agency may be allowed to manage another Organization's Business without owning that Business.
+
+Therefore Kablet must not infer:
+
+access = ownership
+
+or:
+
+management authority = data ownership
+
+This distinction is necessary for future agency, enterprise, franchise, partnership, and delegated-management models.
+
+---
+
+## 01.9 Resource Ownership
+
+Every tenant-sensitive resource must be attributable to an ownership context.
+
+Depending on the resource, that context may include:
+
+- Organization
+- Business
+- Property / Location
+
+Examples include:
+
+Business Truth
+Decision
+Experience
+Visitor Session
+Experiment
+Conversion
+Outcome
+
+A resource must not become tenant-sensitive merely because a User created it.
+
+For example:
+
+If User A creates a service for Business X, the service belongs to Business X.
+
+It does not belong to User A.
+
+The User may be recorded as the actor responsible for creating or changing it.
+
+Ownership and authorship are different concepts.
+
+---
+
+## 01.10 Ownership Context Must Travel With Runtime Data
+
+Customer-facing runtime data must remain attributable to the Business it belongs to.
+
+A visitor session must not become an anonymous global Kablet session with unclear business ownership.
+
+A Decision must know the commercial context in which it occurred.
+
+An Outcome must remain attributable to the Business whose experience produced it.
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Visitor
+    ↓
+Session
+    ↓
+State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Action
+    ↓
+Outcome
+
+Property / Location may further scope this chain when relevant.
+
+This ownership lineage is necessary for:
+
+- tenant isolation
+- reporting
+- experimentation
+- debugging
+- attribution
+- learning
+- data governance
+
+---
+
+## 01.11 Business Transfer Must Not Destroy Historical Meaning
+
+Kablet may eventually need to support ownership changes.
+
+For example, a Business may:
+
+- move between Organizations
+- be acquired
+- change operators
+- be transferred between accounts
+
+A future transfer must not silently rewrite historical reality.
+
+Historical Decisions, Events, Outcomes, and other records must remain interpretable according to the ownership context that existed when they occurred.
+
+Current ownership and historical ownership are therefore conceptually distinct.
+
+The exact mechanism for representing ownership history belongs to later architecture.
+
+---
+
+## 01.12 Deletion Must Be Distinguished From Identity
+
+Stable identity and lifecycle state must remain conceptually separate.
+
+Removing access, archiving a Business, closing an Organization, or deactivating a User must not necessarily require erasing the historical identity referenced by Decisions, Events, Outcomes, or audit history.
+
+This does not override legal deletion, privacy, or retention requirements.
+
+It establishes only that operational deletion must not casually destroy referential meaning.
+
+Data retention and privacy rules will be defined separately.
+
+---
+
+## 01.13 Customer Identities Are Not Business Users
+
+The humans operating Kablet for a business and the visitors interacting with a Kablet-powered experience are different identity domains.
+
+Business-facing identity:
+
+User
+    ↓
+Membership
+    ↓
+Organization / Business Access
+
+Customer-facing identity:
+
+Visitor
+    ↓
+Session
+    ↓
+Customer Experience
+
+A Visitor must not be modeled as a Kablet business User merely because both represent humans.
+
+Visitor identity and session state will be defined under:
+
+**04 — Visitor State & Decisions.**
+
+---
+
+## 01.14 Identity Must Not Depend on Authentication Provider
+
+Authentication technology may change.
+
+Kablet may use:
+
+- email authentication
+- social identity providers
+- enterprise identity
+- passwordless authentication
+- another authentication mechanism
+
+Those mechanisms establish or verify identity.
+
+They do not define the Kablet User itself.
+
+Therefore:
+
+Authentication credential ≠ User
+
+The foundational User identity must survive changes to authentication mechanisms and providers.
+
+---
+
+## 01.15 Authorization Must Be Evaluated Against Explicit Context
+
+A valid User identity alone does not authorize an operation.
+
+Kablet must conceptually evaluate:
+
+User
+    +
+Membership
+    +
+Requested Resource
+    +
+Ownership Context
+    +
+Required Capability
+    ↓
+Authorization Decision
+
+This principle applies whether authorization is eventually implemented through roles, permissions, policies, capabilities, or another technical mechanism.
+
+The permanent requirement is explicit contextual authorization.
+
+---
+
+## 01.16 Cross-Tenant Intelligence Must Not Bypass Ownership Boundaries
+
+Kablet may eventually derive vertical-level or network-level intelligence from activity across businesses.
+
+That does not make underlying tenant data globally accessible.
+
+Learning across businesses must occur through deliberately designed mechanisms consistent with:
+
+- permissions
+- privacy
+- contractual obligations
+- data governance
+- aggregation requirements
+- applicable policy
+
+Runtime access to Business A must never implicitly expose Business B's private truth, visitor data, decisions, or outcomes.
+
+Cross-business learning and cross-business data access are fundamentally different concepts.
+
+---
+
+# 01.A Canonical Identity Model
+
+The foundational identity model is:
+
+Organization
+│
+├── Business
+│   │
+│   ├── Property / Location
+│   │
+│   └── Business-Owned Resources
+│
+└── Membership
+    │
+    └── User
+
+Where:
+
+Organization
+= tenant / ownership boundary
+
+Business
+= commercial entity Kablet represents and optimizes
+
+Property / Location
+= optional operational subdivision of a Business
+
+User
+= authenticated human identity
+
+Membership
+= relationship granting authority within an ownership scope
+
+---
+
+# 01.B Core Identity & Ownership Invariants
+
+1. Organization and Business are separate primitives.
+2. Organization is the primary tenant and ownership boundary.
+3. Business is the primary customer-facing commercial context.
+4. A Business belongs to exactly one Organization at a given ownership state.
+5. A Property / Location belongs to exactly one Business.
+6. Users do not receive tenant authority merely by existing.
+7. Authority is granted through explicit Memberships.
+8. Ownership and access are different concepts.
+9. Ownership and authorship are different concepts.
+10. Tenant-sensitive resources have explicit ownership context.
+11. Runtime data preserves Business ownership lineage.
+12. Current ownership changes must not destroy historical ownership meaning.
+13. Business Users and customer Visitors are different identity domains.
+14. User identity does not depend on a particular authentication provider.
+15. Authorization is contextual.
+16. Cross-tenant learning does not imply cross-tenant data access.
+
+---
+
+# 01.C Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- database tables
+- foreign keys
+- authentication provider
+- login flows
+- session tokens
+- role names
+- detailed permission matrices
+- billing implementation
+- subscription plans
+- invitation UI
+- organization-switching UI
+- database row-level security
+- API authorization middleware
+- data-retention periods
+- privacy deletion implementation
+- agency product features
+
+Those decisions belong to later specifications and technical architecture.
+
+This section defines only the permanent identity and ownership model that those systems must preserve.
+
+---
+
+# 01.D Foundation Dependency
+
+Identity & Ownership establishes the ownership context required by every remaining Kablet foundation.
+
+The next foundation defines what exists inside that context:
+
+**02 — Business Truth.**
