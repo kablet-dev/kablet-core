@@ -3632,3 +3632,1274 @@ Experience & Component Contract establishes:
 The next foundation defines the dynamic information Kablet maintains about the customer and the decisions produced from it:
 
 **04 — Visitor State & Decisions.**
+
+---
+
+# 04. Visitor State & Decisions
+
+## 04.1 Purpose
+
+Visitor State & Decisions defines how Kablet represents its evolving understanding of a customer interaction and how that understanding produces traceable customer-facing decisions.
+
+This foundation provides the bridge between:
+
+- Visitor behavior
+- Business Truth
+- Kablet Intelligence
+- Experience generation
+- Actions
+- Outcomes
+- future learning
+
+Kablet must not treat every customer interaction as an isolated prompt.
+
+It must maintain enough structured state to understand what is happening across the customer journey.
+
+The foundational relationship is:
+
+Visitor
+    ↓
+Session
+    ↓
+Signals
+    ↓
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Behavior
+    ↓
+Outcome
+
+---
+
+## 04.2 Visitor
+
+A Visitor represents a customer-side identity interacting with a Kablet-powered Business experience.
+
+A Visitor is not a Kablet business User.
+
+A Visitor may initially be anonymous.
+
+Over time, Kablet may learn or receive additional identity information according to applicable permissions and privacy constraints.
+
+A Visitor may participate in one or more Sessions.
+
+The Visitor concept exists to provide continuity where appropriate without requiring known customer identity from the beginning.
+
+---
+
+## 04.3 Visitor Identity Is Business-Scoped by Default
+
+Visitor identity must exist within an explicit Business ownership context.
+
+Kablet must not automatically assume that the same person interacting with two different Businesses should become one globally shared customer identity.
+
+Conceptually:
+
+Business A
+    ↓
+Visitor A
+
+Business B
+    ↓
+Visitor B
+
+Any future cross-business identity capability would require deliberate authorization, privacy design, and governance.
+
+Cross-business intelligence does not imply cross-business customer identity.
+
+---
+
+## 04.4 Anonymous Visitors Are First-Class Visitors
+
+Kablet must be useful before it knows who a Visitor is.
+
+A Visitor may begin with:
+
+- no name
+- no email
+- no phone number
+- no account
+- no prior history
+
+Kablet should still be capable of understanding:
+
+- current intent
+- expressed needs
+- constraints
+- concerns
+- behavior
+- current journey state
+
+Known identity may enrich Visitor State.
+
+It must not be required for intelligent interaction.
+
+---
+
+## 04.5 Session
+
+A Session represents a bounded period of interaction between a Visitor and a Kablet-powered Business experience.
+
+A Session provides the immediate context in which:
+
+- signals occur
+- state evolves
+- Decisions are made
+- Experiences are presented
+- Actions are attempted
+- Outcomes may occur
+
+A Visitor may have multiple Sessions over time.
+
+The exact technical rules determining session start, continuation, expiration, and reconnection belong to Technical Architecture.
+
+---
+
+## 04.6 Visitor and Session Are Different
+
+Visitor represents customer continuity.
+
+Session represents an interaction period.
+
+Conceptually:
+
+Visitor
+├── Session A
+├── Session B
+└── Session C
+
+This distinction allows Kablet eventually to understand:
+
+"This Visitor returned."
+
+without pretending that all activity happened in one continuous interaction.
+
+---
+
+## 04.7 Signals
+
+A Signal is information that may contribute to Kablet's understanding of the Visitor or current interaction.
+
+Signals may come from:
+
+- messages
+- clicks
+- selections
+- searches
+- form input
+- viewed Components
+- interaction with Components
+- Actions
+- referral context
+- campaign context
+- device context
+- session history
+- prior permitted history
+- external systems
+- other authorized observations
+
+Signals are inputs to interpretation.
+
+They are not automatically established facts about the Visitor.
+
+---
+
+## 04.8 Observation and Interpretation Must Remain Distinguishable
+
+Kablet must distinguish what directly happened from what it inferred.
+
+Example:
+
+Observed:
+
+Visitor clicked "Pricing."
+
+Possible interpretation:
+
+Visitor may be price-sensitive.
+
+The observation is evidence.
+
+The interpretation is an inference.
+
+Kablet must not silently convert every inference into established customer truth.
+
+This distinction is necessary for:
+
+- debugging
+- confidence
+- correction
+- experimentation
+- future learning
+
+---
+
+## 04.9 Visitor State
+
+Visitor State is Kablet's structured representation of what is currently relevant about the Visitor and their journey.
+
+Visitor State may include:
+
+- context
+- intent
+- needs
+- goals
+- constraints
+- concerns
+- preferences
+- eligibility
+- journey state
+- interaction history
+- relevant prior state
+- current Experience context
+- confidence
+- unresolved questions
+
+Visitor State is dynamic.
+
+It may change as new evidence becomes available.
+
+---
+
+## 04.10 Context
+
+Context represents circumstances surrounding the current interaction.
+
+Examples may include:
+
+- entry source
+- campaign
+- referral
+- device
+- locale
+- language
+- time context
+- relevant location context
+- current Business
+- current Property / Location
+- current Session
+- current Experience
+
+Context may influence a Decision without becoming a permanent characteristic of the Visitor.
+
+---
+
+## 04.11 Intent
+
+Intent represents what Kablet currently understands the Visitor is trying to accomplish.
+
+Examples:
+
+- explore a Service
+- compare Products
+- understand pricing
+- resolve a concern
+- book
+- buy
+- request a quote
+- contact the Business
+- evaluate suitability
+
+Intent may be:
+
+- explicit
+- inferred
+- uncertain
+- evolving
+
+Kablet must be capable of revising intent as new evidence appears.
+
+---
+
+## 04.12 Needs
+
+Needs represent requirements the Visitor has expressed or that Kablet has reasonably inferred.
+
+Examples:
+
+- wants a particular outcome
+- needs a specific feature
+- requires weekend availability
+- requires delivery to a certain region
+- wants a particular Service characteristic
+
+Needs help Kablet determine which Business Truth and Experience capabilities are relevant.
+
+---
+
+## 04.13 Constraints
+
+Constraints represent conditions that restrict acceptable options or Actions.
+
+Examples:
+
+- budget
+- timing
+- geography
+- eligibility
+- availability
+- product compatibility
+- required Business policy
+- customer-stated limitation
+
+Constraints may originate from:
+
+- the Visitor
+- Business Truth
+- Business Rules
+- operational systems
+
+The origin of consequential constraints should remain traceable.
+
+---
+
+## 04.14 Concerns
+
+Concerns represent uncertainty, objections, fears, risks, or unanswered questions affecting the Visitor's willingness to proceed.
+
+Examples:
+
+- price concern
+- trust concern
+- outcome concern
+- safety concern
+- timing concern
+- comparison uncertainty
+- commitment concern
+
+Concerns may materially affect Experience strategy.
+
+For example:
+
+Concern:
+"Will this look unnatural?"
+
+may cause Kablet to surface:
+
+- relevant explanation
+- appropriate Proof
+- practitioner information
+
+before asking for booking.
+
+---
+
+## 04.15 Preferences
+
+Preferences represent Visitor-expressed or reasonably inferred choices that may improve relevance.
+
+Examples:
+
+- preferred location
+- preferred time
+- preferred Product type
+- preferred communication method
+- preferred option
+
+Preferences must remain distinguishable from hard Constraints.
+
+A preference indicates desirability.
+
+A constraint may determine eligibility.
+
+---
+
+## 04.16 Journey State
+
+Journey State represents Kablet's current understanding of where the Visitor is within the commercial interaction.
+
+Journey State must not require one universal funnel.
+
+Possible states may include concepts such as:
+
+- exploring
+- evaluating
+- comparing
+- resolving uncertainty
+- ready for action
+- action in progress
+- converted
+- unable to proceed
+
+The exact vocabulary may vary by vertical or future implementation.
+
+Journey State exists to help Intelligence reason about what should happen next.
+
+It does not prescribe a fixed sequence.
+
+---
+
+## 04.17 State Is Evidence-Based and Revisable
+
+Visitor State is not permanent truth merely because Kablet inferred it once.
+
+New evidence may:
+
+- strengthen
+- weaken
+- replace
+- contradict
+- resolve
+
+existing State.
+
+For example:
+
+Initial inference:
+
+Budget-sensitive.
+
+Later statement:
+
+"Price doesn't matter; I just want the best available option."
+
+Kablet should be capable of revising its understanding.
+
+State must therefore support change rather than accumulating assumptions forever.
+
+---
+
+## 04.18 State May Carry Confidence
+
+Where Visitor State is inferred rather than explicitly supplied, Kablet should be capable of representing uncertainty.
+
+Conceptually:
+
+Intent:
+Book consultation
+
+Confidence:
+High
+
+Concern:
+Price sensitivity
+
+Confidence:
+Low
+
+The exact confidence representation belongs to Technical Architecture.
+
+The foundational requirement is that uncertain inference must not automatically become indistinguishable from confirmed information.
+
+---
+
+## 04.19 State Must Preserve Relevant Provenance
+
+Where consequential, Kablet should be capable of determining why a State value exists.
+
+For example:
+
+Concern:
+Recovery time
+
+Derived from:
+Visitor message
+
+Or:
+
+Preferred Location:
+Dubai Marina
+
+Derived from:
+Explicit selection
+
+Or:
+
+Price sensitivity:
+Inferred from pricing interactions
+
+This provenance supports:
+
+- explanation
+- correction
+- debugging
+- learning
+
+---
+
+## 04.20 Explicit Visitor Input Generally Outranks Conflicting Inference
+
+If Kablet infers something about a Visitor and the Visitor later explicitly provides contradictory information, the explicit information should generally supersede the unsupported inference.
+
+For example:
+
+Inferred:
+Visitor prefers cheapest option.
+
+Visitor says:
+"I don't care about price."
+
+Kablet should not continue operating as though price sensitivity were established.
+
+This principle does not override authoritative Business constraints or independently verified operational facts.
+
+---
+
+## 04.21 State Must Be Relevant, Not an Unlimited Customer Profile
+
+Kablet should maintain information useful to the Business interaction and permitted by applicable rules.
+
+Visitor State must not become an excuse to accumulate unlimited information about individuals.
+
+State design should be guided by:
+
+- relevance
+- purpose
+- permission
+- privacy
+- retention requirements
+- Business need
+
+The exact privacy implementation belongs to later specifications.
+
+---
+
+## 04.22 Session State and Durable Visitor State Are Different
+
+Some State may be relevant only to the current Session.
+
+Other information may be useful across future Sessions where permitted.
+
+Example:
+
+Session State:
+Currently comparing Service A and Service B.
+
+Potential durable State:
+Preferred Business location.
+
+Kablet must not automatically make every transient inference a permanent Visitor characteristic.
+
+The boundary between session-scoped and durable state must be explicit.
+
+---
+
+## 04.23 Decision
+
+A Decision is Kablet's explicit representation of a meaningful choice about what should happen next in the customer experience.
+
+A Decision is one of the most important canonical objects in Kablet.
+
+It connects:
+
+State
+    ↓
+Reasoning Context
+    ↓
+Chosen Strategy
+    ↓
+Experience
+    ↓
+Behavior
+    ↓
+Outcome
+
+A Decision makes Kablet's adaptive behavior traceable.
+
+---
+
+## 04.24 What Counts as a Meaningful Decision
+
+Not every technical operation requires a canonical Decision.
+
+A meaningful Decision occurs when Kablet intentionally chooses among materially different customer-facing strategies or Actions.
+
+Examples:
+
+- surface Proof before Pricing
+- ask a clarifying question
+- recommend Service A instead of Service B
+- show Pricing immediately
+- present a Comparison
+- resolve a concern before presenting Booking
+- offer an authorized promotion
+- surface a particular Action
+- change the Experience strategy
+
+Low-level technical behavior such as animation frames or internal rendering mechanics does not require a commercial Decision object.
+
+The exact threshold will be refined later.
+
+---
+
+## 04.25 Decision Inputs
+
+A Decision may depend on:
+
+- Business
+- Property / Location
+- Business Truth
+- Business Rules
+- Visitor
+- Session
+- Visitor State
+- current Experience
+- interaction history
+- available Components
+- available Actions
+- experiment context
+- prior learning
+- applicable constraints
+- Intelligence implementation
+
+The Decision must preserve sufficient lineage to understand the meaningful context under which it was made.
+
+---
+
+## 04.26 Decision Output
+
+A Decision should represent what Kablet chose.
+
+Conceptually, it may contain:
+
+Decision
+├── objective
+├── strategy
+├── selected Truth
+├── selected Components
+├── selected Actions
+├── Experience Plan
+└── relevant rationale / metadata
+
+The exact schema belongs to Technical Architecture.
+
+The foundational requirement is that the Decision be a durable, inspectable representation of Kablet's choice.
+
+---
+
+## 04.27 Decision and Experience Are Different
+
+A Decision represents the choice.
+
+An Experience represents what is presented as a result.
+
+Example:
+
+Decision:
+
+"Address trust concern before asking for booking."
+
+Experience:
+
+Message
+Practitioner
+Testimonials
+Booking Action
+
+This distinction matters because the same Decision strategy may be rendered through different Experiences.
+
+It also allows Kablet to distinguish:
+
+what it intended
+
+from
+
+what was actually rendered.
+
+---
+
+## 04.28 Decision and Reasoning Are Different
+
+Kablet must preserve the Decision and its relevant structured basis.
+
+It does not require storing unrestricted internal model reasoning.
+
+The system needs durable commercial traceability such as:
+
+- relevant State
+- objective
+- strategy
+- selected information
+- selected capabilities
+- model / policy metadata where useful
+- outcome linkage
+
+The foundational data moat should depend on structured decision lineage rather than private or provider-specific reasoning traces.
+
+---
+
+## 04.29 Decision Objective Must Be Explicit
+
+A meaningful Decision should be connected to an objective.
+
+Examples:
+
+- understand intent
+- resolve uncertainty
+- increase confidence
+- help comparison
+- determine eligibility
+- progress toward booking
+- progress toward purchase
+- complete an Action
+
+This allows future learning systems to distinguish decisions intended to achieve different purposes.
+
+---
+
+## 04.30 Decisions Must Respect Business Authority
+
+Visitor State does not override Business Truth.
+
+If a Visitor wants something the Business does not offer, Kablet must not invent it.
+
+If the Visitor requests an unauthorized discount, Kablet must not create one unless delegated authority permits it.
+
+Decision-making therefore operates inside:
+
+Business Truth
++
+Business Rules
++
+Authorized Capabilities
++
+Visitor State
+
+Optimization occurs within those boundaries.
+
+---
+
+## 04.31 Decisions Must Be Immutable Historical Records
+
+Once a Decision has materially influenced an Experience, the historical Decision should not be silently rewritten because Kablet later learns something new.
+
+New understanding should produce a new State and, where appropriate, a new Decision.
+
+Conceptually:
+
+State v1
+    ↓
+Decision A
+    ↓
+Experience A
+
+New Signal
+    ↓
+State v2
+    ↓
+Decision B
+    ↓
+Experience B
+
+Decision A remains historically meaningful.
+
+This is necessary for trustworthy learning and debugging.
+
+---
+
+## 04.32 Decision Lineage Must Preserve Historical Context
+
+A historical Decision must remain interpretable against the relevant context that existed when it occurred.
+
+This includes sufficient relationships to reconstruct meaningful inputs such as:
+
+- applicable Business Truth
+- Visitor State
+- Experience context
+- available capabilities
+- experiment assignment
+- applicable policies or constraints
+
+Later changes must not make historical Decisions appear to have been made using information that did not exist at the time.
+
+---
+
+## 04.33 Intelligence Implementation Must Be Attributable
+
+Kablet may use different intelligence mechanisms over time.
+
+A Decision may be produced by:
+
+- deterministic rules
+- LLM
+- experiment policy
+- recommendation system
+- proprietary model
+- hybrid system
+- future intelligence architecture
+
+Where useful for evaluation and debugging, Kablet should be capable of identifying which intelligence configuration produced a Decision.
+
+The runtime must not depend on that implementation.
+
+The historical record should nevertheless be able to attribute it.
+
+---
+
+## 04.34 Decisions May Be Candidates Before Selection
+
+Future Kablet Intelligence may evaluate multiple possible strategies.
+
+For example:
+
+Candidate A:
+Show price first.
+
+Candidate B:
+Show proof first.
+
+Candidate C:
+Ask one more question.
+
+The system may select one candidate according to:
+
+- policy
+- experiment
+- learned strategy
+- constraints
+- optimization objective
+
+Not every candidate must become a canonical executed Decision.
+
+The executed Decision must remain distinguishable from alternatives considered or experiment variants available.
+
+---
+
+## 04.35 Experiment Context Is Part of Decision Context
+
+A Decision may be influenced by an Experiment.
+
+For example:
+
+Experiment:
+Proof-before-price vs Price-before-proof
+
+Assignment:
+Variant B
+
+Decision:
+Present Price before Proof
+
+The Decision must remain attributable to that experiment context.
+
+Otherwise Kablet cannot correctly evaluate whether an outcome resulted from normal policy or experimental treatment.
+
+Detailed experimentation mechanics belong to later foundations.
+
+---
+
+## 04.36 Decisions Must Connect to Actual Exposure
+
+A Decision cannot be evaluated solely from what it intended.
+
+Kablet must eventually distinguish:
+
+Decision created
+    ↓
+Experience planned
+    ↓
+Experience validated
+    ↓
+Experience rendered
+    ↓
+Experience viewed
+    ↓
+Experience interacted
+    ↓
+Outcome
+
+If a Decision selected a Proof Component but the Visitor never saw it, future learning should not blindly treat the Decision as successfully exposed.
+
+This relationship will be implemented through the Event & Outcome Spine.
+
+---
+
+## 04.37 Decisions Must Connect to Outcomes
+
+The canonical learning relationship is:
+
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Behavior
+    ↓
+Outcome
+
+Kablet's long-term intelligence depends on preserving this relationship.
+
+A Decision without outcome lineage is useful for debugging.
+
+A Decision with outcome lineage becomes useful for optimization and learning.
+
+---
+
+## 04.38 No-Conversion Is Also Information
+
+A successful conversion is not the only meaningful result.
+
+Kablet may need to understand outcomes such as:
+
+- Visitor abandoned
+- Action failed
+- Visitor rejected recommendation
+- Visitor continued exploring
+- Visitor returned later
+- no conversion occurred within a defined attribution window
+
+Absence of conversion must be interpreted carefully.
+
+It must not automatically prove that a Decision was poor.
+
+The Event & Outcome foundation will define outcome representation more precisely.
+
+---
+
+## 04.39 State and Decision Must Support Learning Without Requiring Learning on Day One
+
+The first Kablet implementation does not need sophisticated machine learning.
+
+It may use:
+
+- simple rules
+- LLM reasoning
+- deterministic policies
+- basic experiments
+
+However, it must preserve the structured relationship:
+
+Context
+→ State
+→ Decision
+→ Experience
+→ Outcome
+
+This allows future intelligence to learn from historical Kablet operation without requiring the early product to already contain the final Learning Brain.
+
+---
+
+## 04.40 State Must Not Be Coupled to One AI Model
+
+Visitor State is a Kablet concept.
+
+It must not exist only inside an AI provider's conversation history or prompt context.
+
+An AI model may help interpret signals and update State.
+
+Kablet owns the resulting structured State.
+
+This allows:
+
+- model replacement
+- multi-model systems
+- deterministic logic
+- historical reconstruction
+- independent experimentation
+
+The AI provider is a processor.
+
+Kablet owns the state.
+
+---
+
+## 04.41 Decisions Must Not Exist Only Inside AI Output
+
+Similarly, a Decision must not exist only as transient model-generated text.
+
+Once accepted as a meaningful runtime Decision, it becomes a Kablet object with Kablet identity and lineage.
+
+This is necessary for:
+
+- attribution
+- debugging
+- experiments
+- learning
+- observability
+- future proprietary intelligence
+
+---
+
+## 04.42 Visitor Correction Must Be Possible
+
+Where Kablet exposes or relies upon Visitor-understandable information, future Experiences should permit correction when appropriate.
+
+For example:
+
+Kablet:
+"It sounds like you're mainly concerned about recovery time."
+
+Visitor:
+"No, my main concern is price."
+
+The new signal should be capable of correcting State.
+
+Kablet must not defend stale inference against explicit customer correction.
+
+---
+
+## 04.43 State Transitions Must Be Observable
+
+Meaningful State changes should be capable of producing observable records.
+
+Examples:
+
+intent changed
+concern identified
+constraint added
+preference confirmed
+journey state changed
+
+The exact Event vocabulary belongs to Foundation 05.
+
+The foundational requirement is that important State transitions can be reconstructed rather than existing only transiently in memory.
+
+---
+
+## 04.44 Decisions Must Be Observable
+
+Meaningful Decisions should produce observable records.
+
+At minimum, Kablet must eventually be capable of connecting:
+
+Decision identity
+Business
+Visitor
+Session
+State context
+Experience
+Experiment context
+Outcome
+
+This is a core requirement of the future Kablet Data Brain.
+
+---
+
+# 04.A Canonical Visitor Model
+
+The foundational Visitor model is:
+
+Business
+   ↓
+Visitor
+   ↓
+Session
+   ↓
+Signals
+   ↓
+Visitor State
+   │
+   ├── Context
+   ├── Intent
+   ├── Needs
+   ├── Constraints
+   ├── Concerns
+   ├── Preferences
+   ├── Journey State
+   ├── Confidence
+   └── Relevant History
+
+Visitor State evolves as new Signals arrive.
+
+---
+
+# 04.B Canonical Decision Model
+
+The foundational Decision model is:
+
+Business Truth
+      +
+Business Rules
+      +
+Visitor State
+      +
+Current Experience
+      +
+Available Components
+      +
+Available Actions
+      +
+Experiment Context
+      +
+Prior Learning
+      ↓
+Intelligence
+      ↓
+Decision
+      │
+      ├── Objective
+      ├── Strategy
+      ├── Relevant Inputs
+      ├── Selected Truth
+      ├── Selected Capabilities
+      └── Experience Plan
+      ↓
+Validation
+      ↓
+Experience
+
+---
+
+# 04.C Canonical Learning Lineage
+
+The most strategically important lineage is:
+
+Context
+   ↓
+Signal
+   ↓
+Visitor State
+   ↓
+Decision
+   ↓
+Experience
+   ↓
+Exposure
+   ↓
+Interaction
+   ↓
+Action
+   ↓
+Outcome
+
+Kablet must preserve enough identity and linkage across this chain for future systems to evaluate:
+
+**Under this context and Visitor State, what Decision was made, what Experience was actually delivered, and what happened afterward?**
+
+This relationship is the foundation of Kablet's long-term learning system and decision/outcome data advantage.
+
+---
+
+# 04.D State vs Decision vs Experience
+
+These concepts must remain separate.
+
+Visitor State:
+
+"What does Kablet currently understand?"
+
+Decision:
+
+"What has Kablet chosen to do about it?"
+
+Experience:
+
+"What did Kablet present as a result?"
+
+Outcome:
+
+"What happened afterward?"
+
+Example:
+
+Visitor State:
+- interested in Botox
+- concerned about unnatural results
+- location: Dubai
+- booking intent: moderate
+
+Decision:
+- resolve outcome concern before pushing booking
+
+Experience:
+- contextual explanation
+- natural-result testimonial
+- practitioner proof
+- consultation action
+
+Outcome:
+- Visitor begins booking
+
+The separation between these concepts is permanent.
+
+---
+
+# 04.E Core Visitor State & Decision Invariants
+
+1. Visitor and business User are different identity domains.
+2. Visitor identity is Business-scoped by default.
+3. Anonymous Visitors are first-class Visitors.
+4. Visitor and Session are separate concepts.
+5. Signals are observations, not automatically established Visitor facts.
+6. Observation and inference remain distinguishable.
+7. Visitor State is structured and dynamic.
+8. Intent may evolve.
+9. Needs, Constraints, Concerns, and Preferences remain semantically distinct.
+10. Journey State does not impose a universal funnel.
+11. Inferred State is revisable.
+12. Uncertain State may carry confidence.
+13. Consequential State preserves provenance where appropriate.
+14. Explicit Visitor correction generally supersedes conflicting unsupported inference.
+15. State collection is purpose-bound rather than unlimited profiling.
+16. Session State and durable Visitor State remain distinguishable.
+17. Meaningful customer-facing choices are represented as Decisions.
+18. Decision and Experience are separate concepts.
+19. Decision and internal reasoning traces are separate concepts.
+20. Decisions have objectives.
+21. Decisions operate inside Business authority and constraints.
+22. Executed Decisions are immutable historical records.
+23. Historical Decisions preserve meaningful context.
+24. Intelligence implementation may be attributed without coupling runtime to it.
+25. Experiment context participates in Decision lineage.
+26. Intended Experience and actual exposure are distinguishable.
+27. Decisions connect to Outcomes.
+28. Non-conversion may also provide information.
+29. Kablet owns Visitor State rather than outsourcing it to an AI provider.
+30. Kablet owns canonical Decisions rather than leaving them inside transient AI output.
+31. Meaningful State transitions are observable.
+32. Meaningful Decisions are observable.
+33. Context → State → Decision → Experience → Outcome lineage is preserved.
+
+---
+
+# 04.F Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- cookies
+- browser identifiers
+- fingerprinting
+- authentication mechanisms for customers
+- exact session timeout
+- identity-resolution algorithms
+- CRM identity matching
+- State database schemas
+- exact confidence scoring
+- intent taxonomy
+- journey-state taxonomy
+- prompt memory
+- vector memory
+- long-term memory implementation
+- model context windows
+- model provider
+- recommendation algorithms
+- Decision JSON schema
+- attribution windows
+- experimentation statistics
+- machine-learning models
+- privacy retention periods
+
+Those belong to Technical Architecture, privacy design, vertical specifications, or later intelligence systems.
+
+This section defines the permanent conceptual relationship between Visitor understanding, Decisions, Experiences, and Outcomes.
+
+---
+
+# 04.G Foundation Dependency
+
+Identity & Ownership established:
+
+**Whose system and data is this?**
+
+Business Truth established:
+
+**What is authorized and true about the Business?**
+
+Experience & Component Contract established:
+
+**How can Intelligence safely control the customer-facing frontend?**
+
+Visitor State & Decisions establishes:
+
+**What does Kablet understand about this Visitor, and what did Kablet choose to do because of that understanding?**
+
+The next foundation defines how Kablet permanently records what actually happened:
+
+**05 — Event & Outcome Spine.**
