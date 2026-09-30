@@ -8559,3 +8559,1153 @@ The remaining Foundation Specification sections define the rules that apply acro
 **11 — Extension Principles**
 
 **12 — Explicitly Out of Scope for Foundation v0.1**
+
+---
+
+# 08. Data Ownership Rules
+
+## 08.1 Purpose
+
+Data Ownership Rules define how Kablet determines ownership, authority, access context, and derived-data relationships across the platform.
+
+These rules apply across all foundations.
+
+Their purpose is to ensure that Kablet can answer, for meaningful data:
+
+- Who owns this?
+- Which Business does it belong to?
+- Who created or supplied it?
+- Who may access it?
+- Who may modify it?
+- Where did it originate?
+- What may be derived from it?
+- What happens when it participates in learning?
+
+Ownership must be a property of Kablet's domain model.
+
+It must not be inferred solely from whichever database, authentication provider, or infrastructure implementation is currently in use.
+
+---
+
+## 08.2 Organization Is the Primary Tenant Ownership Boundary
+
+As established in Foundation 01:
+
+**Organization is the primary account and tenant ownership boundary.**
+
+An Organization may own one or more Businesses.
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Business-Owned Data
+
+The Organization establishes the top-level commercial ownership context within Kablet.
+
+This does not mean every record needs to be directly scoped only to Organization.
+
+More specific ownership context should be preserved where appropriate.
+
+---
+
+## 08.3 Business Is the Primary Commercial Data Context
+
+Most customer-facing Kablet data exists in relation to a Business.
+
+Examples include:
+
+- Business Truth
+- Visitors
+- Sessions
+- Visitor State
+- Decisions
+- Experiences
+- Components
+- Actions
+- Events
+- Outcomes
+- Business-specific Experiments
+- Business-specific learned strategies
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Commercial Runtime Data
+
+Kablet should be capable of determining the Business context of tenant-sensitive runtime data.
+
+---
+
+## 08.4 Property / Location May Further Scope Data
+
+Some data may apply only to a particular Property or Location.
+
+Examples:
+
+- availability
+- local pricing
+- local staff
+- operating hours
+- location-specific Services
+- location-specific Events
+- location-specific Outcomes
+
+Property / Location scope refines Business ownership.
+
+It does not create an unrelated tenant boundary.
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Property / Location
+    ↓
+Scoped Data
+
+---
+
+## 08.5 Creation Does Not Determine Ownership
+
+The actor that creates a record does not necessarily own it.
+
+Example:
+
+User A creates a Service for Business X.
+
+The Service belongs to Business X.
+
+User A may be recorded as:
+
+- creator
+- actor
+- modifier
+
+but does not personally own the Service merely because they entered it.
+
+The permanent distinction is:
+
+**Authorship ≠ Ownership**
+
+---
+
+## 08.6 Access Does Not Determine Ownership
+
+A User may be authorized to access data without owning it.
+
+For example:
+
+Agency User
+    ↓
+Authorized Membership
+    ↓
+Business X
+
+The agency User may manage Business X's Experience or Business Truth.
+
+That does not make Business X's data the agency User's property inside Kablet's ownership model.
+
+The permanent distinction is:
+
+**Access ≠ Ownership**
+
+---
+
+## 08.7 Management Does Not Determine Ownership
+
+A future agency, consultant, operator, franchise manager, or enterprise administrator may manage data belonging to another Business.
+
+Management authority is represented through explicit access and capability relationships.
+
+It must not silently change the underlying ownership of the managed data.
+
+---
+
+## 08.8 Ownership and Authority Are Different
+
+Ownership determines whose data something is.
+
+Authority determines who or what may act upon it.
+
+For example:
+
+Business X owns Price P1.
+
+Business X may authorize:
+
+- User A to edit it
+- Commerce System B to synchronize it
+- Kablet to read it
+- Kablet Intelligence to present it
+
+Ownership remains Business X.
+
+Authority may be distributed through explicit rules.
+
+---
+
+## 08.9 Ownership and Source Are Different
+
+The source of data does not automatically own the canonical Kablet representation.
+
+Example:
+
+Shopify
+    ↓
+Product imported into Kablet
+    ↓
+Business X Product Truth
+
+The source may remain:
+
+Shopify
+
+while ownership remains:
+
+Business X
+
+Kablet should preserve both concepts.
+
+The permanent distinction is:
+
+**Source ≠ Ownership**
+
+---
+
+## 08.10 Ownership and Storage Location Are Different
+
+Where data is technically stored does not determine its domain ownership.
+
+Business-owned information may physically exist in:
+
+- Kablet database
+- object storage
+- analytics infrastructure
+- cache
+- search index
+- backup
+- derived dataset
+
+Its ownership does not change merely because its storage representation changes.
+
+The permanent distinction is:
+
+**Storage ≠ Ownership**
+
+---
+
+## 08.11 Business Truth Is Business-Owned
+
+Canonical Business Truth belongs to its Business ownership context.
+
+This includes authorized representations of:
+
+- Services
+- Products
+- Pricing
+- Offers
+- People
+- Proof
+- FAQs
+- Policies
+- Media
+- Locations
+- Availability
+- Actions
+- Business Rules
+
+Kablet provides the system through which this Truth is structured and operated.
+
+That does not make one Business's private Truth available to another Business.
+
+---
+
+## 08.12 Visitor Data Is Business-Scoped by Default
+
+A Visitor interacting with Business A exists within Business A's runtime context by default.
+
+Conceptually:
+
+Business A
+    ↓
+Visitor A
+    ↓
+Sessions
+    ↓
+State
+    ↓
+Decisions
+    ↓
+Experiences
+    ↓
+Events
+    ↓
+Outcomes
+
+Kablet must not automatically create a globally shared customer profile across unrelated Businesses.
+
+---
+
+## 08.13 Visitor Identity Does Not Imply Cross-Business Data Sharing
+
+The same real-world person may interact with multiple Kablet Businesses.
+
+That does not automatically authorize Kablet to expose one Business's customer history to another.
+
+Conceptually:
+
+Real Person
+   ├── Visitor relationship with Business A
+   └── Visitor relationship with Business B
+
+These relationships remain separate by default.
+
+Any future cross-Business identity capability requires explicit privacy, authorization, and governance design.
+
+---
+
+## 08.14 Session Data Inherits Business Context
+
+A Session belongs to a Visitor interaction with a Business.
+
+Therefore Session-related:
+
+- Signals
+- State
+- Decisions
+- Experiences
+- Events
+- Actions
+- Outcomes
+
+must remain attributable to the appropriate Business context.
+
+A Session must not become an ownership escape hatch through which tenant-sensitive data loses Business scope.
+
+---
+
+## 08.15 Decisions Are Business-Contextual Records
+
+A canonical Decision belongs to the Business interaction in which it was made.
+
+It may reference:
+
+- Business Truth
+- Visitor State
+- Experience
+- Experiment
+- Intelligence configuration
+
+The Decision remains part of that Business's historical operating context.
+
+Generalized learning may later derive patterns from Decisions according to governance rules.
+
+The underlying Decision does not thereby become another Business's record.
+
+---
+
+## 08.16 Experiences Are Business-Contextual Records
+
+An Experience produced for a Visitor is attributable to:
+
+- Business
+- Visitor
+- Session
+- Decision
+
+where applicable.
+
+Generated Experience content does not become globally reusable Business Truth merely because Kablet generated it.
+
+Its ownership and provenance must remain interpretable.
+
+---
+
+## 08.17 Events Preserve Ownership Context
+
+Tenant-sensitive Events must retain sufficient ownership context to determine whose activity they describe.
+
+For customer-facing runtime Events, Business context is foundational.
+
+Analytics processing, warehousing, aggregation, or transport must not erase that ownership meaning.
+
+---
+
+## 08.18 Outcomes Preserve Ownership Context
+
+Conversions, bookings, purchases, leads, revenue, and other Outcomes must remain attributable to the Business for which they occurred.
+
+Outcome aggregation across Businesses may be useful to Kablet internally where authorized.
+
+Aggregation does not change the ownership of the underlying Business-specific Outcomes.
+
+---
+
+## 08.19 External System Data Retains Provenance
+
+Data received from external systems must preserve meaningful provenance.
+
+For example:
+
+Business X
+    ↓
+Booking Provider
+    ↓
+Booking Event
+    ↓
+Kablet Outcome
+
+Kablet should be capable of knowing:
+
+- which Business owns the relevant relationship
+- which external system supplied the information
+- which external object was referenced
+- how it entered Kablet
+
+Provenance does not replace ownership.
+
+---
+
+## 08.20 Kablet Platform Data Is Distinct From Tenant Business Data
+
+Kablet itself will create data required to operate the platform.
+
+Examples may include:
+
+- platform configuration
+- Component definitions
+- platform policies
+- system capabilities
+- product telemetry
+- system health information
+- intelligence configuration
+- platform-wide feature configuration
+
+This data is conceptually distinct from private tenant Business data.
+
+The technical architecture must preserve that distinction.
+
+---
+
+## 08.21 Shared Platform Definitions Are Not Tenant-Owned Truth
+
+Some Kablet concepts are shared platform definitions.
+
+Examples:
+
+Component type:
+Price
+
+Event type:
+decision.created
+
+Action capability:
+Book
+
+These definitions belong to the Kablet platform model.
+
+A Business's actual:
+
+Price
+Decision
+Booking configuration
+
+belongs to that Business context.
+
+Conceptually:
+
+Kablet defines the language.
+
+The Business owns its instance of the meaning expressed through that language.
+
+---
+
+## 08.22 Derived Data Requires Lineage
+
+Kablet may derive information from tenant-owned data.
+
+Examples:
+
+- metrics
+- summaries
+- conversion rates
+- learned strategies
+- experiment results
+- predictions
+- recommendations
+
+Derived information must preserve sufficient lineage to understand the context from which it was produced.
+
+Derivation does not automatically erase the ownership or governance obligations of the underlying data.
+
+---
+
+## 08.23 Business-Specific Derived Intelligence Remains Business-Contextual
+
+Suppose Kablet learns:
+
+"For Business A, visitors with high trust concern respond better to practitioner proof before pricing."
+
+That learned strategy is derived from Business A's operating history.
+
+It should remain attributable to Business A.
+
+It may be used to improve Business A's future Decisions.
+
+It does not automatically become raw knowledge available to Business B.
+
+---
+
+## 08.24 Generalized Learning Is a Separate Data Class
+
+Kablet may eventually derive generalized patterns from multiple Businesses where permitted.
+
+Examples:
+
+- vertical patterns
+- abstract commercial interaction patterns
+- generalized optimization strategies
+
+Generalized learning must be conceptually distinct from raw tenant data.
+
+The relationship is:
+
+Governed Tenant Evidence
+        ↓
+Learning Process
+        ↓
+Generalized Pattern
+
+The generalized pattern is not a copy of one Business's private data.
+
+---
+
+## 08.25 Generalization Must Not Become Tenant Data Leakage
+
+A generalized pattern must not function as a disguised mechanism for revealing another Business's private information.
+
+For example, Kablet may eventually learn a general strategy such as:
+
+"Proof often improves progression when trust concern is high."
+
+It should not expose:
+
+"Business X's customer Sarah converted after seeing testimonial Y."
+
+to unrelated Business Y.
+
+The permanent distinction is:
+
+**Generalized learning ≠ cross-tenant data access**
+
+---
+
+## 08.26 Aggregation Does Not Automatically Remove Governance Obligations
+
+Combining data from many Businesses does not automatically make the resulting dataset unrestricted.
+
+Aggregation, anonymization, de-identification, statistical transformation, and model training each have separate governance implications.
+
+Those policies will be defined later.
+
+The foundation establishes only that transformation does not magically eliminate ownership, privacy, contractual, or authorization considerations.
+
+---
+
+## 08.27 Data Access Must Be Explicitly Authorized
+
+Possession of an identifier does not grant access.
+
+Knowing:
+
+Business ID
+Visitor ID
+Decision ID
+Outcome ID
+
+must not itself authorize retrieval or mutation.
+
+Access must be evaluated against:
+
+- actor
+- ownership context
+- Membership
+- capability
+- resource
+- applicable policy
+
+The exact authorization system belongs to Technical Architecture.
+
+---
+
+## 08.28 Cross-Tenant Access Is Denied by Default
+
+Tenant-sensitive data should be inaccessible across unrelated ownership contexts unless an explicit authorized relationship permits access.
+
+Conceptually:
+
+Business A
+    ✕
+Business B private data
+
+rather than:
+
+Business A
+    → accessible unless specifically blocked
+
+The foundational posture is:
+
+**Cross-tenant access is denied by default.**
+
+---
+
+## 08.29 Organization-Level Access Does Not Erase Business Scope
+
+An authorized Organization administrator may have access to multiple Businesses.
+
+That does not require Business data to lose its Business identity.
+
+For example:
+
+Organization
+├── Business A
+├── Business B
+└── Business C
+
+An Organization-level dashboard may aggregate them.
+
+The underlying records should remain attributable to their respective Businesses.
+
+---
+
+## 08.30 Access Can Be Broader Than Ownership Scope
+
+An authorized actor may access multiple ownership scopes.
+
+For example:
+
+Organization Administrator
+    ↓
+Business A
+Business B
+Business C
+
+or:
+
+Authorized Agency User
+    ↓
+Client Business A
+Client Business B
+
+This is an access relationship.
+
+It does not merge those Businesses into one data ownership scope.
+
+---
+
+## 08.31 Mutation Authority Must Be Explicit
+
+Read access does not automatically grant modification authority.
+
+A User may be allowed to:
+
+- view Business Truth
+
+without being allowed to:
+
+- modify Pricing
+
+A system may be allowed to:
+
+- read Availability
+
+without being allowed to:
+
+- modify Services
+
+Capabilities should therefore be explicit enough to distinguish meaningful operations.
+
+---
+
+## 08.32 Delegated AI Authority Is a Form of Data Authority
+
+If a Business permits Kablet Intelligence to modify Business Truth or execute consequential Actions, that delegation constitutes explicit authority.
+
+For example:
+
+Business authorizes Kablet to adjust discounts between 0% and 10%.
+
+Kablet may then operate within that boundary.
+
+The delegation should be:
+
+- scoped
+- constrained
+- attributable
+- revocable
+- observable
+
+Intelligence capability alone does not grant mutation authority.
+
+---
+
+## 08.33 Revoking Access Does Not Rewrite Historical Ownership
+
+A User may lose access to a Business.
+
+The historical records they created or modified do not become ownerless.
+
+For example:
+
+User A created Service S1 for Business X.
+
+User A later leaves Business X.
+
+Service S1 remains Business X data.
+
+Historical authorship may remain recorded where appropriate.
+
+---
+
+## 08.34 Business Transfer Must Preserve Historical Meaning
+
+A Business may eventually move between Organizations.
+
+For example:
+
+Organization A
+    ↓
+Business X
+
+later:
+
+Organization B
+    ↓
+Business X
+
+The transfer must not silently rewrite historical ownership context as though Organization B always owned Business X.
+
+The current ownership state and historical ownership state may both matter.
+
+The exact transfer mechanism belongs to later architecture.
+
+---
+
+## 08.35 Deletion and Ownership Are Separate Concerns
+
+Ownership does not imply that data must exist forever.
+
+Data may become subject to:
+
+- deletion
+- retention limits
+- legal requirements
+- privacy requests
+- contractual requirements
+- account closure
+
+Deletion policy belongs to privacy and lifecycle design.
+
+Ownership determines whose context the data belongs to while it exists.
+
+---
+
+## 08.36 Export Does Not Necessarily Transfer Canonical Ownership
+
+A Business may export its data from Kablet.
+
+Export creates a representation outside Kablet.
+
+It does not necessarily change ownership of the canonical records that remain inside Kablet.
+
+Similarly, importing information into Kablet does not automatically erase the source system's independent rights or responsibilities.
+
+The exact contractual implications belong outside this foundation.
+
+---
+
+## 08.37 Kablet Must Be Able to Trace Data Origin
+
+For strategically important records, Kablet should eventually be able to answer:
+
+- Was this manually created?
+- Imported?
+- Synchronized?
+- Generated?
+- Derived?
+- Inferred?
+- Learned?
+- Supplied by an external system?
+
+Origin assists with:
+
+- trust
+- debugging
+- authority
+- synchronization
+- learning
+- governance
+
+Origin remains distinct from ownership.
+
+---
+
+## 08.38 Kablet Must Be Able to Trace Data Transformation
+
+Where meaningful, Kablet should be capable of understanding transformations such as:
+
+Raw Source
+    ↓
+Normalized Business Truth
+    ↓
+Generated Experience
+    ↓
+Event
+    ↓
+Metric
+    ↓
+Learned Strategy
+
+This lineage allows Kablet to understand not merely where information currently exists, but how it came to exist.
+
+---
+
+## 08.39 Canonical Data Must Have a Clear System of Record
+
+For each canonical Kablet concept, Technical Architecture must eventually establish where authoritative Kablet state resides.
+
+For example:
+
+- Business Truth
+- Visitor State
+- Decision
+- Experience
+- Event
+- Outcome
+
+may have different projections or copies.
+
+There must nevertheless be an identifiable canonical representation or authority model.
+
+Caches, analytics tools, search indexes, and model context must not silently become competing systems of record.
+
+---
+
+## 08.40 Copies Do Not Create New Ownership
+
+The same underlying information may appear in:
+
+- canonical database
+- cache
+- warehouse
+- analytics tool
+- model context
+- backup
+- search index
+
+These copies inherit applicable ownership and governance context from the information they represent.
+
+Copying data does not create a new ownership class merely because the technical representation changed.
+
+---
+
+## 08.41 Analytics Vendors Do Not Become Canonical Owners
+
+Kablet may send authorized information to third-party systems for:
+
+- analytics
+- monitoring
+- observability
+- experimentation
+- operational tooling
+
+Those systems may process or store copies.
+
+They must not become the sole canonical definition of Kablet's strategically important Business, Decision, Event, or Outcome data.
+
+Kablet retains its own canonical data model.
+
+---
+
+## 08.42 AI Providers Do Not Become Canonical Owners of Kablet State
+
+Information may be sent to external intelligence providers as authorized processing context.
+
+The provider's model context, conversation state, or response must not become Kablet's canonical system of record.
+
+Kablet owns its structured:
+
+- Business Truth
+- Visitor State
+- Decisions
+- Experiences
+- Events
+- Outcomes
+- learned strategies
+
+subject to applicable legal and contractual arrangements.
+
+The external intelligence provider is a processor within the architecture, not the Kablet data model.
+
+---
+
+## 08.43 Data Ownership Must Survive Infrastructure Replacement
+
+If Kablet replaces:
+
+- database
+- cloud provider
+- analytics provider
+- AI provider
+- authentication provider
+- frontend framework
+- hosting system
+
+the conceptual ownership of Kablet data must remain unchanged.
+
+This is why ownership belongs to the Foundation Specification rather than infrastructure configuration.
+
+---
+
+# 08.A Canonical Ownership Hierarchy
+
+The primary tenant hierarchy is:
+
+Organization
+    ↓
+Business
+    ↓
+Property / Location
+    ↓
+Scoped Business Data
+
+Customer runtime lineage exists inside that context:
+
+Business
+    ↓
+Visitor
+    ↓
+Session
+    ↓
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Event
+    ↓
+Outcome
+
+Not every object must directly contain every ancestor.
+
+The ownership chain must remain determinable.
+
+---
+
+# 08.B Canonical Data Classes
+
+At the Foundation level, Kablet distinguishes at least:
+
+### Tenant Business Data
+
+Examples:
+
+- Business Truth
+- Visitors
+- Sessions
+- Decisions
+- Experiences
+- Events
+- Outcomes
+
+### Business-Specific Derived Data
+
+Examples:
+
+- Business metrics
+- Business experiment results
+- Business-specific learned strategies
+
+### Kablet Platform Data
+
+Examples:
+
+- Component definitions
+- platform capabilities
+- platform configuration
+- system policies
+- Intelligence configurations
+
+### Generalized Learned Data
+
+Examples:
+
+- governed vertical patterns
+- generalized optimization strategies
+- abstract network-level learning
+
+The exact storage architecture for these classes is intentionally not defined here.
+
+---
+
+# 08.C Permanent Ownership Distinctions
+
+The following concepts must remain distinct:
+
+Ownership
+≠
+Authorship
+
+Ownership
+≠
+Access
+
+Ownership
+≠
+Management
+
+Ownership
+≠
+Authority
+
+Ownership
+≠
+Source
+
+Ownership
+≠
+Storage Location
+
+Visitor Identity
+≠
+Global Cross-Business Identity
+
+Tenant Data
+≠
+Generalized Learning
+
+Raw Data
+≠
+Derived Data
+
+Business Data
+≠
+Kablet Platform Definitions
+
+Identifier Knowledge
+≠
+Access Authorization
+
+Read Authority
+≠
+Mutation Authority
+
+AI Capability
+≠
+Delegated Authority
+
+Current Ownership
+≠
+Historical Ownership
+
+---
+
+# 08.D Core Data Ownership Invariants
+
+1. Organization is the primary tenant ownership boundary.
+2. Business is the primary commercial data context.
+3. Property / Location may refine Business scope.
+4. Authorship does not determine ownership.
+5. Access does not determine ownership.
+6. Management does not determine ownership.
+7. Ownership and authority remain separate.
+8. Source and ownership remain separate.
+9. Storage location does not determine ownership.
+10. Business Truth is Business-owned.
+11. Visitor data is Business-scoped by default.
+12. Visitor identity does not imply cross-Business data sharing.
+13. Sessions preserve Business context.
+14. Decisions and Experiences preserve Business context.
+15. Events and Outcomes preserve ownership context.
+16. External data preserves provenance.
+17. Kablet Platform Data remains distinct from tenant Business Data.
+18. Shared platform definitions are not tenant-owned Business Truth.
+19. Derived data preserves meaningful lineage.
+20. Business-specific derived intelligence remains attributable to its Business context.
+21. Generalized learning is a distinct data class.
+22. Generalization must not become cross-tenant leakage.
+23. Aggregation does not automatically eliminate governance obligations.
+24. Data access requires authorization.
+25. Cross-tenant access is denied by default.
+26. Organization-level access does not erase Business scope.
+27. Access may span ownership scopes without merging them.
+28. Read authority and mutation authority are distinguishable.
+29. Delegated Intelligence authority is explicit, constrained, attributable, and revocable.
+30. Access revocation does not rewrite historical ownership.
+31. Business transfer preserves historical ownership meaning.
+32. Ownership and deletion are separate concerns.
+33. Data origin should remain traceable where meaningful.
+34. Data transformations should remain traceable where meaningful.
+35. Canonical concepts require clear authority or systems of record.
+36. Copies inherit applicable ownership context.
+37. External analytics systems do not become canonical Kablet owners.
+38. External AI systems do not become canonical Kablet state.
+39. Ownership semantics survive infrastructure replacement.
+
+---
+
+# 08.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- database Row-Level Security policies
+- SQL permissions
+- authentication provider
+- authorization library
+- role names
+- exact Membership capabilities
+- encryption implementation
+- key management
+- backup policy
+- retention periods
+- deletion workflows
+- data residency
+- data-processing agreements
+- legal ownership language
+- customer contracts
+- GDPR implementation
+- CCPA implementation
+- consent interfaces
+- anonymization algorithms
+- model-training policy
+- exact cross-Business learning policy
+
+Those belong to Technical Architecture, Privacy specifications, Security specifications, and legal agreements.
+
+This section defines Kablet's conceptual data ownership model.
+
+---
+
+# 08.F Foundation Dependency
+
+Identity & Ownership established the entities that own and access Kablet resources.
+
+Foundations 02 through 06 established the data those entities create and operate.
+
+Cross-Foundation Contracts established how those systems interact.
+
+Data Ownership Rules establish:
+
+**Whose data is it, what context does it belong to, and which distinctions must survive every technical implementation?**
+
+The next section establishes how these contracts may evolve without destroying historical meaning or compatibility:
+
+**09 — Versioning Rules.**
