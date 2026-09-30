@@ -10803,3 +10803,2249 @@ Versioning Rules establish:
 The next section establishes the boundaries governing how tenant and Visitor information may flow through the platform:
 
 **10 — Privacy & Tenant Isolation Principles.**
+
+---
+
+# 10. Privacy & Tenant Isolation Principles
+
+## 10.1 Purpose
+
+Privacy & Tenant Isolation Principles define the permanent boundaries governing how Business, Visitor, and platform data may be accessed, processed, shared, retained, and used across Kablet.
+
+These principles exist to ensure that:
+
+- tenant boundaries are architectural
+- Visitor data is purpose-bound
+- Intelligence receives only authorized context
+- integrations do not bypass ownership
+- learning does not become cross-tenant leakage
+- future autonomy does not silently expand data authority
+
+This section defines architectural principles.
+
+It does not define jurisdiction-specific legal compliance or final privacy policy language.
+
+---
+
+## 10.2 Tenant Isolation Is Foundational
+
+Tenant isolation is not an optional security feature added after product development.
+
+It is a foundational Kablet property.
+
+Tenant-sensitive data belonging to one ownership context must not become accessible to another unrelated ownership context without explicit authorization.
+
+Conceptually:
+
+Organization A
+    ↓
+Business A
+    ↓
+Private Tenant Data
+
+must remain isolated from:
+
+Organization B
+    ↓
+Business B
+    ↓
+Private Tenant Data
+
+by default.
+
+---
+
+## 10.3 Isolation Follows Ownership
+
+Foundation 08 defines ownership.
+
+Privacy and isolation enforcement must follow that ownership model rather than inventing a competing tenant model.
+
+Conceptually:
+
+Ownership Context
+        ↓
+Access Boundary
+        ↓
+Processing Boundary
+
+The technical architecture must enforce the conceptual ownership relationships already defined by Kablet.
+
+---
+
+## 10.4 Business Scope Remains Visible Inside Organizations
+
+An Organization may contain multiple Businesses.
+
+Organization-level access may legitimately span those Businesses.
+
+This does not require Business identity to disappear.
+
+Conceptually:
+
+Organization
+├── Business A
+├── Business B
+└── Business C
+
+Authorized Organization-level operations may aggregate across them.
+
+Underlying Business records remain Business-attributable.
+
+---
+
+## 10.5 Cross-Tenant Access Is Denied by Default
+
+The default posture for tenant-sensitive data is:
+
+**No cross-tenant access unless an explicit authorized relationship permits it.**
+
+Kablet must not depend on every feature developer remembering to manually exclude other tenants.
+
+The eventual Technical Architecture should make safe tenant-scoped behavior the normal path.
+
+---
+
+## 10.6 Identifier Knowledge Does Not Grant Access
+
+Possessing or guessing an identifier must not authorize access to the referenced resource.
+
+For example, knowing:
+
+- Business ID
+- Visitor ID
+- Session ID
+- Decision ID
+- Experience ID
+- Outcome ID
+
+does not itself authorize retrieval or mutation.
+
+Authorization must evaluate the applicable ownership and access context.
+
+---
+
+## 10.7 Authorization Must Be Contextual
+
+Authorization may depend on:
+
+- actor
+- Organization
+- Business
+- Membership
+- resource
+- ownership
+- capability
+- requested operation
+- delegated authority
+- applicable policy
+
+Conceptually:
+
+Actor
++
+Membership
++
+Resource
++
+Ownership Context
++
+Capability
+        ↓
+Authorization Decision
+
+Identity alone is insufficient.
+
+---
+
+## 10.8 Read, Write, Execute, and Delegate Are Different Authorities
+
+Authorization must be capable of distinguishing materially different powers.
+
+For example:
+
+Read Pricing
+
+does not imply:
+
+Modify Pricing
+
+and:
+
+Modify Pricing
+
+does not imply:
+
+Authorize Intelligence to modify Pricing autonomously.
+
+Similarly:
+
+View Booking capability
+
+does not imply:
+
+Execute Booking
+
+The exact capability system belongs to Technical Architecture.
+
+The conceptual distinction is permanent.
+
+---
+
+## 10.9 Visitor Data Is Purpose-Bound
+
+Kablet should process Visitor information because it supports legitimate customer-facing or business purposes.
+
+Examples may include:
+
+- understanding intent
+- maintaining Session continuity
+- providing relevant Experiences
+- executing requested Actions
+- measuring Outcomes
+- improving authorized Kablet behavior
+- detecting operational problems
+
+The ability to collect information does not itself justify collecting it.
+
+---
+
+## 10.10 Data Minimization Is a Design Principle
+
+Kablet should avoid collecting or duplicating information that is unnecessary for the intended product function.
+
+This applies to:
+
+- Visitor State
+- Events
+- model context
+- analytics
+- integrations
+- logs
+- derived datasets
+
+The question should be:
+
+**What information does this capability actually require?**
+
+not:
+
+**What information could we possibly capture?**
+
+---
+
+## 10.11 Visitor State Must Not Become Unlimited Profiling
+
+Visitor State exists to support relevant customer interaction.
+
+It must not become an unrestricted profile of everything Kablet could infer about a person.
+
+State should remain connected to:
+
+- current interaction
+- legitimate Business purpose
+- permitted continuity
+- relevant customer needs
+- applicable retention rules
+
+---
+
+## 10.12 Observation and Inference Remain Distinct for Privacy
+
+Kablet must preserve the distinction between:
+
+- information explicitly supplied by a Visitor
+- directly observed behavior
+- information supplied by an authorized external system
+- Kablet inference
+- learned prediction
+
+This distinction matters not only for Intelligence quality but also for responsible data handling.
+
+An inference must not silently become equivalent to user-supplied fact.
+
+---
+
+## 10.13 Sensitive Inference Requires Stronger Boundaries
+
+Kablet should not infer or operationalize sensitive personal characteristics merely because a model may technically be capable of doing so.
+
+Any future use of sensitive categories requires deliberate:
+
+- product justification
+- legal review
+- authorization
+- privacy design
+- governance
+
+The Foundation does not define a complete sensitive-data taxonomy.
+
+It establishes that model capability alone does not authorize sensitive inference.
+
+---
+
+## 10.14 Cross-Session Memory Is Conditional
+
+Kablet may eventually maintain useful continuity across Sessions.
+
+Cross-Session memory must depend on appropriate:
+
+- identity confidence
+- Business context
+- permission
+- purpose
+- retention policy
+
+Transient Session inference must not automatically become permanent Visitor memory.
+
+---
+
+## 10.15 Cross-Business Visitor Memory Is Not Assumed
+
+A person interacting with Business A and Business B must not automatically receive one shared commercial profile across those Businesses.
+
+Cross-Business identity or memory requires separate deliberate architecture and governance.
+
+The default remains:
+
+Business-scoped Visitor relationships.
+
+---
+
+## 10.16 Context Assembly Must Enforce Privacy Boundaries
+
+The Intelligence Interface must not receive arbitrary access to all available Kablet data.
+
+Context Assembly should select only information that is:
+
+- relevant
+- authorized
+- appropriately scoped
+- necessary for the current Intelligence operation
+
+Conceptually:
+
+Available Data
+    ↓
+Ownership Filter
+    ↓
+Authorization Filter
+    ↓
+Relevance Selection
+    ↓
+Intelligence Context
+
+This boundary is critical because AI capability does not itself provide authorization.
+
+---
+
+## 10.17 AI Providers Receive Processing Context, Not Platform Authority
+
+External AI providers may receive authorized context required to perform a reasoning task.
+
+This does not make the provider:
+
+- Kablet's system of record
+- owner of Business Truth
+- owner of Visitor State
+- authority over tenant access
+- authority over Actions
+
+Kablet remains responsible for assembling and validating the context sent to reasoning systems.
+
+---
+
+## 10.18 Model Context Should Be Minimized
+
+Kablet should not send complete Business histories or Visitor histories to an AI provider merely because they exist.
+
+Model context should be assembled according to the current objective.
+
+This can improve:
+
+- privacy
+- cost
+- latency
+- reasoning relevance
+- governance
+
+The exact context-selection mechanism belongs to Technical Architecture.
+
+---
+
+## 10.19 Secrets Must Not Become Intelligence Context by Default
+
+Operational secrets such as:
+
+- credentials
+- API secrets
+- signing keys
+- infrastructure secrets
+- privileged tokens
+
+must not become general model context.
+
+Where an Intelligence capability requires an authorized tool, Kablet should expose the capability through a controlled interface rather than unnecessarily exposing the underlying secret.
+
+---
+
+## 10.20 Tools Must Preserve Tenant Scope
+
+Future Intelligence may invoke tools.
+
+A tool call must execute within an explicit authorized context.
+
+For example:
+
+BookAppointment
+
+must know:
+
+- Business
+- applicable location
+- available Service
+- permitted booking capability
+
+Intelligence must not be able to escape tenant boundaries through tool execution.
+
+---
+
+## 10.21 Integrations Must Preserve Ownership
+
+External integrations may connect Kablet to:
+
+- commerce platforms
+- booking systems
+- CRMs
+- payment systems
+- messaging systems
+- analytics systems
+
+An integration must not erase the ownership context of imported or exported data.
+
+Integration credentials and operations should be scoped to the authorized Business or Organization relationship.
+
+---
+
+## 10.22 Integration Scope Must Be Explicit
+
+Connecting an external system does not automatically authorize every possible operation supported by that system.
+
+For example, a CRM integration may authorize:
+
+- create lead
+
+without authorizing:
+
+- export every customer
+- delete records
+- modify unrelated pipelines
+
+Integration authority should reflect the capabilities Kablet actually requires.
+
+---
+
+## 10.23 External Events Must Be Authenticated and Scoped
+
+External systems may send Events or Outcomes into Kablet.
+
+The system must eventually verify sufficient properties such as:
+
+- source authenticity
+- applicable Business
+- integration relationship
+- external object identity
+- permitted event type
+
+An external payload must not become trusted tenant data merely because it reached a public endpoint.
+
+The exact verification mechanism belongs to Technical Architecture.
+
+---
+
+## 10.24 Customer-Facing Actions Must Respect Visitor Authorization
+
+Some Actions may require explicit customer intent or confirmation.
+
+For example:
+
+- submitting contact information
+- completing booking
+- completing purchase
+- sending a message
+
+Intelligence may recommend or prepare such Actions.
+
+It must not silently reinterpret customer presence as authorization for consequential actions.
+
+---
+
+## 10.25 Business Authorization and Visitor Authorization Are Different
+
+A Business may authorize Kablet to offer an Action.
+
+The Visitor may still need to authorize execution.
+
+Conceptually:
+
+Business Authorization
+        +
+Visitor Intent / Confirmation
+        ↓
+Action Execution
+
+Both may matter.
+
+Business capability does not automatically imply customer consent.
+
+---
+
+## 10.26 Privacy Boundaries Apply to Events
+
+The Event Spine may contain Visitor-related information.
+
+Canonical Events should avoid unnecessary duplication of sensitive payloads.
+
+Where stable references are sufficient:
+
+Visitor ID
+Session ID
+Decision ID
+
+may be preferable to copying complete Visitor content into every Event.
+
+Events remain subject to:
+
+- ownership
+- authorization
+- retention
+- deletion
+- access controls
+
+---
+
+## 10.27 Privacy Boundaries Apply to Logs
+
+Technical logs can accidentally become an uncontrolled copy of sensitive application data.
+
+Logging should therefore avoid unnecessary inclusion of:
+
+- full customer messages
+- credentials
+- payment details
+- sensitive personal information
+- complete external payloads
+
+Observability requirements do not eliminate privacy obligations.
+
+---
+
+## 10.28 Privacy Boundaries Apply to Analytics
+
+Analytics tools may receive selected Kablet telemetry.
+
+They must not automatically receive every field available in canonical Kablet records.
+
+Analytics collection should be purpose-specific.
+
+The analytics system must not silently become an unrestricted shadow copy of tenant data.
+
+---
+
+## 10.29 Privacy Boundaries Apply to Caches and Search Systems
+
+Temporary or derived infrastructure remains part of the data boundary.
+
+Tenant-sensitive information placed into:
+
+- caches
+- indexes
+- search systems
+- vector systems
+- temporary processing stores
+
+must retain applicable ownership and isolation semantics.
+
+Temporary storage does not mean ungoverned storage.
+
+---
+
+## 10.30 Privacy Boundaries Apply to Backups
+
+Backup copies remain representations of governed data.
+
+Backup architecture must eventually consider:
+
+- access
+- retention
+- restoration
+- deletion implications
+- tenant isolation
+
+The existence of a backup must not become an exception to Kablet's ownership model.
+
+---
+
+## 10.31 Derived Data Does Not Automatically Escape Privacy Boundaries
+
+Metrics, embeddings, summaries, predictions, and learned representations are derived from underlying information.
+
+Derivation does not automatically make them unrestricted.
+
+Their governance depends on:
+
+- source data
+- degree of transformation
+- identifiability
+- intended use
+- applicable agreements and rules
+
+The exact policy belongs to later Privacy and Learning specifications.
+
+---
+
+## 10.32 Embeddings Are Data
+
+If Kablet later uses embeddings or similar representations, they must not be treated as privacy-free merely because they are numeric.
+
+They are derived representations and remain subject to appropriate ownership, access, and lifecycle controls.
+
+---
+
+## 10.33 Business-Specific Learning Remains Tenant-Scoped
+
+Learning derived specifically for Business A may be used to improve Business A.
+
+For example:
+
+Business A Strategy:
+When trust concern is high, practitioner proof performs well.
+
+This strategy remains Business-contextual unless a governed generalization process produces a broader pattern.
+
+---
+
+## 10.34 Generalized Learning Requires a Governance Boundary
+
+Future Kablet intelligence may learn across Businesses.
+
+That learning must occur through a deliberate governance boundary.
+
+Conceptually:
+
+Tenant Evidence
+      ↓
+Authorized Learning Boundary
+      ↓
+Aggregation / Transformation
+      ↓
+Generalized Pattern
+      ↓
+Future Intelligence
+
+The learning system must not require unrelated tenant runtime systems to access one another's private records.
+
+---
+
+## 10.35 Generalized Learning Must Avoid Memorized Tenant Disclosure
+
+A generalized strategy should represent transferable learning rather than expose identifiable tenant-specific facts.
+
+Kablet must distinguish:
+
+Generalized Pattern:
+
+"Proof may help when trust concern is high."
+
+from:
+
+Tenant Disclosure:
+
+"Business A's customer X bought Service Y after seeing Testimonial Z."
+
+The latter is not generalized learning.
+
+---
+
+## 10.36 Network Intelligence Does Not Create a Shared Tenant Database
+
+Kablet may eventually possess network-level intelligence.
+
+This does not mean every Business operates against one unrestricted shared customer dataset.
+
+The architecture should support:
+
+shared intelligence
+
+without requiring:
+
+shared private tenant runtime data.
+
+This distinction is fundamental to Kablet's long-term data architecture.
+
+---
+
+## 10.37 Experiments Must Respect Privacy Boundaries
+
+Experimentation does not create an exception to ownership or privacy rules.
+
+Experiment assignment and exposure must occur using authorized data.
+
+Experiment analysis may aggregate permitted Outcomes.
+
+The desire for statistical power does not itself authorize broader data collection or sharing.
+
+---
+
+## 10.38 Data Retention Must Be Explicit
+
+Different classes of data may require different retention periods.
+
+Examples:
+
+- Session data
+- Visitor State
+- Events
+- Outcomes
+- technical logs
+- model traces
+- backups
+
+The Foundation does not define exact durations.
+
+It requires retention to become an explicit policy rather than accidental indefinite storage.
+
+---
+
+## 10.39 Deletion Must Be Architecturally Possible
+
+Kablet must not design core systems in a way that makes legitimate deletion obligations structurally impossible.
+
+Deletion may be complicated by:
+
+- Events
+- derived data
+- backups
+- analytics
+- integrations
+- learning datasets
+
+The exact deletion semantics belong to Technical Architecture and Privacy specifications.
+
+The foundational requirement is that deletion be considered in system design from the beginning.
+
+---
+
+## 10.40 Deletion Does Not Necessarily Mean Rewriting All Aggregate Knowledge
+
+Future privacy design may distinguish between:
+
+- identifiable source data
+- tenant-specific derived data
+- sufficiently generalized aggregate learning
+
+Deleting source data does not automatically define what must happen to every generalized model or aggregate.
+
+That question depends on technical, contractual, and legal context.
+
+The Foundation deliberately does not decide it.
+
+---
+
+## 10.41 Data Export Must Respect Authorization
+
+Future export capabilities must verify that the requesting actor is authorized to export the relevant data scope.
+
+For example:
+
+Business Administrator
+
+may be authorized to export Business data.
+
+A limited staff member may not be.
+
+Possessing normal read access does not automatically imply bulk export authority.
+
+---
+
+## 10.42 Support Access Is Privileged Access
+
+Kablet personnel may eventually require limited access for:
+
+- support
+- debugging
+- incident response
+
+Such access should not be treated as ordinary unrestricted platform access.
+
+Future architecture should support:
+
+- explicit privilege
+- purpose limitation
+- auditability
+- minimum necessary access
+
+The exact support-access system belongs to Security Architecture.
+
+---
+
+## 10.43 Administrative Power Must Be Auditable
+
+Privileged operations affecting tenant data should eventually be attributable.
+
+Examples:
+
+- support access
+- Business transfer
+- permission change
+- data export
+- consequential manual correction
+
+Kablet should be capable of answering:
+
+who performed the operation
+
+under what authority
+
+against which ownership context
+
+and when.
+
+---
+
+## 10.44 Tenant Isolation Applies to Background Processing
+
+Isolation requirements apply not only to interactive API requests.
+
+They also apply to:
+
+- jobs
+- queues
+- scheduled tasks
+- webhooks
+- learning pipelines
+- analytics processing
+- synchronization
+- migrations
+
+Background execution must not lose tenant context merely because no interactive User is present.
+
+---
+
+## 10.45 Tenant Context Must Be Explicit in Asynchronous Work
+
+Where asynchronous work operates on tenant-sensitive data, sufficient ownership context must travel with or be deterministically recoverable by the work.
+
+Conceptually:
+
+Job
+├── Operation
+├── Ownership Context
+├── Resource Context
+└── Authority Context where applicable
+
+The exact job architecture belongs to Technical Architecture.
+
+---
+
+## 10.46 Caches Must Not Leak Across Tenant Keys
+
+Future caching must preserve tenant boundaries.
+
+A cache lookup for Business A must not accidentally return data cached for Business B because a key omitted ownership context.
+
+The exact key strategy belongs to Technical Architecture.
+
+The foundational rule is that optimization infrastructure does not weaken isolation.
+
+---
+
+## 10.47 Search and Retrieval Must Preserve Tenant Filters
+
+Future retrieval systems must apply ownership boundaries before returning tenant-sensitive information.
+
+This applies to:
+
+- keyword search
+- vector retrieval
+- recommendation retrieval
+- Business Truth retrieval
+- Visitor history retrieval
+
+Similarity does not override authorization.
+
+---
+
+## 10.48 Intelligence Must Not Be a Security Boundary
+
+Kablet must never rely on the model being instructed:
+
+"Do not access another tenant."
+
+to enforce tenant isolation.
+
+Unauthorized information should not be supplied to the model in the first place.
+
+Deterministic platform controls enforce isolation.
+
+Intelligence operates inside the resulting authorized context.
+
+---
+
+## 10.49 Frontend Hiding Is Not Authorization
+
+A customer or business-facing UI may hide capabilities the current actor cannot use.
+
+That improves Experience.
+
+It does not provide security.
+
+Backend authorization must independently enforce consequential access and mutation boundaries.
+
+---
+
+## 10.50 Client Input Is Untrusted
+
+Information supplied by browsers, applications, integrations, or other clients must not be trusted merely because the interface normally generates valid values.
+
+Tenant identity, resource identity, Action requests, and capability claims require server-side validation.
+
+The exact validation implementation belongs to Technical Architecture.
+
+---
+
+## 10.51 Isolation Failures Are High-Severity Failures
+
+Cross-tenant exposure or unauthorized tenant mutation represents a fundamental violation of Kablet's architecture.
+
+Technical Architecture should therefore treat tenant-isolation failures as a high-severity class of defect requiring strong prevention, testing, observability, and incident handling.
+
+---
+
+# 10.A Privacy Boundary Model
+
+Conceptually:
+
+                    KABLET PLATFORM
+
+┌──────────────────────────────────────────────┐
+│                                              │
+│  Organization A                             │
+│  ┌──────────────────────────────────────┐    │
+│  │ Business A                           │    │
+│  │                                      │    │
+│  │ Business Truth                       │    │
+│  │ Visitors                             │    │
+│  │ Sessions                             │    │
+│  │ Decisions                            │    │
+│  │ Experiences                          │    │
+│  │ Events                               │    │
+│  │ Outcomes                             │    │
+│  │ Business-Specific Learning           │    │
+│  └──────────────────────────────────────┘    │
+│                                              │
+│          TENANT ISOLATION BOUNDARY           │
+│                                              │
+│  Organization B                             │
+│  ┌──────────────────────────────────────┐    │
+│  │ Business B                           │    │
+│  │                                      │    │
+│  │ Private Business B Data              │    │
+│  └──────────────────────────────────────┘    │
+│                                              │
+└──────────────────────────────────────────────┘
+
+Governed learning may operate across permitted evidence without
+turning the tenant runtime into unrestricted cross-tenant access.
+
+---
+
+# 10.B Intelligence Privacy Boundary
+
+The expected relationship is:
+
+Tenant Data
+    ↓
+Ownership Enforcement
+    ↓
+Authorization
+    ↓
+Purpose / Relevance Selection
+    ↓
+Context Assembly
+    ↓
+Intelligence Provider
+    ↓
+Structured Result
+    ↓
+Validation
+    ↓
+Tenant Runtime
+
+Not:
+
+Entire Kablet Database
+    ↓
+AI Model
+    ↓
+"Please behave correctly"
+
+Tenant isolation must exist before model reasoning.
+
+---
+
+# 10.C Learning Boundary
+
+The long-term learning architecture should preserve:
+
+Business A Evidence ──┐
+Business B Evidence ──┤
+Business C Evidence ──┤
+                      ↓
+             GOVERNED LEARNING
+                      ↓
+           Generalized Strategy
+                      ↓
+               Intelligence
+
+while preventing:
+
+Business A Runtime
+        ↓
+Raw Business B Private Data
+
+Shared learning and shared raw tenant access are different architectures.
+
+---
+
+# 10.D Core Privacy & Tenant Isolation Invariants
+
+1. Tenant isolation is foundational.
+2. Isolation follows Kablet's ownership model.
+3. Business identity remains preserved inside multi-Business Organizations.
+4. Cross-tenant access is denied by default.
+5. Identifier knowledge does not authorize access.
+6. Authorization is contextual.
+7. Read, write, execute, and delegate are distinct authorities.
+8. Visitor data is purpose-bound.
+9. Data minimization is a design principle.
+10. Visitor State must not become unlimited profiling.
+11. Observation and inference remain distinguishable.
+12. Sensitive inference requires deliberate governance.
+13. Cross-Session memory is conditional.
+14. Cross-Business Visitor memory is not assumed.
+15. Context Assembly enforces ownership, authorization, and relevance boundaries.
+16. AI providers receive processing context rather than platform authority.
+17. Model context should be minimized.
+18. Operational secrets do not become general Intelligence context.
+19. Tools preserve tenant and authority scope.
+20. Integrations preserve ownership.
+21. Integration capabilities are explicitly scoped.
+22. External Events require appropriate authenticity and scope validation.
+23. Consequential Visitor Actions respect applicable Visitor authorization.
+24. Business authorization and Visitor authorization remain distinguishable.
+25. Privacy boundaries apply to Events.
+26. Privacy boundaries apply to logs.
+27. Privacy boundaries apply to analytics.
+28. Privacy boundaries apply to caches, search systems, and temporary stores.
+29. Privacy boundaries apply to backups.
+30. Derived data does not automatically escape governance.
+31. Embeddings are governed data.
+32. Business-specific learning remains Business-contextual.
+33. Generalized learning crosses an explicit governance boundary.
+34. Generalized learning must not disclose memorized tenant-specific information.
+35. Network intelligence does not require an unrestricted shared tenant database.
+36. Experiments remain subject to privacy boundaries.
+37. Retention is explicit.
+38. Legitimate deletion must be architecturally possible.
+39. Generalized learning and source-data deletion are distinct questions requiring later policy.
+40. Export requires appropriate authorization.
+41. Support access is privileged access.
+42. Privileged operations are auditable.
+43. Tenant isolation applies to background processing.
+44. Asynchronous work preserves ownership context.
+45. Caching must preserve tenant isolation.
+46. Search and retrieval preserve tenant boundaries.
+47. Intelligence is not a security boundary.
+48. Frontend hiding is not authorization.
+49. Client input is untrusted.
+50. Tenant-isolation failures are high-severity architectural failures.
+
+---
+
+# 10.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- jurisdiction-specific privacy compliance
+- GDPR implementation
+- CCPA / CPRA implementation
+- UAE privacy implementation
+- consent wording
+- cookie banners
+- legal basis for processing
+- privacy policy text
+- data-processing agreements
+- subprocessors
+- exact retention periods
+- deletion SLA
+- anonymization thresholds
+- differential privacy
+- encryption algorithms
+- encryption key management
+- database RLS implementation
+- authorization library
+- secret manager
+- support-access workflow
+- security incident procedure
+- model-provider contractual terms
+- exact AI training policy
+- data residency
+- backup retention
+- export format
+
+Those decisions belong to Technical Architecture, Security Architecture, Privacy specifications, and legal review.
+
+This section defines the permanent architectural privacy and isolation boundaries those implementations must respect.
+
+---
+
+# 10.F Foundation Dependency
+
+Data Ownership Rules established:
+
+**Whose data is it?**
+
+Versioning Rules established:
+
+**How does its meaning survive change?**
+
+Privacy & Tenant Isolation Principles establish:
+
+**Where may that data flow, who may access it, and how does Kablet become more intelligent without dissolving ownership boundaries?**
+
+The next section establishes how Kablet may grow into new verticals, Components, Actions, surfaces, and intelligence capabilities without redefining its foundation:
+
+**11 — Extension Principles.**---
+
+# 10. Privacy & Tenant Isolation Principles
+
+## 10.1 Purpose
+
+Privacy & Tenant Isolation Principles define the permanent boundaries governing how Business, Visitor, and platform data may be accessed, processed, shared, retained, and used across Kablet.
+
+These principles exist to ensure that:
+
+- tenant boundaries are architectural
+- Visitor data is purpose-bound
+- Intelligence receives only authorized context
+- integrations do not bypass ownership
+- learning does not become cross-tenant leakage
+- future autonomy does not silently expand data authority
+
+This section defines architectural principles.
+
+It does not define jurisdiction-specific legal compliance or final privacy policy language.
+
+---
+
+## 10.2 Tenant Isolation Is Foundational
+
+Tenant isolation is not an optional security feature added after product development.
+
+It is a foundational Kablet property.
+
+Tenant-sensitive data belonging to one ownership context must not become accessible to another unrelated ownership context without explicit authorization.
+
+Conceptually:
+
+Organization A
+    ↓
+Business A
+    ↓
+Private Tenant Data
+
+must remain isolated from:
+
+Organization B
+    ↓
+Business B
+    ↓
+Private Tenant Data
+
+by default.
+
+---
+
+## 10.3 Isolation Follows Ownership
+
+Foundation 08 defines ownership.
+
+Privacy and isolation enforcement must follow that ownership model rather than inventing a competing tenant model.
+
+Conceptually:
+
+Ownership Context
+        ↓
+Access Boundary
+        ↓
+Processing Boundary
+
+The technical architecture must enforce the conceptual ownership relationships already defined by Kablet.
+
+---
+
+## 10.4 Business Scope Remains Visible Inside Organizations
+
+An Organization may contain multiple Businesses.
+
+Organization-level access may legitimately span those Businesses.
+
+This does not require Business identity to disappear.
+
+Conceptually:
+
+Organization
+├── Business A
+├── Business B
+└── Business C
+
+Authorized Organization-level operations may aggregate across them.
+
+Underlying Business records remain Business-attributable.
+
+---
+
+## 10.5 Cross-Tenant Access Is Denied by Default
+
+The default posture for tenant-sensitive data is:
+
+**No cross-tenant access unless an explicit authorized relationship permits it.**
+
+Kablet must not depend on every feature developer remembering to manually exclude other tenants.
+
+The eventual Technical Architecture should make safe tenant-scoped behavior the normal path.
+
+---
+
+## 10.6 Identifier Knowledge Does Not Grant Access
+
+Possessing or guessing an identifier must not authorize access to the referenced resource.
+
+For example, knowing:
+
+- Business ID
+- Visitor ID
+- Session ID
+- Decision ID
+- Experience ID
+- Outcome ID
+
+does not itself authorize retrieval or mutation.
+
+Authorization must evaluate the applicable ownership and access context.
+
+---
+
+## 10.7 Authorization Must Be Contextual
+
+Authorization may depend on:
+
+- actor
+- Organization
+- Business
+- Membership
+- resource
+- ownership
+- capability
+- requested operation
+- delegated authority
+- applicable policy
+
+Conceptually:
+
+Actor
++
+Membership
++
+Resource
++
+Ownership Context
++
+Capability
+        ↓
+Authorization Decision
+
+Identity alone is insufficient.
+
+---
+
+## 10.8 Read, Write, Execute, and Delegate Are Different Authorities
+
+Authorization must be capable of distinguishing materially different powers.
+
+For example:
+
+Read Pricing
+
+does not imply:
+
+Modify Pricing
+
+and:
+
+Modify Pricing
+
+does not imply:
+
+Authorize Intelligence to modify Pricing autonomously.
+
+Similarly:
+
+View Booking capability
+
+does not imply:
+
+Execute Booking
+
+The exact capability system belongs to Technical Architecture.
+
+The conceptual distinction is permanent.
+
+---
+
+## 10.9 Visitor Data Is Purpose-Bound
+
+Kablet should process Visitor information because it supports legitimate customer-facing or business purposes.
+
+Examples may include:
+
+- understanding intent
+- maintaining Session continuity
+- providing relevant Experiences
+- executing requested Actions
+- measuring Outcomes
+- improving authorized Kablet behavior
+- detecting operational problems
+
+The ability to collect information does not itself justify collecting it.
+
+---
+
+## 10.10 Data Minimization Is a Design Principle
+
+Kablet should avoid collecting or duplicating information that is unnecessary for the intended product function.
+
+This applies to:
+
+- Visitor State
+- Events
+- model context
+- analytics
+- integrations
+- logs
+- derived datasets
+
+The question should be:
+
+**What information does this capability actually require?**
+
+not:
+
+**What information could we possibly capture?**
+
+---
+
+## 10.11 Visitor State Must Not Become Unlimited Profiling
+
+Visitor State exists to support relevant customer interaction.
+
+It must not become an unrestricted profile of everything Kablet could infer about a person.
+
+State should remain connected to:
+
+- current interaction
+- legitimate Business purpose
+- permitted continuity
+- relevant customer needs
+- applicable retention rules
+
+---
+
+## 10.12 Observation and Inference Remain Distinct for Privacy
+
+Kablet must preserve the distinction between:
+
+- information explicitly supplied by a Visitor
+- directly observed behavior
+- information supplied by an authorized external system
+- Kablet inference
+- learned prediction
+
+This distinction matters not only for Intelligence quality but also for responsible data handling.
+
+An inference must not silently become equivalent to user-supplied fact.
+
+---
+
+## 10.13 Sensitive Inference Requires Stronger Boundaries
+
+Kablet should not infer or operationalize sensitive personal characteristics merely because a model may technically be capable of doing so.
+
+Any future use of sensitive categories requires deliberate:
+
+- product justification
+- legal review
+- authorization
+- privacy design
+- governance
+
+The Foundation does not define a complete sensitive-data taxonomy.
+
+It establishes that model capability alone does not authorize sensitive inference.
+
+---
+
+## 10.14 Cross-Session Memory Is Conditional
+
+Kablet may eventually maintain useful continuity across Sessions.
+
+Cross-Session memory must depend on appropriate:
+
+- identity confidence
+- Business context
+- permission
+- purpose
+- retention policy
+
+Transient Session inference must not automatically become permanent Visitor memory.
+
+---
+
+## 10.15 Cross-Business Visitor Memory Is Not Assumed
+
+A person interacting with Business A and Business B must not automatically receive one shared commercial profile across those Businesses.
+
+Cross-Business identity or memory requires separate deliberate architecture and governance.
+
+The default remains:
+
+Business-scoped Visitor relationships.
+
+---
+
+## 10.16 Context Assembly Must Enforce Privacy Boundaries
+
+The Intelligence Interface must not receive arbitrary access to all available Kablet data.
+
+Context Assembly should select only information that is:
+
+- relevant
+- authorized
+- appropriately scoped
+- necessary for the current Intelligence operation
+
+Conceptually:
+
+Available Data
+    ↓
+Ownership Filter
+    ↓
+Authorization Filter
+    ↓
+Relevance Selection
+    ↓
+Intelligence Context
+
+This boundary is critical because AI capability does not itself provide authorization.
+
+---
+
+## 10.17 AI Providers Receive Processing Context, Not Platform Authority
+
+External AI providers may receive authorized context required to perform a reasoning task.
+
+This does not make the provider:
+
+- Kablet's system of record
+- owner of Business Truth
+- owner of Visitor State
+- authority over tenant access
+- authority over Actions
+
+Kablet remains responsible for assembling and validating the context sent to reasoning systems.
+
+---
+
+## 10.18 Model Context Should Be Minimized
+
+Kablet should not send complete Business histories or Visitor histories to an AI provider merely because they exist.
+
+Model context should be assembled according to the current objective.
+
+This can improve:
+
+- privacy
+- cost
+- latency
+- reasoning relevance
+- governance
+
+The exact context-selection mechanism belongs to Technical Architecture.
+
+---
+
+## 10.19 Secrets Must Not Become Intelligence Context by Default
+
+Operational secrets such as:
+
+- credentials
+- API secrets
+- signing keys
+- infrastructure secrets
+- privileged tokens
+
+must not become general model context.
+
+Where an Intelligence capability requires an authorized tool, Kablet should expose the capability through a controlled interface rather than unnecessarily exposing the underlying secret.
+
+---
+
+## 10.20 Tools Must Preserve Tenant Scope
+
+Future Intelligence may invoke tools.
+
+A tool call must execute within an explicit authorized context.
+
+For example:
+
+BookAppointment
+
+must know:
+
+- Business
+- applicable location
+- available Service
+- permitted booking capability
+
+Intelligence must not be able to escape tenant boundaries through tool execution.
+
+---
+
+## 10.21 Integrations Must Preserve Ownership
+
+External integrations may connect Kablet to:
+
+- commerce platforms
+- booking systems
+- CRMs
+- payment systems
+- messaging systems
+- analytics systems
+
+An integration must not erase the ownership context of imported or exported data.
+
+Integration credentials and operations should be scoped to the authorized Business or Organization relationship.
+
+---
+
+## 10.22 Integration Scope Must Be Explicit
+
+Connecting an external system does not automatically authorize every possible operation supported by that system.
+
+For example, a CRM integration may authorize:
+
+- create lead
+
+without authorizing:
+
+- export every customer
+- delete records
+- modify unrelated pipelines
+
+Integration authority should reflect the capabilities Kablet actually requires.
+
+---
+
+## 10.23 External Events Must Be Authenticated and Scoped
+
+External systems may send Events or Outcomes into Kablet.
+
+The system must eventually verify sufficient properties such as:
+
+- source authenticity
+- applicable Business
+- integration relationship
+- external object identity
+- permitted event type
+
+An external payload must not become trusted tenant data merely because it reached a public endpoint.
+
+The exact verification mechanism belongs to Technical Architecture.
+
+---
+
+## 10.24 Customer-Facing Actions Must Respect Visitor Authorization
+
+Some Actions may require explicit customer intent or confirmation.
+
+For example:
+
+- submitting contact information
+- completing booking
+- completing purchase
+- sending a message
+
+Intelligence may recommend or prepare such Actions.
+
+It must not silently reinterpret customer presence as authorization for consequential actions.
+
+---
+
+## 10.25 Business Authorization and Visitor Authorization Are Different
+
+A Business may authorize Kablet to offer an Action.
+
+The Visitor may still need to authorize execution.
+
+Conceptually:
+
+Business Authorization
+        +
+Visitor Intent / Confirmation
+        ↓
+Action Execution
+
+Both may matter.
+
+Business capability does not automatically imply customer consent.
+
+---
+
+## 10.26 Privacy Boundaries Apply to Events
+
+The Event Spine may contain Visitor-related information.
+
+Canonical Events should avoid unnecessary duplication of sensitive payloads.
+
+Where stable references are sufficient:
+
+Visitor ID
+Session ID
+Decision ID
+
+may be preferable to copying complete Visitor content into every Event.
+
+Events remain subject to:
+
+- ownership
+- authorization
+- retention
+- deletion
+- access controls
+
+---
+
+## 10.27 Privacy Boundaries Apply to Logs
+
+Technical logs can accidentally become an uncontrolled copy of sensitive application data.
+
+Logging should therefore avoid unnecessary inclusion of:
+
+- full customer messages
+- credentials
+- payment details
+- sensitive personal information
+- complete external payloads
+
+Observability requirements do not eliminate privacy obligations.
+
+---
+
+## 10.28 Privacy Boundaries Apply to Analytics
+
+Analytics tools may receive selected Kablet telemetry.
+
+They must not automatically receive every field available in canonical Kablet records.
+
+Analytics collection should be purpose-specific.
+
+The analytics system must not silently become an unrestricted shadow copy of tenant data.
+
+---
+
+## 10.29 Privacy Boundaries Apply to Caches and Search Systems
+
+Temporary or derived infrastructure remains part of the data boundary.
+
+Tenant-sensitive information placed into:
+
+- caches
+- indexes
+- search systems
+- vector systems
+- temporary processing stores
+
+must retain applicable ownership and isolation semantics.
+
+Temporary storage does not mean ungoverned storage.
+
+---
+
+## 10.30 Privacy Boundaries Apply to Backups
+
+Backup copies remain representations of governed data.
+
+Backup architecture must eventually consider:
+
+- access
+- retention
+- restoration
+- deletion implications
+- tenant isolation
+
+The existence of a backup must not become an exception to Kablet's ownership model.
+
+---
+
+## 10.31 Derived Data Does Not Automatically Escape Privacy Boundaries
+
+Metrics, embeddings, summaries, predictions, and learned representations are derived from underlying information.
+
+Derivation does not automatically make them unrestricted.
+
+Their governance depends on:
+
+- source data
+- degree of transformation
+- identifiability
+- intended use
+- applicable agreements and rules
+
+The exact policy belongs to later Privacy and Learning specifications.
+
+---
+
+## 10.32 Embeddings Are Data
+
+If Kablet later uses embeddings or similar representations, they must not be treated as privacy-free merely because they are numeric.
+
+They are derived representations and remain subject to appropriate ownership, access, and lifecycle controls.
+
+---
+
+## 10.33 Business-Specific Learning Remains Tenant-Scoped
+
+Learning derived specifically for Business A may be used to improve Business A.
+
+For example:
+
+Business A Strategy:
+When trust concern is high, practitioner proof performs well.
+
+This strategy remains Business-contextual unless a governed generalization process produces a broader pattern.
+
+---
+
+## 10.34 Generalized Learning Requires a Governance Boundary
+
+Future Kablet intelligence may learn across Businesses.
+
+That learning must occur through a deliberate governance boundary.
+
+Conceptually:
+
+Tenant Evidence
+      ↓
+Authorized Learning Boundary
+      ↓
+Aggregation / Transformation
+      ↓
+Generalized Pattern
+      ↓
+Future Intelligence
+
+The learning system must not require unrelated tenant runtime systems to access one another's private records.
+
+---
+
+## 10.35 Generalized Learning Must Avoid Memorized Tenant Disclosure
+
+A generalized strategy should represent transferable learning rather than expose identifiable tenant-specific facts.
+
+Kablet must distinguish:
+
+Generalized Pattern:
+
+"Proof may help when trust concern is high."
+
+from:
+
+Tenant Disclosure:
+
+"Business A's customer X bought Service Y after seeing Testimonial Z."
+
+The latter is not generalized learning.
+
+---
+
+## 10.36 Network Intelligence Does Not Create a Shared Tenant Database
+
+Kablet may eventually possess network-level intelligence.
+
+This does not mean every Business operates against one unrestricted shared customer dataset.
+
+The architecture should support:
+
+shared intelligence
+
+without requiring:
+
+shared private tenant runtime data.
+
+This distinction is fundamental to Kablet's long-term data architecture.
+
+---
+
+## 10.37 Experiments Must Respect Privacy Boundaries
+
+Experimentation does not create an exception to ownership or privacy rules.
+
+Experiment assignment and exposure must occur using authorized data.
+
+Experiment analysis may aggregate permitted Outcomes.
+
+The desire for statistical power does not itself authorize broader data collection or sharing.
+
+---
+
+## 10.38 Data Retention Must Be Explicit
+
+Different classes of data may require different retention periods.
+
+Examples:
+
+- Session data
+- Visitor State
+- Events
+- Outcomes
+- technical logs
+- model traces
+- backups
+
+The Foundation does not define exact durations.
+
+It requires retention to become an explicit policy rather than accidental indefinite storage.
+
+---
+
+## 10.39 Deletion Must Be Architecturally Possible
+
+Kablet must not design core systems in a way that makes legitimate deletion obligations structurally impossible.
+
+Deletion may be complicated by:
+
+- Events
+- derived data
+- backups
+- analytics
+- integrations
+- learning datasets
+
+The exact deletion semantics belong to Technical Architecture and Privacy specifications.
+
+The foundational requirement is that deletion be considered in system design from the beginning.
+
+---
+
+## 10.40 Deletion Does Not Necessarily Mean Rewriting All Aggregate Knowledge
+
+Future privacy design may distinguish between:
+
+- identifiable source data
+- tenant-specific derived data
+- sufficiently generalized aggregate learning
+
+Deleting source data does not automatically define what must happen to every generalized model or aggregate.
+
+That question depends on technical, contractual, and legal context.
+
+The Foundation deliberately does not decide it.
+
+---
+
+## 10.41 Data Export Must Respect Authorization
+
+Future export capabilities must verify that the requesting actor is authorized to export the relevant data scope.
+
+For example:
+
+Business Administrator
+
+may be authorized to export Business data.
+
+A limited staff member may not be.
+
+Possessing normal read access does not automatically imply bulk export authority.
+
+---
+
+## 10.42 Support Access Is Privileged Access
+
+Kablet personnel may eventually require limited access for:
+
+- support
+- debugging
+- incident response
+
+Such access should not be treated as ordinary unrestricted platform access.
+
+Future architecture should support:
+
+- explicit privilege
+- purpose limitation
+- auditability
+- minimum necessary access
+
+The exact support-access system belongs to Security Architecture.
+
+---
+
+## 10.43 Administrative Power Must Be Auditable
+
+Privileged operations affecting tenant data should eventually be attributable.
+
+Examples:
+
+- support access
+- Business transfer
+- permission change
+- data export
+- consequential manual correction
+
+Kablet should be capable of answering:
+
+who performed the operation
+
+under what authority
+
+against which ownership context
+
+and when.
+
+---
+
+## 10.44 Tenant Isolation Applies to Background Processing
+
+Isolation requirements apply not only to interactive API requests.
+
+They also apply to:
+
+- jobs
+- queues
+- scheduled tasks
+- webhooks
+- learning pipelines
+- analytics processing
+- synchronization
+- migrations
+
+Background execution must not lose tenant context merely because no interactive User is present.
+
+---
+
+## 10.45 Tenant Context Must Be Explicit in Asynchronous Work
+
+Where asynchronous work operates on tenant-sensitive data, sufficient ownership context must travel with or be deterministically recoverable by the work.
+
+Conceptually:
+
+Job
+├── Operation
+├── Ownership Context
+├── Resource Context
+└── Authority Context where applicable
+
+The exact job architecture belongs to Technical Architecture.
+
+---
+
+## 10.46 Caches Must Not Leak Across Tenant Keys
+
+Future caching must preserve tenant boundaries.
+
+A cache lookup for Business A must not accidentally return data cached for Business B because a key omitted ownership context.
+
+The exact key strategy belongs to Technical Architecture.
+
+The foundational rule is that optimization infrastructure does not weaken isolation.
+
+---
+
+## 10.47 Search and Retrieval Must Preserve Tenant Filters
+
+Future retrieval systems must apply ownership boundaries before returning tenant-sensitive information.
+
+This applies to:
+
+- keyword search
+- vector retrieval
+- recommendation retrieval
+- Business Truth retrieval
+- Visitor history retrieval
+
+Similarity does not override authorization.
+
+---
+
+## 10.48 Intelligence Must Not Be a Security Boundary
+
+Kablet must never rely on the model being instructed:
+
+"Do not access another tenant."
+
+to enforce tenant isolation.
+
+Unauthorized information should not be supplied to the model in the first place.
+
+Deterministic platform controls enforce isolation.
+
+Intelligence operates inside the resulting authorized context.
+
+---
+
+## 10.49 Frontend Hiding Is Not Authorization
+
+A customer or business-facing UI may hide capabilities the current actor cannot use.
+
+That improves Experience.
+
+It does not provide security.
+
+Backend authorization must independently enforce consequential access and mutation boundaries.
+
+---
+
+## 10.50 Client Input Is Untrusted
+
+Information supplied by browsers, applications, integrations, or other clients must not be trusted merely because the interface normally generates valid values.
+
+Tenant identity, resource identity, Action requests, and capability claims require server-side validation.
+
+The exact validation implementation belongs to Technical Architecture.
+
+---
+
+## 10.51 Isolation Failures Are High-Severity Failures
+
+Cross-tenant exposure or unauthorized tenant mutation represents a fundamental violation of Kablet's architecture.
+
+Technical Architecture should therefore treat tenant-isolation failures as a high-severity class of defect requiring strong prevention, testing, observability, and incident handling.
+
+---
+
+# 10.A Privacy Boundary Model
+
+Conceptually:
+
+                    KABLET PLATFORM
+
+┌──────────────────────────────────────────────┐
+│                                              │
+│  Organization A                             │
+│  ┌──────────────────────────────────────┐    │
+│  │ Business A                           │    │
+│  │                                      │    │
+│  │ Business Truth                       │    │
+│  │ Visitors                             │    │
+│  │ Sessions                             │    │
+│  │ Decisions                            │    │
+│  │ Experiences                          │    │
+│  │ Events                               │    │
+│  │ Outcomes                             │    │
+│  │ Business-Specific Learning           │    │
+│  └──────────────────────────────────────┘    │
+│                                              │
+│          TENANT ISOLATION BOUNDARY           │
+│                                              │
+│  Organization B                             │
+│  ┌──────────────────────────────────────┐    │
+│  │ Business B                           │    │
+│  │                                      │    │
+│  │ Private Business B Data              │    │
+│  └──────────────────────────────────────┘    │
+│                                              │
+└──────────────────────────────────────────────┘
+
+Governed learning may operate across permitted evidence without
+turning the tenant runtime into unrestricted cross-tenant access.
+
+---
+
+# 10.B Intelligence Privacy Boundary
+
+The expected relationship is:
+
+Tenant Data
+    ↓
+Ownership Enforcement
+    ↓
+Authorization
+    ↓
+Purpose / Relevance Selection
+    ↓
+Context Assembly
+    ↓
+Intelligence Provider
+    ↓
+Structured Result
+    ↓
+Validation
+    ↓
+Tenant Runtime
+
+Not:
+
+Entire Kablet Database
+    ↓
+AI Model
+    ↓
+"Please behave correctly"
+
+Tenant isolation must exist before model reasoning.
+
+---
+
+# 10.C Learning Boundary
+
+The long-term learning architecture should preserve:
+
+Business A Evidence ──┐
+Business B Evidence ──┤
+Business C Evidence ──┤
+                      ↓
+             GOVERNED LEARNING
+                      ↓
+           Generalized Strategy
+                      ↓
+               Intelligence
+
+while preventing:
+
+Business A Runtime
+        ↓
+Raw Business B Private Data
+
+Shared learning and shared raw tenant access are different architectures.
+
+---
+
+# 10.D Core Privacy & Tenant Isolation Invariants
+
+1. Tenant isolation is foundational.
+2. Isolation follows Kablet's ownership model.
+3. Business identity remains preserved inside multi-Business Organizations.
+4. Cross-tenant access is denied by default.
+5. Identifier knowledge does not authorize access.
+6. Authorization is contextual.
+7. Read, write, execute, and delegate are distinct authorities.
+8. Visitor data is purpose-bound.
+9. Data minimization is a design principle.
+10. Visitor State must not become unlimited profiling.
+11. Observation and inference remain distinguishable.
+12. Sensitive inference requires deliberate governance.
+13. Cross-Session memory is conditional.
+14. Cross-Business Visitor memory is not assumed.
+15. Context Assembly enforces ownership, authorization, and relevance boundaries.
+16. AI providers receive processing context rather than platform authority.
+17. Model context should be minimized.
+18. Operational secrets do not become general Intelligence context.
+19. Tools preserve tenant and authority scope.
+20. Integrations preserve ownership.
+21. Integration capabilities are explicitly scoped.
+22. External Events require appropriate authenticity and scope validation.
+23. Consequential Visitor Actions respect applicable Visitor authorization.
+24. Business authorization and Visitor authorization remain distinguishable.
+25. Privacy boundaries apply to Events.
+26. Privacy boundaries apply to logs.
+27. Privacy boundaries apply to analytics.
+28. Privacy boundaries apply to caches, search systems, and temporary stores.
+29. Privacy boundaries apply to backups.
+30. Derived data does not automatically escape governance.
+31. Embeddings are governed data.
+32. Business-specific learning remains Business-contextual.
+33. Generalized learning crosses an explicit governance boundary.
+34. Generalized learning must not disclose memorized tenant-specific information.
+35. Network intelligence does not require an unrestricted shared tenant database.
+36. Experiments remain subject to privacy boundaries.
+37. Retention is explicit.
+38. Legitimate deletion must be architecturally possible.
+39. Generalized learning and source-data deletion are distinct questions requiring later policy.
+40. Export requires appropriate authorization.
+41. Support access is privileged access.
+42. Privileged operations are auditable.
+43. Tenant isolation applies to background processing.
+44. Asynchronous work preserves ownership context.
+45. Caching must preserve tenant isolation.
+46. Search and retrieval preserve tenant boundaries.
+47. Intelligence is not a security boundary.
+48. Frontend hiding is not authorization.
+49. Client input is untrusted.
+50. Tenant-isolation failures are high-severity architectural failures.
+
+---
+
+# 10.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- jurisdiction-specific privacy compliance
+- GDPR implementation
+- CCPA / CPRA implementation
+- UAE privacy implementation
+- consent wording
+- cookie banners
+- legal basis for processing
+- privacy policy text
+- data-processing agreements
+- subprocessors
+- exact retention periods
+- deletion SLA
+- anonymization thresholds
+- differential privacy
+- encryption algorithms
+- encryption key management
+- database RLS implementation
+- authorization library
+- secret manager
+- support-access workflow
+- security incident procedure
+- model-provider contractual terms
+- exact AI training policy
+- data residency
+- backup retention
+- export format
+
+Those decisions belong to Technical Architecture, Security Architecture, Privacy specifications, and legal review.
+
+This section defines the permanent architectural privacy and isolation boundaries those implementations must respect.
+
+---
+
+# 10.F Foundation Dependency
+
+Data Ownership Rules established:
+
+**Whose data is it?**
+
+Versioning Rules established:
+
+**How does its meaning survive change?**
+
+Privacy & Tenant Isolation Principles establish:
+
+**Where may that data flow, who may access it, and how does Kablet become more intelligent without dissolving ownership boundaries?**
+
+The next section establishes how Kablet may grow into new verticals, Components, Actions, surfaces, and intelligence capabilities without redefining its foundation:
+
+**11 — Extension Principles.**
