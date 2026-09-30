@@ -7595,3 +7595,967 @@ Intelligence Interface establishes:
 **How may replaceable reasoning systems use Kablet-owned context to produce validated Kablet Decisions?**
 
 Together, Foundations 01 through 06 form the permanent conceptual core of Kablet.
+
+---
+
+# 07. Cross-Foundation Contracts
+
+## 07.1 Purpose
+
+Foundations 01 through 06 define distinct Kablet concepts.
+
+Cross-Foundation Contracts define the permanent relationships between those concepts.
+
+Their purpose is to prevent future implementations from collapsing important boundaries for convenience.
+
+The foundational chain is:
+
+Identity & Ownership
+        ↓
+Business Truth
+        ↓
+Visitor State
+        ↓
+Intelligence
+        ↓
+Decision
+        ↓
+Experience
+        ↓
+Interaction / Action
+        ↓
+Event
+        ↓
+Outcome
+
+Each foundation owns a different kind of meaning.
+
+Their relationships are explicit.
+
+---
+
+## 07.2 Ownership Is the Root Context
+
+Tenant-sensitive Kablet data must exist within an ownership context established by Foundation 01.
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Business-Owned Runtime Data
+
+Business-owned runtime data may include:
+
+- Business Truth
+- Visitors
+- Sessions
+- Decisions
+- Experiences
+- Events
+- Actions
+- Outcomes
+- Experiments
+- learned Business-specific strategies
+
+A subsystem must not create tenant-sensitive records whose ownership cannot be determined.
+
+---
+
+## 07.3 Business Is the Primary Runtime Commercial Context
+
+Organization establishes ownership.
+
+Business establishes the commercial context Kablet is currently powering.
+
+Customer-facing runtime behavior must therefore be attributable to a Business.
+
+Conceptually:
+
+Organization
+    ↓
+Business
+    ↓
+Visitor
+    ↓
+Session
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Outcome
+
+Property / Location may further scope behavior without replacing the Business as the primary commercial context.
+
+---
+
+## 07.4 Business Truth Feeds Intelligence
+
+Business Truth supplies the authorized commercial knowledge available to Intelligence.
+
+Intelligence may:
+
+- retrieve it
+- select it
+- reason over it
+- compose it
+- explain it
+- contextualize it
+
+Intelligence may not silently redefine authoritative Business Truth.
+
+The relationship is:
+
+Business Truth
+    ↓
+Intelligence Context
+
+not:
+
+Intelligence Output
+    ↓
+Automatic Business Truth
+
+unless an explicitly authorized Business Truth mutation capability exists.
+
+---
+
+## 07.5 Visitor Signals Feed Visitor State
+
+Signals contribute evidence about the current customer interaction.
+
+Conceptually:
+
+Signal
+    ↓
+Interpretation
+    ↓
+Proposed State Update
+    ↓
+Validation / Acceptance
+    ↓
+Visitor State
+
+Signals do not automatically become permanent Visitor characteristics.
+
+Inference does not automatically become fact.
+
+Visitor State remains Kablet-owned structured state.
+
+---
+
+## 07.6 Visitor State Feeds Decisions
+
+Visitor State supplies Intelligence with the current structured understanding of the Visitor.
+
+A Decision may use:
+
+Business Truth
++
+Visitor State
++
+Current Experience
++
+Available Components
++
+Available Actions
++
+Applicable Constraints
++
+Experiment Context
++
+Prior Learning
+
+to determine what should happen next.
+
+A Decision must remain distinguishable from the State that informed it.
+
+---
+
+## 07.7 Intelligence Produces Proposed Decisions
+
+Reasoning systems operate through the Intelligence Interface.
+
+They produce structured proposed results.
+
+Those results become canonical Kablet Decisions only after applicable validation and acceptance.
+
+Conceptually:
+
+Intelligence
+    ↓
+Proposed Decision
+    ↓
+Validation
+    ↓
+Canonical Decision
+
+This preserves the permanent rule:
+
+**Intelligence proposes. Contracts constrain. Kablet validates.**
+
+---
+
+## 07.8 Decisions Produce Experience Plans
+
+A meaningful Decision may produce an Experience Plan.
+
+The Decision describes:
+
+**what Kablet chose to do**
+
+The Experience Plan describes:
+
+**how that choice should be expressed through available customer-facing capabilities**
+
+These concepts must remain separate.
+
+One Decision strategy may support multiple valid Experience representations.
+
+---
+
+## 07.9 Experience Plans Must Pass Through the Experience Contract
+
+An Experience Plan does not directly control arbitrary frontend code.
+
+It passes through Foundation 03.
+
+Conceptually:
+
+Decision
+    ↓
+Experience Plan
+    ↓
+Experience Contract
+    ↓
+Validation
+    ↓
+Runtime
+    ↓
+Rendered Experience
+
+This is the permanent boundary between Intelligence and frontend execution.
+
+---
+
+## 07.10 Experiences Reference Business Truth Rather Than Replacing It
+
+Where customer-facing content represents canonical Business Truth, the Experience should preserve meaningful reference to that Truth.
+
+For example:
+
+Business Truth:
+Service S17
+Price P4
+
+Decision:
+Surface Service S17 and Price P4.
+
+Experience:
+Service Component → S17
+Price Component → P4
+
+The Experience may contain generated presentation around those references.
+
+It does not become the authoritative source of the underlying commercial information.
+
+---
+
+## 07.11 Components Expose Authorized Actions
+
+Components may present Actions to Visitors.
+
+For example:
+
+Service Component
+    ↓
+Book Consultation
+
+Product Component
+    ↓
+Buy
+
+Offer Component
+    ↓
+Claim Offer
+
+The Component does not create the underlying business capability.
+
+The Action must exist within authorized Business capabilities.
+
+---
+
+## 07.12 Intelligence Proposes; Action Systems Execute
+
+Intelligence may decide that an Action should be surfaced or proposed.
+
+Execution remains a separate boundary.
+
+Conceptually:
+
+Intelligence
+    ↓
+Decision
+    ↓
+Proposed Action
+    ↓
+Authorization
+    ↓
+Validation
+    ↓
+Execution
+    ↓
+Result
+
+Reasoning authority must not silently become execution authority.
+
+---
+
+## 07.13 Events Observe the Other Foundations
+
+The Event Spine records meaningful occurrences across Kablet.
+
+Events may observe activity involving:
+
+- Visitor State
+- Decisions
+- Experiences
+- Components
+- Actions
+- Conversions
+- Outcomes
+- Experiments
+
+The Event Spine does not replace those domain objects.
+
+For example:
+
+Decision
+
+is a domain object.
+
+decision.created
+
+is an Event describing an occurrence involving that object.
+
+This distinction must remain intact.
+
+---
+
+## 07.14 Outcomes Connect Business Results Back to Decisions
+
+Outcomes provide the commercial result side of the Kablet loop.
+
+Conceptually:
+
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Action
+    ↓
+Outcome
+
+This relationship allows Kablet to evaluate what happened after a Decision.
+
+It does not automatically prove that the Decision caused the Outcome.
+
+---
+
+## 07.15 Experiments Cross Multiple Foundations
+
+Experimentation may affect:
+
+- Intelligence policy
+- Decisions
+- Experience composition
+- presentation variants
+- Action strategy
+
+Experiment context must therefore remain traceable across:
+
+Assignment
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Outcome
+
+Experiments do not bypass Business Truth, authority, or runtime validation.
+
+---
+
+## 07.16 Learning Consumes History; It Does Not Rewrite History
+
+Future Learning systems may consume:
+
+- Visitor State history
+- Decision history
+- Experience history
+- Event history
+- Experiment history
+- Outcome history
+
+and derive improved strategies.
+
+Learning may influence future Decisions.
+
+It must not silently rewrite historical Decisions, Events, Experiences, or Outcomes to make past behavior appear different.
+
+Conceptually:
+
+Historical Evidence
+        ↓
+Learning
+        ↓
+Learned Strategy
+        ↓
+Future Decision
+
+---
+
+## 07.17 Learning and Business Truth Remain Separate
+
+Learning may conclude:
+
+"Proof-before-price performs better for this customer state."
+
+That is a learned strategy.
+
+It is not Business Truth.
+
+Business Truth may state:
+
+"Service price is 399 AED."
+
+These concepts must remain separate.
+
+Learned strategy influences **how Kablet operates**.
+
+Business Truth defines **what the Business authorizes as true**.
+
+---
+
+## 07.18 Business-Specific Learning Preserves Business Context
+
+A learned strategy derived from one Business must remain attributable to that Business where applicable.
+
+Business-specific learning may inform that Business's future Decisions.
+
+It must not automatically become a universal platform rule.
+
+Broader generalization requires explicit learning and governance mechanisms.
+
+---
+
+## 07.19 Vertical and Network Learning Do Not Break Tenant Isolation
+
+Kablet may eventually derive generalized patterns across Businesses.
+
+This does not alter the ownership of underlying tenant data.
+
+Conceptually:
+
+Tenant Data
+    ↓
+Governed Learning
+    ↓
+Generalized Pattern
+
+not:
+
+Tenant A Data
+    ↓
+Directly Exposed to Tenant B
+
+The learning layer may generalize permitted knowledge.
+
+The runtime ownership model remains intact.
+
+---
+
+## 07.20 Historical Lineage Crosses Foundation Boundaries
+
+Kablet must preserve enough historical identity to connect meaningful records across foundations.
+
+A future reconstruction should be capable of answering:
+
+Which Business?
+
+Which Visitor?
+
+Which Session?
+
+Which State?
+
+Which Business Truth was relevant?
+
+Which Decision was made?
+
+Which Intelligence configuration produced it?
+
+Which Experience was planned?
+
+Which Experience was actually rendered?
+
+Which Components were viewed?
+
+Which Actions occurred?
+
+Which Experiment applied?
+
+Which Outcome followed?
+
+This does not require every object to duplicate all other objects.
+
+It requires stable references and historical interpretability.
+
+---
+
+## 07.21 Current State and Historical State Must Not Be Confused
+
+Many Kablet concepts evolve:
+
+- Business Truth
+- Visitor State
+- Experience
+- Outcome
+- Intelligence configuration
+
+Historical analysis must not blindly join historical activity against only the latest current state.
+
+For example:
+
+Price today:
+249 AED
+
+Price when Decision occurred:
+199 AED
+
+The historical Decision must remain interpretable against the relevant historical Truth.
+
+This principle applies across foundation boundaries.
+
+---
+
+## 07.22 Canonical Objects and Events Must Not Collapse Into One Model
+
+Kablet contains both:
+
+**Domain Objects**
+
+such as:
+
+- Business
+- Service
+- Visitor
+- Decision
+- Experience
+- Outcome
+
+and:
+
+**Events**
+
+such as:
+
+- service.updated
+- decision.created
+- experience.rendered
+- conversion.completed
+
+An Event describes something that happened.
+
+It is not automatically the canonical current representation of the domain object involved.
+
+The technical architecture may choose appropriate persistence patterns later.
+
+The conceptual distinction is permanent.
+
+---
+
+## 07.23 IDs Must Support Cross-Foundation Lineage
+
+Canonical Kablet entities require stable identity sufficient for cross-foundation relationships.
+
+For example:
+
+Decision ID
+    ↓
+Experience ID
+    ↓
+Component Instance ID
+    ↓
+Action ID
+    ↓
+Outcome ID
+
+The exact identifier technology is not defined here.
+
+The requirement is stable, unambiguous referenceability.
+
+---
+
+## 07.24 Cross-Foundation References Must Respect Ownership
+
+A valid identifier alone does not authorize access.
+
+For example:
+
+Business A's Experience must not become able to reference Business B's private Service merely because the Service ID is technically known.
+
+Cross-foundation relationships must preserve:
+
+- ownership
+- authorization
+- applicable scope
+
+Reference validity and access authority are separate questions.
+
+---
+
+## 07.25 Validation Exists at Boundaries
+
+Validation should occur where one foundation attempts to affect another.
+
+Examples:
+
+Intelligence → Visitor State
+Validate proposed State update.
+
+Intelligence → Decision
+Validate Decision structure and authority.
+
+Decision → Experience
+Validate Experience Contract.
+
+Experience → Action
+Validate Action availability.
+
+External System → Outcome
+Validate source and relationship.
+
+The exact validation architecture belongs to Technical Architecture.
+
+The permanent principle is that cross-foundation transitions are controlled boundaries.
+
+---
+
+## 07.26 Failure in One Foundation Must Not Corrupt Another
+
+A failure in one subsystem must not silently create invalid canonical state elsewhere.
+
+For example:
+
+AI failure must not corrupt Business Truth.
+
+Rendering failure must not become false Component exposure.
+
+Payment failure must not become realized Revenue.
+
+Webhook duplication must not become duplicate Conversion.
+
+Experiment assignment must not automatically become Experiment exposure.
+
+Each boundary preserves the semantic integrity of the next foundation.
+
+---
+
+## 07.27 The Runtime Loop
+
+The canonical Kablet runtime loop is:
+
+Business Truth
+        +
+Visitor Context
+        +
+Visitor State
+        +
+Prior Learning
+        ↓
+Context Assembly
+        ↓
+Intelligence
+        ↓
+Decision
+        ↓
+Experience Plan
+        ↓
+Validation
+        ↓
+Rendered Experience
+        ↓
+Visitor Interaction
+        ↓
+Authorized Action
+        ↓
+Outcome
+        ↓
+Event & Outcome Spine
+        ↓
+Measurement / Experimentation
+        ↓
+Learning
+        ↓
+Future Intelligence
+
+This loop is one of Kablet's permanent architectural concepts.
+
+Its implementation may evolve.
+
+Its semantic boundaries should remain stable.
+
+---
+
+# 07.A Foundation Relationship Map
+
+The six permanent foundations relate as follows:
+
+01 Identity & Ownership
+        │
+        ├── owns → 02 Business Truth
+        │
+        ├── scopes → 04 Visitor State & Decisions
+        │
+        └── scopes → 05 Events & Outcomes
+        │
+        ▼
+02 Business Truth
+        │
+        └── informs → 06 Intelligence
+                         │
+04 Visitor State ────────┤
+03 Available Experience ─┤
+Experiment Context ──────┤
+Prior Learning ──────────┘
+                         │
+                         ▼
+                    04 Decision
+                         │
+                         ▼
+                 03 Experience Plan
+                         │
+                         ▼
+                  03 Validated Experience
+                         │
+                         ▼
+                 Customer Interaction
+                         │
+                         ▼
+                  Authorized Action
+                         │
+                         ▼
+                   05 Outcome
+                         │
+                         ▼
+                    05 Events
+                         │
+                         ▼
+                 Future Learning
+                         │
+                         └────→ 06 Intelligence
+
+---
+
+# 07.B Permanent Separation of Concerns
+
+The following boundaries must remain conceptually separate:
+
+Business Truth
+≠
+Generated Experience
+
+Visitor Signal
+≠
+Visitor State
+
+Visitor State
+≠
+Decision
+
+Decision
+≠
+Experience
+
+Experience Plan
+≠
+Rendered Experience
+
+Component
+≠
+Action
+
+Action Started
+≠
+Action Completed
+
+Conversion
+≠
+Revenue
+
+Estimated Value
+≠
+Realized Revenue
+
+Event
+≠
+Outcome
+
+Attribution
+≠
+Causation
+
+Experiment Assignment
+≠
+Experiment Exposure
+
+Learning
+≠
+Business Truth
+
+AI Provider
+≠
+Kablet Intelligence
+
+Reasoning Authority
+≠
+Execution Authority
+
+Current State
+≠
+Historical State
+
+These distinctions are foundational contracts.
+
+---
+
+# 07.C Canonical Kablet Loop
+
+The platform's central semantic loop is:
+
+WHAT THE BUSINESS AUTHORIZES
+            ↓
+WHAT KABLET UNDERSTANDS
+            ↓
+WHAT KABLET DECIDES
+            ↓
+WHAT KABLET PRESENTS
+            ↓
+WHAT THE CUSTOMER EXPERIENCES
+            ↓
+WHAT THE CUSTOMER DOES
+            ↓
+WHAT BUSINESS RESULT OCCURS
+            ↓
+WHAT KABLET LEARNS
+            ↓
+WHAT KABLET DOES BETTER NEXT TIME
+
+In canonical objects:
+
+Business Truth
+    ↓
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Action
+    ↓
+Outcome
+    ↓
+Learning
+    ↓
+Future Decision
+
+---
+
+# 07.D Cross-Foundation Invariants
+
+1. Ownership context precedes tenant-sensitive runtime data.
+2. Business is the primary commercial runtime context.
+3. Business Truth feeds Intelligence without surrendering authority to it.
+4. Signals inform Visitor State but do not automatically become facts.
+5. Visitor State informs Decisions without becoming the Decision itself.
+6. Intelligence produces proposals through explicit contracts.
+7. Accepted meaningful choices become canonical Decisions.
+8. Decisions produce Experience Plans through the Experience Contract.
+9. Experiences reference Business Truth rather than replacing it.
+10. Components may expose only authorized Actions.
+11. Intelligence proposal and Action execution remain separate.
+12. Events observe domain activity rather than replacing domain objects.
+13. Outcomes connect business results to journey history.
+14. Experiment context remains traceable from assignment through Outcome.
+15. Learning consumes historical evidence without rewriting history.
+16. Learning remains separate from Business Truth.
+17. Cross-business learning does not break tenant isolation.
+18. Historical relationships remain interpretable against historical context.
+19. Domain objects and Events remain conceptually distinct.
+20. Stable identity supports cross-foundation lineage.
+21. References do not imply authorization.
+22. Cross-foundation transitions are validated.
+23. Failure in one foundation must not silently corrupt another.
+24. The canonical Kablet runtime loop remains reconstructable.
+
+---
+
+# 07.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- database foreign keys
+- table relationships
+- event transport
+- API boundaries
+- service boundaries
+- module boundaries
+- transaction boundaries
+- distributed transaction strategy
+- queue architecture
+- cache architecture
+- repository structure
+- deployment topology
+- concrete validation libraries
+- concrete authorization implementation
+
+Those belong to Technical Architecture.
+
+This section defines the semantic contracts those implementations must preserve.
+
+---
+
+# 07.F Foundation Dependency
+
+Foundations 01 through 06 defined Kablet's permanent primitives.
+
+Cross-Foundation Contracts establish:
+
+**How those primitives are allowed to interact without losing their meaning.**
+
+The remaining Foundation Specification sections define the rules that apply across the entire system:
+
+**08 — Data Ownership Rules**
+
+**09 — Versioning Rules**
+
+**10 — Privacy & Tenant Isolation Principles**
+
+**11 — Extension Principles**
+
+**12 — Explicitly Out of Scope for Foundation v0.1**
