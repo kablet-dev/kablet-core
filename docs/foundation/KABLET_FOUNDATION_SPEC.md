@@ -4903,3 +4903,1351 @@ Visitor State & Decisions establishes:
 The next foundation defines how Kablet permanently records what actually happened:
 
 **05 — Event & Outcome Spine.**
+
+---
+
+# 05. Event & Outcome Spine
+
+## 05.1 Purpose
+
+The Event & Outcome Spine is Kablet's canonical record of meaningful activity across the customer journey.
+
+It exists so Kablet can reconstruct:
+
+- what happened
+- when it happened
+- within which Business
+- to which Visitor and Session
+- under which Visitor State
+- following which Decision
+- through which Experience
+- involving which Components
+- through which Actions
+- resulting in which Outcomes
+- under which Experiment context
+
+The Event & Outcome Spine is not merely analytics.
+
+It is foundational operational and learning infrastructure.
+
+The permanent relationship is:
+
+Context
+    ↓
+State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Action
+    ↓
+Outcome
+
+Kablet must preserve enough structured lineage across this chain to support debugging, measurement, experimentation, attribution, and future learning.
+
+---
+
+## 05.2 Events
+
+An Event represents a meaningful occurrence within Kablet.
+
+Examples may include:
+
+- Session started
+- message received
+- intent identified
+- Visitor State changed
+- Decision created
+- Experience created
+- Component rendered
+- Component viewed
+- Component interacted with
+- Action started
+- Action completed
+- conversion completed
+- revenue recorded
+- Experiment assigned
+- Experiment exposed
+
+Events provide a chronological record of what occurred.
+
+Events should represent meaningful domain activity rather than arbitrary technical logging.
+
+---
+
+## 05.3 Events Are Not Logs
+
+Technical logs and Kablet Events serve different purposes.
+
+A technical log may record:
+
+- request latency
+- server exception
+- cache miss
+- API timeout
+
+A Kablet Event records meaningful product or business activity.
+
+For example:
+
+decision.created
+
+component.viewed
+
+booking.completed
+
+Both systems may be important.
+
+They must not be treated as interchangeable.
+
+The Event Spine exists to preserve Kablet's domain history.
+
+---
+
+## 05.4 Canonical Event Envelope
+
+Every canonical Event should share a common structural envelope.
+
+Conceptually, an Event may contain:
+
+Event
+├── identity
+├── type
+├── occurred_at
+├── recorded_at
+├── schema_version
+├── Organization context
+├── Business context
+├── Property / Location context
+├── Visitor context
+├── Session context
+├── Decision context
+├── Experience context
+├── Component context
+├── Action context
+├── Experiment context
+├── actor / source
+└── event-specific payload
+
+Not every Event requires every field.
+
+The common envelope exists so Events can participate in consistent lineage.
+
+The exact technical schema belongs to Technical Architecture.
+
+---
+
+## 05.5 Event Identity
+
+Every canonical Event must have stable identity.
+
+Event identity allows Kablet to:
+
+- reference an Event
+- deduplicate Events
+- order activity
+- correlate systems
+- trace causality
+- replay or reconstruct history
+- debug integrations
+
+Event identity must not depend solely on event type or timestamp.
+
+---
+
+## 05.6 Event Time
+
+Kablet must distinguish, where relevant:
+
+**Occurred Time**
+
+When the activity actually happened.
+
+from
+
+**Recorded Time**
+
+When Kablet received or persisted the Event.
+
+These may differ.
+
+For example, an external booking system may notify Kablet several seconds or minutes after a booking occurred.
+
+Historical analysis must not silently assume ingestion time equals occurrence time.
+
+---
+
+## 05.7 Events Must Be Versioned
+
+Event schemas will evolve.
+
+A historical Event must remain interpretable according to the schema under which it was produced.
+
+Therefore canonical Events require explicit version semantics.
+
+New Event fields should preferably evolve additively.
+
+Breaking semantic changes must be deliberate.
+
+Historical Events must not silently acquire new meaning because the current schema changed.
+
+---
+
+## 05.8 Event Types Must Have Stable Semantics
+
+An Event type must mean something consistent.
+
+For example:
+
+component.viewed
+
+must not mean:
+
+"Component was rendered"
+
+in one implementation and:
+
+"Visitor visibly saw the Component"
+
+in another.
+
+If those concepts are materially different, they should remain distinct Events.
+
+Stable semantics are necessary for trustworthy analytics and learning.
+
+---
+
+## 05.9 Event Vocabulary Must Be Controlled
+
+Kablet should maintain a controlled vocabulary for canonical Events.
+
+Conceptually:
+
+session.started
+session.ended
+
+signal.received
+
+visitor_state.updated
+
+decision.created
+
+experience.created
+experience.validated
+experience.rendered
+
+component.rendered
+component.viewed
+component.interacted
+
+action.started
+action.completed
+action.failed
+
+conversion.completed
+
+revenue.recorded
+
+experiment.assigned
+experiment.exposed
+
+The exact initial vocabulary will be defined during implementation.
+
+The foundational principle is that canonical event meaning is governed rather than invented ad hoc by individual features.
+
+---
+
+## 05.10 Events Must Preserve Ownership Context
+
+Every tenant-sensitive Event must remain attributable to the appropriate ownership context.
+
+At minimum, Business-owned runtime Events must identify their Business.
+
+Where relevant they may also identify:
+
+- Organization
+- Property / Location
+
+An Event must never become a globally ambiguous record detached from the Business in which it occurred.
+
+This is necessary for:
+
+- tenant isolation
+- reporting
+- learning
+- attribution
+- deletion
+- governance
+
+---
+
+## 05.11 Events Must Preserve Visitor and Session Context
+
+Customer-facing Events should preserve Visitor and Session relationships where applicable.
+
+For example:
+
+component.viewed
+
+should be attributable to:
+
+Business
+Visitor
+Session
+Experience
+Component Instance
+
+where those relationships exist.
+
+This allows Kablet to reconstruct actual journeys rather than only aggregate counts.
+
+---
+
+## 05.12 Events Must Preserve Decision Context
+
+Where an Event occurs as a consequence of a Kablet Decision, that relationship should remain traceable.
+
+For example:
+
+Decision D42
+    ↓
+Experience E18
+    ↓
+Component C7 rendered
+    ↓
+Component C7 viewed
+    ↓
+Booking Action started
+    ↓
+Booking completed
+
+Without Decision linkage, Kablet may know that a booking happened.
+
+With Decision linkage, Kablet can begin learning which strategies contributed to outcomes.
+
+---
+
+## 05.13 Events Must Preserve Experience Context
+
+Events involving customer-facing presentation should identify the relevant Experience where applicable.
+
+This enables Kablet to distinguish:
+
+what Intelligence planned
+
+from
+
+what the runtime actually delivered.
+
+For example:
+
+Experience planned
+    ↓
+Validation succeeded
+    ↓
+Experience rendered
+    ↓
+Component viewed
+
+If rendering fails, Kablet must not assume the planned Experience was actually delivered.
+
+---
+
+## 05.14 Component Exposure Is Distinct From Component Existence
+
+A Component existing in an Experience does not prove the Visitor saw it.
+
+Kablet should distinguish concepts such as:
+
+Component included
+Component rendered
+Component viewed
+Component interacted
+
+This distinction is essential for trustworthy learning.
+
+A testimonial should not receive causal credit merely because it existed somewhere in an Experience the Visitor never reached or saw.
+
+---
+
+## 05.15 Interaction Events
+
+Interaction Events represent meaningful Visitor engagement with an Experience.
+
+Examples may include:
+
+- Component selected
+- option selected
+- comparison changed
+- question submitted
+- recommendation accepted
+- CTA clicked
+- form progressed
+- media engaged
+
+The exact vocabulary will evolve.
+
+Interaction Events should preserve enough semantic context to understand what the Visitor interacted with.
+
+---
+
+## 05.16 Action Events
+
+Action Events represent execution of Business-authorized capabilities.
+
+The canonical lifecycle should be capable of distinguishing:
+
+Action offered
+    ↓
+Action started
+    ↓
+Action completed
+
+or:
+
+Action offered
+    ↓
+Action started
+    ↓
+Action failed
+
+This distinction matters because intent to act is not equivalent to successful execution.
+
+---
+
+## 05.17 Action Completion Must Reflect Reality
+
+Kablet must not record an Action as completed merely because the customer clicked a button.
+
+For example:
+
+Click "Book Appointment"
+
+does not necessarily mean:
+
+Appointment booked.
+
+The actual outcome may require confirmation from:
+
+- Kablet
+- booking provider
+- commerce platform
+- CRM
+- payment system
+- another authorized system
+
+The Event model must distinguish initiation from verified completion.
+
+---
+
+## 05.18 Conversion
+
+A Conversion represents completion of a Business-defined meaningful objective.
+
+Examples may include:
+
+- purchase
+- appointment booking
+- qualified lead
+- consultation request
+- subscription
+- completed application
+- quote request
+
+Conversion is not globally identical across every Business.
+
+Each Business may define the outcomes that constitute meaningful conversion.
+
+---
+
+## 05.19 Conversion Must Be Explicitly Defined
+
+Kablet must not assume that every click or Action is a Conversion.
+
+For example:
+
+Business A:
+
+Conversion = completed purchase
+
+Business B:
+
+Conversion = confirmed appointment
+
+Business C:
+
+Conversion = qualified lead
+
+The Business's commercial objective determines the meaning of Conversion.
+
+This definition must be explicit enough for Kablet to optimize against the correct outcome.
+
+---
+
+## 05.20 Outcome
+
+Outcome is the broader representation of what resulted from a customer journey, Action, Decision, or Experience.
+
+An Outcome may include:
+
+- Conversion
+- Revenue
+- qualified lead
+- booking
+- purchase
+- rejected recommendation
+- Action failure
+- abandonment
+- return visit
+- cancellation
+- refund
+- another business-relevant result
+
+Not every Outcome is positive.
+
+Not every Outcome is final.
+
+Outcome provides the semantic result that future learning systems evaluate.
+
+---
+
+## 05.21 Outcome and Event Are Different
+
+An Event records that something occurred.
+
+An Outcome represents the business meaning of what resulted.
+
+For example:
+
+Event:
+
+booking.completed
+
+Outcome:
+
+Confirmed Appointment
+Value: 500 AED
+Business Objective: Booking Conversion
+
+The same Event infrastructure may carry information that creates or updates an Outcome.
+
+The concepts must nevertheless remain distinct.
+
+---
+
+## 05.22 Outcomes May Change
+
+Some commercial Outcomes evolve after initial conversion.
+
+For example:
+
+Booking created
+    ↓
+Booking confirmed
+    ↓
+Customer attends
+    ↓
+Revenue realized
+
+Or:
+
+Purchase completed
+    ↓
+Order fulfilled
+    ↓
+Order refunded
+
+Kablet must not assume that initial conversion is always the final business result.
+
+Outcome representation must permit lifecycle evolution.
+
+---
+
+## 05.23 Revenue
+
+Revenue represents monetary business value attributable to an Outcome where applicable.
+
+Revenue should preserve concepts such as:
+
+- amount
+- currency
+- associated Outcome
+- Business
+- occurrence
+- source
+- status
+
+The exact financial model belongs to later architecture.
+
+The foundational requirement is that Kablet can eventually distinguish:
+
+Conversion count
+
+from
+
+economic value.
+
+---
+
+## 05.24 Revenue Must Not Be Invented
+
+Kablet must not assume that an Action generated revenue merely because it commonly does.
+
+Revenue should come from:
+
+- verified transaction
+- authorized Business system
+- explicit Business input
+- another trustworthy source
+
+Estimated value may exist.
+
+It must remain distinguishable from verified revenue.
+
+---
+
+## 05.25 Estimated and Realized Value Must Be Distinguishable
+
+Some Outcomes may have expected value before actual revenue exists.
+
+For example:
+
+Qualified Lead
+Expected Value: 300 AED
+
+Later:
+
+Sale Completed
+Realized Revenue: 1,200 AED
+
+Kablet should preserve the distinction between:
+
+estimated value
+
+and
+
+realized value.
+
+This prevents optimization systems from treating forecasts as cash.
+
+---
+
+## 05.26 Attribution
+
+Attribution represents the relationship between Outcomes and the customer journey that preceded them.
+
+Kablet must preserve enough lineage to evaluate relationships among:
+
+- Signals
+- State
+- Decisions
+- Experiences
+- Components
+- Actions
+- Experiments
+- Outcomes
+
+Attribution must not be reduced to:
+
+"last click wins."
+
+Different analytical and causal models may be used later.
+
+The foundational requirement is preservation of the underlying lineage needed to evaluate them.
+
+---
+
+## 05.27 Attribution Is Not Automatically Causation
+
+If a Visitor saw Component A and later converted, that does not prove Component A caused the Conversion.
+
+Kablet must distinguish:
+
+observed sequence
+
+from
+
+causal evidence.
+
+Controlled experiments and appropriate analytical methods may provide stronger causal evidence.
+
+The Event Spine preserves what happened.
+
+The experimentation and learning systems determine what can reasonably be concluded from it.
+
+---
+
+## 05.28 Experiment Assignment
+
+When a Visitor or Session participates in an Experiment, assignment must be recorded.
+
+Conceptually:
+
+Experiment
+    ↓
+Assignment
+    ↓
+Variant
+
+This allows Kablet to know which treatment the Visitor was intended to receive.
+
+Assignment alone does not prove exposure.
+
+---
+
+## 05.29 Experiment Exposure
+
+Experiment Exposure represents that the relevant experimental treatment was actually delivered according to the Experiment's exposure definition.
+
+For example:
+
+Assigned:
+Proof First
+
+but rendering failed.
+
+Then:
+
+Assignment occurred.
+
+Exposure may not have occurred.
+
+Kablet must distinguish these concepts to avoid corrupting experiment results.
+
+---
+
+## 05.30 Experiment Context Must Flow Through Outcome Lineage
+
+Where a Decision or Experience was affected by an Experiment, resulting Events and Outcomes must remain attributable to that context.
+
+Conceptually:
+
+Experiment
+    ↓
+Assignment
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Outcome
+
+This allows future experimentation systems to evaluate results correctly.
+
+---
+
+## 05.31 Event Recording Must Not Depend Solely on Analytics Vendors
+
+Kablet may use third-party analytics products for:
+
+- dashboards
+- product analytics
+- session replay
+- visualization
+- operational convenience
+
+Those systems may receive Kablet Events.
+
+They must not become the sole canonical owner of the Event & Outcome Spine.
+
+Kablet must retain durable control over strategically important event and outcome data.
+
+---
+
+## 05.32 External Events May Enter the Spine
+
+Important Outcomes may occur outside the immediate Kablet runtime.
+
+Examples:
+
+- booking confirmed by external booking system
+- order completed in commerce platform
+- lead qualified in CRM
+- sale closed later
+- appointment attended
+- refund issued
+
+Kablet must be capable of receiving authorized external Events and relating them back to prior Kablet activity where possible.
+
+This is essential because business value often occurs after the initial frontend interaction.
+
+---
+
+## 05.33 External Events Must Preserve Source Provenance
+
+An external Event should preserve sufficient source information to understand:
+
+- which system produced it
+- what external object it refers to
+- when it occurred
+- when Kablet received it
+- whether it was verified
+- how it relates to Kablet entities
+
+This allows external systems to contribute to Outcome truth without becoming indistinguishable from internally observed activity.
+
+---
+
+## 05.34 Duplicate Events Must Not Create Duplicate Reality
+
+Distributed systems may deliver the same external or internal Event more than once.
+
+Kablet must be designed so duplicate delivery does not necessarily create duplicate business meaning.
+
+For example:
+
+One booking provider webhook delivered three times
+
+must not automatically become:
+
+Three bookings.
+
+The exact idempotency implementation belongs to Technical Architecture.
+
+The foundational invariant is that event delivery count and real-world occurrence count are not assumed to be identical.
+
+---
+
+## 05.35 Events Are Append-Oriented Historical Records
+
+Canonical Events represent occurrences.
+
+Once recorded, historical Events should generally not be silently rewritten to create a different history.
+
+If correction is required, Kablet should prefer explicit corrective or superseding semantics where appropriate.
+
+This preserves trustworthy chronology.
+
+The exact persistence mechanism belongs to Technical Architecture.
+
+---
+
+## 05.36 Outcomes May Be Updated Through New Evidence
+
+Unlike immutable occurrence history, Kablet's understanding of an Outcome may evolve.
+
+For example:
+
+Order completed
+    ↓
+Revenue recorded
+    ↓
+Refund issued
+
+The refund does not erase the original purchase Event.
+
+It adds new information that changes the commercial interpretation of the Outcome.
+
+This distinction allows historical events to remain intact while business state evolves.
+
+---
+
+## 05.37 Event Ordering Must Tolerate Delayed Information
+
+Events may arrive out of chronological order.
+
+For example:
+
+Purchase occurred at 10:00.
+
+External provider notification reached Kablet at 10:02.
+
+Another related Event may arrive later.
+
+Kablet must not require ingestion order to equal real-world occurrence order.
+
+Occurred time, recorded time, identity, and lineage must provide enough information to reconstruct meaningful sequence.
+
+---
+
+## 05.38 The Spine Must Support End-to-End Reconstruction
+
+For a meaningful customer journey, Kablet should eventually be capable of reconstructing something like:
+
+Visitor V12
+    ↓
+Session S31 started
+    ↓
+Message received
+    ↓
+Intent identified
+    ↓
+State updated
+    ↓
+Decision D44 created
+    ↓
+Experience E27 created
+    ↓
+Proof Component rendered
+    ↓
+Proof Component viewed
+    ↓
+Booking Action offered
+    ↓
+Booking Action started
+    ↓
+Booking completed
+    ↓
+Revenue recorded
+
+This reconstruction is one of the core requirements of the Kablet platform.
+
+---
+
+## 05.39 The Spine Must Support Aggregation Without Losing Raw Meaning
+
+Kablet will eventually need metrics such as:
+
+- conversion rate
+- revenue per Visitor
+- revenue per Session
+- booking rate
+- Component exposure rate
+- Decision strategy performance
+- experiment lift
+- abandonment rate
+
+These are derived measurements.
+
+The underlying canonical Events and Outcomes should preserve sufficient meaning so new metrics can be computed later without depending exclusively on previously aggregated summaries.
+
+---
+
+## 05.40 Metrics Are Derived, Not Canonical Reality
+
+A metric such as:
+
+Conversion Rate = 8.2%
+
+is a derived interpretation over Events and Outcomes.
+
+It is not itself the underlying customer history.
+
+Kablet should distinguish:
+
+canonical occurrences
+
+from
+
+derived analytics.
+
+This allows definitions and analytical methods to evolve without rewriting history.
+
+---
+
+## 05.41 Event Collection Must Be Purposeful
+
+Kablet should not record every technically observable action merely because it can.
+
+Canonical Events should support legitimate purposes such as:
+
+- runtime operation
+- debugging
+- attribution
+- measurement
+- experimentation
+- learning
+- governance
+
+Excessive meaningless telemetry increases cost, complexity, and privacy exposure without strengthening Kablet's intelligence.
+
+The Event Spine should favor meaningful semantic Events over indiscriminate data collection.
+
+---
+
+## 05.42 Privacy and Retention Apply to the Event Spine
+
+Event history may contain customer-related information.
+
+Its existence as learning infrastructure does not exempt it from:
+
+- privacy requirements
+- retention rules
+- deletion obligations
+- access controls
+- tenant boundaries
+- data minimization
+
+The exact policies and implementation belong to later specifications.
+
+The foundational requirement is that learning value does not override legitimate data governance.
+
+---
+
+## 05.43 Sensitive Payloads Must Not Be Required for Event Identity
+
+Canonical Event lineage should rely on stable Kablet identifiers rather than requiring raw sensitive customer content to be duplicated across every Event.
+
+For example, Events may reference:
+
+Visitor ID
+Session ID
+Decision ID
+Experience ID
+
+rather than repeatedly copying complete customer messages or personal information into every Event payload.
+
+This reduces unnecessary duplication and improves governance.
+
+---
+
+## 05.44 Events Must Support Future Learning
+
+The Event Spine must preserve the relationship required by future Kablet Intelligence:
+
+Context
+    ↓
+State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Outcome
+
+Future learning systems may ask:
+
+- Which strategy works under which State?
+- Which Component sequences improve booking?
+- Which concerns require additional Proof?
+- When should pricing appear?
+- Which Decision policies increase revenue?
+- Which strategies work only for a particular Business?
+- Which patterns generalize across a vertical?
+
+The early Kablet implementation does not need to answer all of these questions.
+
+It must avoid destroying the data relationships required to answer them later.
+
+---
+
+## 05.45 Events Must Support Business-Level Learning
+
+Business-specific Events and Outcomes may support learning unique to one Business.
+
+For example:
+
+Business A may learn that visitors concerned about recovery respond well to practitioner proof.
+
+That learning belongs primarily to Business A's operating context.
+
+The Event Spine must preserve enough Business ownership context to support this level of learning.
+
+---
+
+## 05.46 Events May Support Future Vertical Learning
+
+Where permitted by privacy, contracts, governance, and data-use rules, Kablet may derive generalized vertical intelligence from appropriately governed data.
+
+The underlying Event Spine must preserve tenant boundaries even if future learning systems derive aggregate patterns.
+
+Cross-business learning must not require uncontrolled cross-business runtime access.
+
+---
+
+## 05.47 Events May Support Future Network-Level Learning
+
+Future Kablet systems may derive abstract commercial principles that generalize across verticals.
+
+For example:
+
+High uncertainty may increase the value of Proof before an Action request.
+
+Such learning should emerge from appropriately governed evidence.
+
+It must not require exposing one Business's private customer history to another Business.
+
+The Event Spine supplies structured evidence.
+
+Governed learning systems determine what may be generalized.
+
+---
+
+## 05.48 Canonical Data and Analytical Projections Are Different
+
+Kablet may eventually project canonical Events into:
+
+- analytics databases
+- warehouses
+- dashboards
+- search systems
+- machine-learning datasets
+- experiment datasets
+- real-time streams
+
+Those are representations optimized for particular uses.
+
+They must remain conceptually distinguishable from the canonical Event & Outcome record.
+
+This allows infrastructure to evolve without changing the meaning of Kablet's historical business data.
+
+---
+
+## 05.49 The Event Spine Is a Platform Contract
+
+Every future Kablet subsystem that performs meaningful customer-facing or business-facing activity must consider whether it participates in the Event & Outcome Spine.
+
+This includes future:
+
+- commerce systems
+- booking systems
+- agent systems
+- voice interfaces
+- messaging interfaces
+- recommendation systems
+- integrations
+- automation
+- optimization engines
+
+The Event Spine is therefore not a feature owned by an analytics module.
+
+It is a platform-wide contract.
+
+---
+
+# 05.A Canonical Event Model
+
+Conceptually:
+
+Event
+│
+├── Event Identity
+├── Event Type
+├── Schema Version
+├── Occurred Time
+├── Recorded Time
+├── Ownership Context
+│   ├── Organization
+│   ├── Business
+│   └── Property / Location
+├── Journey Context
+│   ├── Visitor
+│   ├── Session
+│   ├── State
+│   ├── Decision
+│   └── Experience
+├── Interaction Context
+│   ├── Component Instance
+│   └── Action
+├── Experiment Context
+├── Source / Actor
+└── Event Payload
+
+Only applicable relationships need to be populated for a given Event.
+
+---
+
+# 05.B Canonical Outcome Model
+
+Conceptually:
+
+Outcome
+│
+├── Outcome Identity
+├── Business
+├── Visitor / Session Context
+├── Outcome Type
+├── Status
+├── Conversion Relationship
+├── Value
+│   ├── Estimated Value
+│   └── Realized Revenue
+├── Currency
+├── Source
+├── Relevant Actions
+├── Relevant Decisions
+├── Relevant Experiences
+├── Experiment Context
+└── Outcome Lifecycle
+
+The exact schema belongs to Technical Architecture.
+
+---
+
+# 05.C Canonical Causal Lineage
+
+The strategically important Kablet lineage is:
+
+Business
+   ↓
+Visitor
+   ↓
+Session
+   ↓
+Context / Signals
+   ↓
+Visitor State
+   ↓
+Decision
+   ↓
+Experience Plan
+   ↓
+Validated Experience
+   ↓
+Rendered Experience
+   ↓
+Component Exposure
+   ↓
+Interaction
+   ↓
+Action
+   ↓
+Conversion
+   ↓
+Outcome
+   ↓
+Revenue
+
+Experiment context may intersect the chain at the Decision and Experience layers.
+
+External systems may contribute Action, Conversion, Outcome, or Revenue Events.
+
+Kablet must preserve enough linkage to reconstruct the chain without claiming that chronological association alone proves causation.
+
+---
+
+# 05.D Event Families
+
+The canonical Event vocabulary may evolve around families such as:
+
+Session Events
+
+Signal Events
+
+Visitor State Events
+
+Decision Events
+
+Experience Events
+
+Component Events
+
+Action Events
+
+Conversion Events
+
+Outcome Events
+
+Revenue Events
+
+Experiment Events
+
+Integration Events
+
+The exact Event types inside each family belong to later technical specifications.
+
+The family structure exists to preserve semantic organization.
+
+---
+
+# 05.E Core Event & Outcome Invariants
+
+1. Canonical Events represent meaningful domain occurrences.
+2. Events and technical logs are different systems.
+3. Events have stable identity.
+4. Occurred time and recorded time may differ.
+5. Event schemas are versioned.
+6. Event types have controlled, stable semantics.
+7. Tenant-sensitive Events preserve ownership context.
+8. Customer Events preserve Visitor and Session context where applicable.
+9. Decision-related Events preserve Decision lineage.
+10. Experience-related Events preserve Experience lineage.
+11. Component existence, rendering, viewing, and interaction are distinguishable.
+12. Action initiation and Action completion are distinguishable.
+13. Completion reflects verified reality rather than mere intent where verification is required.
+14. Conversion is Business-defined.
+15. Outcome and Event are separate concepts.
+16. Outcomes may evolve as new evidence arrives.
+17. Revenue and Conversion are different concepts.
+18. Estimated value and realized revenue are distinguishable.
+19. Attribution does not automatically imply causation.
+20. Experiment assignment and Experiment exposure are distinguishable.
+21. Experiment context remains connected to Outcomes.
+22. Kablet retains canonical Event and Outcome data independently of analytics vendors.
+23. Authorized external Events may participate in the Spine.
+24. External Events preserve provenance.
+25. Duplicate delivery must not create duplicate business reality.
+26. Canonical Events are append-oriented historical records.
+27. Outcome interpretation may evolve without rewriting occurrence history.
+28. Event processing tolerates delayed and out-of-order information.
+29. End-to-end customer journeys are reconstructable.
+30. Derived metrics remain distinguishable from canonical Events.
+31. Event collection is purposeful rather than indiscriminate.
+32. Privacy and retention constraints apply to Event data.
+33. Sensitive content need not be duplicated merely to preserve lineage.
+34. The Spine preserves the relationships required for future learning.
+35. Business, vertical, and network learning remain governable layers.
+36. Analytical projections are distinguishable from canonical data.
+37. The Event & Outcome Spine is a platform-wide contract.
+
+---
+
+# 05.F Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- Event database technology
+- message broker
+- queue technology
+- streaming platform
+- warehouse
+- analytics provider
+- observability provider
+- event transport
+- webhook implementation
+- exact Event JSON schemas
+- exact Event type list
+- partitioning
+- retention periods
+- data warehouse transformations
+- attribution algorithm
+- experiment statistics
+- causal inference algorithms
+- revenue recognition accounting
+- financial reporting rules
+- machine-learning pipelines
+- identity resolution
+- session replay technology
+
+Those belong to Technical Architecture and later domain specifications.
+
+This section defines the permanent semantic spine that those implementations must preserve.
+
+---
+
+# 05.G Foundation Dependency
+
+Identity & Ownership established:
+
+**Whose data and system is this?**
+
+Business Truth established:
+
+**What is authorized and true about the Business?**
+
+Experience & Component Contract established:
+
+**What customer-facing experience may Kablet create?**
+
+Visitor State & Decisions established:
+
+**What did Kablet understand and decide?**
+
+Event & Outcome Spine establishes:
+
+**What actually happened afterward, and how do we preserve that history?**
+
+The next foundation defines the replaceable boundary through which reasoning systems operate on all of the above:
+
+**06 — Intelligence Interface.**
