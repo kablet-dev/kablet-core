@@ -9709,3 +9709,1097 @@ Data Ownership Rules establish:
 The next section establishes how these contracts may evolve without destroying historical meaning or compatibility:
 
 **09 — Versioning Rules.**
+
+---
+
+# 09. Versioning Rules
+
+## 09.1 Purpose
+
+Versioning Rules define how Kablet concepts may evolve without destroying historical meaning, compatibility, reproducibility, or traceability.
+
+Kablet will change continuously.
+
+Over time:
+
+- Business Truth will change
+- Visitor State will evolve
+- Experience Contracts will evolve
+- Components will evolve
+- Event schemas will evolve
+- Actions will evolve
+- Intelligence policies will evolve
+- experiments will change
+- learned strategies will change
+
+The platform must support this evolution without silently reinterpreting historical activity according to today's definitions.
+
+The permanent principle is:
+
+**Current behavior may evolve. Historical meaning must remain interpretable.**
+
+---
+
+## 09.2 Versioning Exists to Preserve Meaning
+
+Versioning is not merely a software release mechanism.
+
+Within Kablet, versioning protects semantic meaning.
+
+For example:
+
+Price today:
+249 AED
+
+Price when Decision D17 occurred:
+199 AED
+
+Historical analysis of Decision D17 must use the meaning and Truth relevant when D17 occurred.
+
+Similarly:
+
+Component v3
+
+must not silently redefine what historical:
+
+Component v1
+
+meant.
+
+Versioning therefore protects the integrity of Kablet's decision/outcome history.
+
+---
+
+## 09.3 Not Everything Requires the Same Versioning Strategy
+
+Different Kablet concepts evolve differently.
+
+Examples include:
+
+- Business Truth values
+- schemas
+- contracts
+- Component definitions
+- Event definitions
+- Intelligence configurations
+- policies
+- experiments
+
+The Foundation does not require one universal versioning mechanism.
+
+It requires each historically meaningful concept to preserve enough version context for correct interpretation.
+
+---
+
+## 09.4 Business Truth Changes Must Preserve Historical Interpretability
+
+Business Truth may change over time.
+
+Examples:
+
+- price changes
+- Service description changes
+- Offer activation
+- policy changes
+- staff changes
+- availability changes
+- Business Rule changes
+
+When historical Decisions depend on prior Truth, Kablet must preserve enough information to determine what Truth was applicable at that time.
+
+Conceptually:
+
+Business Truth v1
+        ↓
+Decision A
+        ↓
+Experience A
+
+Business Truth changes
+
+Business Truth v2
+        ↓
+Decision B
+        ↓
+Experience B
+
+Decision A must not later appear to have been made using v2.
+
+---
+
+## 09.5 Current Truth and Historical Truth Are Different Concerns
+
+Kablet needs efficient access to current Business Truth.
+
+Kablet also needs historical interpretability.
+
+These concerns must not be collapsed.
+
+A technical implementation may eventually use:
+
+- revisions
+- temporal records
+- immutable snapshots
+- effective dates
+- event history
+- references
+- combinations of these
+
+The implementation is not defined here.
+
+The permanent requirement is that current convenience must not destroy historical meaning.
+
+---
+
+## 09.6 Effective Time May Differ From Record Time
+
+A Business Truth change may be recorded at one time but become effective at another.
+
+For example:
+
+Offer configured:
+September 1
+
+Offer becomes effective:
+September 5
+
+Offer expires:
+September 10
+
+Where meaningful, Kablet must be capable of distinguishing:
+
+- when information was recorded
+- when information became applicable
+
+The exact temporal model belongs to Technical Architecture.
+
+---
+
+## 09.7 Visitor State Evolves Through New State
+
+Visitor State changes as Kablet receives new evidence.
+
+Historical State should not be silently rewritten so that prior Decisions appear to have had knowledge that was only discovered later.
+
+Conceptually:
+
+State v1
+    ↓
+Decision A
+
+New Signal
+    ↓
+State v2
+    ↓
+Decision B
+
+Decision A remains attributable to State v1.
+
+---
+
+## 09.8 Decisions Are Historical Records
+
+Once an accepted Decision materially participates in customer-facing behavior, it represents historical Kablet activity.
+
+Its meaning should not be silently mutated later.
+
+If Kablet changes strategy, it creates a new Decision.
+
+If Kablet later learns that an earlier Decision was poor, the historical Decision still remains what happened.
+
+The permanent rule is:
+
+**Learning changes future Decisions, not historical Decisions.**
+
+---
+
+## 09.9 Experience Plans Require Version Context
+
+Experience Plans are produced under a particular Experience Contract.
+
+If the Experience Contract later changes, historical Plans must remain interpretable according to the contract active when they were produced.
+
+Conceptually:
+
+Experience Contract v1
+        ↓
+Experience Plan E1
+
+Later:
+
+Experience Contract v2
+        ↓
+Experience Plan E2
+
+E1 must not silently acquire v2 semantics.
+
+---
+
+## 09.10 Experience Contract Versions Must Be Explicit
+
+Breaking changes to the Experience Contract require explicit version semantics.
+
+A breaking change is one where an older valid Experience Plan may no longer mean the same thing under the new contract.
+
+Examples may include:
+
+- changing operation semantics
+- removing required meaning
+- changing payload interpretation
+- redefining Component relationships
+
+Additive compatible evolution may not require the same migration behavior as breaking semantic change.
+
+The exact compatibility policy belongs to Technical Architecture.
+
+---
+
+## 09.11 Component Types Are Versioned Capabilities
+
+Components may evolve.
+
+Example:
+
+ServiceCard v1:
+- name
+- description
+- price
+
+ServiceCard v2:
+- name
+- description
+- price
+- provider
+- availability
+
+If v2 merely adds optional capability, compatibility may be straightforward.
+
+If a future version changes what a field means, explicit version distinction becomes essential.
+
+Historical Experiences must remain interpretable using the relevant Component contract.
+
+---
+
+## 09.12 Component Instance and Component Definition Are Different
+
+A Component Definition describes a capability.
+
+A Component Instance represents a specific use of that capability in an Experience.
+
+For example:
+
+Component Definition:
+Proof v2
+
+Component Instance:
+Testimonial from Customer A shown in Experience E17
+
+Historical Component Instances must remain attributable to the definition/version under which they were created.
+
+---
+
+## 09.13 Presentation Variants Require Stable Identity
+
+Presentation may evolve independently from semantic Component meaning.
+
+For experimentation and learning, Kablet must be capable of distinguishing meaningful presentation variants.
+
+For example:
+
+Proof Component v2
+Presentation Variant A
+
+versus:
+
+Proof Component v2
+Presentation Variant B
+
+If the presentation materially affects an Experiment or learning analysis, the variant must remain historically identifiable.
+
+---
+
+## 09.14 Action Contracts May Evolve
+
+Actions may gain or change capabilities over time.
+
+For example:
+
+BookAppointment v1:
+- Service
+- date
+- time
+
+BookAppointment v2:
+- Service
+- provider
+- location
+- date
+- time
+
+Historical Action execution must remain interpretable according to the contract applicable at execution time.
+
+A later Action definition must not silently redefine historical Action meaning.
+
+---
+
+## 09.15 Event Schemas Must Be Versioned
+
+Canonical Event schemas evolve.
+
+Each Event must remain interpretable according to the schema semantics under which it was recorded.
+
+For example:
+
+component.viewed v1
+
+must not later be interpreted according to a materially different definition of:
+
+component.viewed v2
+
+without explicit migration or semantic mapping.
+
+---
+
+## 09.16 Event Type Meaning Must Not Drift Silently
+
+A dangerous form of versioning failure occurs when the Event name remains the same while its meaning changes.
+
+For example:
+
+v1:
+component.viewed = Component entered viewport
+
+v2:
+component.viewed = Component remained visible for two seconds
+
+These are materially different observations.
+
+Kablet must not silently treat them as identical historical evidence.
+
+A semantic change requires:
+
+- a new version
+- a new Event type
+- or another explicit compatibility mechanism
+
+The exact method belongs to Technical Architecture.
+
+---
+
+## 09.17 Event Producers and Consumers May Run Different Versions
+
+Future Kablet infrastructure may contain multiple systems producing and consuming Events.
+
+Versioning must allow controlled compatibility between them.
+
+A newer consumer may need to understand older Events.
+
+An older consumer may not understand a newer Event.
+
+The architecture must define compatibility behavior rather than assuming every subsystem upgrades simultaneously.
+
+---
+
+## 09.18 Outcome Definitions May Evolve
+
+Businesses may change what they consider a meaningful Conversion or Outcome.
+
+For example:
+
+Earlier:
+Lead submission = Conversion
+
+Later:
+Qualified lead = Conversion
+
+Historical reporting must not silently reinterpret old activity using the new definition unless the analysis explicitly intends to recalculate history.
+
+The applicable Outcome definition must therefore remain identifiable where material.
+
+---
+
+## 09.19 Metric Definitions Must Be Versionable
+
+Derived metrics may change definition.
+
+For example:
+
+Conversion Rate v1:
+Conversions / Sessions
+
+Conversion Rate v2:
+Conversions / Qualified Sessions
+
+Both may be valid metrics.
+
+They are not the same metric.
+
+Kablet must not silently change a metric definition while presenting historical values as directly equivalent.
+
+---
+
+## 09.20 Experiment Definitions Are Historical Contracts
+
+An Experiment should preserve the definition under which it ran.
+
+Relevant context may include:
+
+- hypothesis
+- eligibility
+- variants
+- assignment policy
+- exposure definition
+- primary Outcome
+- guardrail metrics
+- start / end context
+
+Changing an Experiment definition materially during execution may invalidate interpretation.
+
+The exact experimentation policy belongs to later specifications.
+
+The foundation requires historical Experiment meaning to remain stable.
+
+---
+
+## 09.21 Experiment Variants Require Stable Identity
+
+A Variant must remain identifiable throughout the Experiment and historical analysis.
+
+Variant A must not silently change from:
+
+Proof before Price
+
+to:
+
+Price before Proof
+
+while retaining the same identity.
+
+If treatment meaning changes materially, it should be represented as a new Variant, Experiment version, or other explicit semantic change.
+
+---
+
+## 09.22 Intelligence Configurations Must Be Versionable
+
+Kablet Intelligence will evolve rapidly.
+
+Changes may include:
+
+- model
+- provider
+- prompt
+- policy
+- context assembly
+- retrieval
+- routing
+- optimization logic
+- learned strategy
+- tool availability
+
+Where a change may materially influence Decisions, Kablet should be capable of attributing Decisions to the relevant Intelligence configuration.
+
+---
+
+## 09.23 Model Version Alone Is Not Intelligence Version
+
+Two Decisions using the same model may behave differently because of:
+
+- different prompt
+- different Business context
+- different retrieval strategy
+- different policy
+- different available Components
+- different tools
+- different learned strategy
+
+Therefore:
+
+Model Version
+≠
+Intelligence Configuration Version
+
+Kablet must own the higher-level configuration identity.
+
+---
+
+## 09.24 Prompt Versions May Be Implementation Metadata
+
+Prompts may materially influence Intelligence behavior.
+
+Where useful for evaluation or debugging, prompt/configuration versions should be attributable.
+
+However, prompts do not become the canonical definition of Kablet contracts.
+
+Contract meaning remains defined by Kablet's structured specifications and schemas.
+
+---
+
+## 09.25 Learned Strategies Require Version Context
+
+Learning changes over time.
+
+For example:
+
+Strategy v1:
+Show Price early.
+
+Strategy v2:
+For high trust concern, show Proof before Price.
+
+A Decision influenced by learned strategy should be attributable to the relevant strategy state or policy version where material.
+
+This allows Kablet to evaluate whether newer learning actually improved outcomes.
+
+---
+
+## 09.26 Business-Specific Learning and Generalized Learning Evolve Independently
+
+A Business-specific strategy may change without changing a vertical strategy.
+
+A vertical strategy may change without changing a network-level strategy.
+
+These layers must therefore remain distinguishable in version context.
+
+Conceptually:
+
+Business Policy v7
+
+Vertical Policy v3
+
+Network Strategy v2
+
+may jointly contribute to one Decision.
+
+The exact representation belongs to future Intelligence Architecture.
+
+---
+
+## 09.27 Platform Policy Requires Version Context
+
+Kablet may establish platform-level policies that constrain behavior.
+
+Examples may include:
+
+- Action restrictions
+- validation policy
+- privacy policy
+- capability policy
+- safety constraints
+
+Where policy changes materially affect historical behavior, the applicable policy version should remain identifiable.
+
+---
+
+## 09.28 Schema Version and Data Revision Are Different
+
+These concepts must remain separate.
+
+**Schema Version**
+
+describes the structure or semantics used to interpret data.
+
+**Data Revision**
+
+describes a change in the actual business or runtime value.
+
+Example:
+
+Price schema remains v1.
+
+Price changes:
+
+199 AED → 249 AED
+
+That is a data revision, not necessarily a schema version change.
+
+Conversely:
+
+Price schema changes to support tax-inclusive semantics.
+
+That may be a schema evolution even if the numeric price remains unchanged.
+
+---
+
+## 09.29 Contract Version and Instance Version Are Different
+
+A contract describes how a class of objects behaves.
+
+An instance represents a particular object.
+
+Example:
+
+Service Contract v3
+
+Service S17 Revision 8
+
+These are separate version dimensions.
+
+Kablet should not confuse evolution of a domain object with evolution of the contract used to interpret that object.
+
+---
+
+## 09.30 Application Release Version Is Not Domain Version
+
+Kablet software may have releases such as:
+
+Application Release 2.4.1
+
+That does not automatically identify:
+
+- Business Truth revision
+- Event schema
+- Experience Contract
+- Component version
+- Intelligence configuration
+- Experiment definition
+
+Application deployment versions and domain semantic versions are different concerns.
+
+---
+
+## 09.31 Versions Must Be Attributable Where They Affect Meaning
+
+Not every record requires every possible version identifier.
+
+Version metadata should be preserved where it affects:
+
+- interpretation
+- validation
+- reproducibility
+- experimentation
+- learning
+- debugging
+- historical reconstruction
+
+The foundation requires meaningful attribution, not meaningless version proliferation.
+
+---
+
+## 09.32 Versioning Must Avoid Unnecessary Complexity
+
+Kablet should not version every trivial change merely because versioning exists.
+
+Versioning has operational cost.
+
+The guiding question is:
+
+**Could this change alter how historical or current behavior is interpreted?**
+
+If yes, explicit version or revision semantics may be necessary.
+
+If no, additional version machinery may provide little value.
+
+---
+
+## 09.33 Breaking Changes Must Be Explicit
+
+A breaking change is one that invalidates assumptions held by existing data, contracts, producers, consumers, or runtime behavior.
+
+Breaking changes must not be introduced silently.
+
+They may require:
+
+- new contract version
+- migration
+- compatibility adapter
+- dual support period
+- explicit deprecation
+- controlled rejection
+
+The exact strategy belongs to Technical Architecture.
+
+---
+
+## 09.34 Additive Evolution Should Be Preferred Where Practical
+
+Where possible, Kablet should evolve contracts additively.
+
+For example:
+
+Existing Component payload:
+
+name
+price
+
+New compatible capability:
+
+optional provider
+
+may be safer than redefining what `price` means.
+
+Additive evolution can reduce migration risk.
+
+It must not be used to avoid necessary semantic cleanup when a genuinely breaking change is required.
+
+---
+
+## 09.35 Deprecation Must Be Explicit
+
+Old capabilities may eventually need to be retired.
+
+Deprecation should identify:
+
+- what is deprecated
+- what replaces it
+- what historical data still depends on it
+- whether runtime support remains required
+- when new creation should stop
+
+Historical interpretation may require retaining knowledge of deprecated contracts after active use ends.
+
+---
+
+## 09.36 Historical Data Must Not Require Historical Production Code Forever
+
+Kablet should preserve historical meaning without requiring every old production implementation to remain executable forever.
+
+For example, understanding a historical Experience should not necessarily require running the exact frontend code from three years earlier.
+
+Instead, Kablet should preserve sufficient:
+
+- schema
+- contract semantics
+- identifiers
+- payload meaning
+- references
+- metadata
+
+to interpret what occurred.
+
+Exact archival strategy belongs to Technical Architecture.
+
+---
+
+## 09.37 Historical Reproduction and Historical Interpretation Are Different
+
+Kablet may need to understand:
+
+"What did this Decision mean?"
+
+without necessarily reproducing pixel-perfect historical UI.
+
+Therefore:
+
+Historical Interpretation
+
+is foundational.
+
+Pixel-Perfect Historical Reproduction
+
+is not automatically required.
+
+Specific regulatory, debugging, or experimentation needs may later require stronger reproduction capabilities.
+
+---
+
+## 09.38 Migration Must Preserve Meaning
+
+When data is migrated to a new representation, the migration must not silently change semantic meaning.
+
+Conceptually:
+
+Old Representation
+        ↓
+Migration
+        ↓
+New Representation
+
+should preserve the business meaning unless the migration explicitly represents an intentional semantic transformation.
+
+Where transformation occurs, its nature should remain traceable.
+
+---
+
+## 09.39 Migration Must Not Fabricate Historical Knowledge
+
+Suppose an old Event never recorded whether a Component was actually viewed.
+
+A later schema introduces:
+
+viewed = true / false
+
+Migration must not invent a historical value without evidence.
+
+Appropriate outcomes may include:
+
+- unknown
+- unavailable
+- not captured under old schema
+
+Historical absence of information is different from a negative value.
+
+---
+
+## 09.40 Unknown Must Remain a Valid Historical Concept
+
+Kablet will become more sophisticated over time.
+
+Future versions will know things earlier versions did not record.
+
+Historical systems must therefore tolerate:
+
+Unknown
+
+rather than fabricating certainty.
+
+Examples:
+
+Historical Component exposure:
+Unknown
+
+Historical State confidence:
+Not recorded
+
+Historical Experiment exposure:
+Unavailable
+
+This protects data integrity.
+
+---
+
+## 09.41 Version Compatibility Must Be Testable
+
+Technical Architecture should eventually define tests proving that supported versions behave correctly.
+
+Examples may include:
+
+- old Event can still be interpreted
+- current runtime rejects unsupported Experience Contract
+- migration preserves required semantics
+- deprecated Component remains readable
+- Decision lineage survives Business Truth revision
+
+Version compatibility should not rely solely on developer memory.
+
+---
+
+## 09.42 Version Changes Must Be Observable
+
+Meaningful version changes should be visible operationally.
+
+Kablet should eventually be capable of determining:
+
+- which contract version is active
+- which Intelligence configuration produced a Decision
+- which Event schema produced an Event
+- which Component definition rendered an Experience
+- which Business Truth revision applied
+
+This is necessary for debugging and evaluation.
+
+---
+
+## 09.43 Versioning Must Survive Vendor Replacement
+
+Kablet's version model must not depend on a particular:
+
+- database
+- AI provider
+- analytics provider
+- frontend framework
+- deployment platform
+
+A provider may have its own version identifiers.
+
+Kablet may record them as metadata.
+
+Kablet's canonical semantic version context remains Kablet-owned.
+
+---
+
+# 09.A Version Dimensions
+
+Kablet distinguishes several kinds of evolution:
+
+### Data Revision
+
+A value changed.
+
+Example:
+
+Price:
+199 AED → 249 AED
+
+### Schema Version
+
+The structure or semantics of a data contract changed.
+
+### Contract Version
+
+A platform interface changed.
+
+Example:
+
+Experience Contract v1 → v2
+
+### Component Version
+
+A customer-facing capability changed.
+
+### Event Version
+
+Event structure or meaning changed.
+
+### Intelligence Configuration Version
+
+Decision-producing behavior changed.
+
+### Experiment Version
+
+Experimental treatment or definition changed.
+
+### Policy Version
+
+Platform or Business policy changed.
+
+### Application Release Version
+
+Deployed software changed.
+
+These dimensions must not be assumed to be interchangeable.
+
+---
+
+# 09.B Historical Interpretation Chain
+
+For a historically meaningful Decision, Kablet should eventually be capable of reconstructing sufficient context such as:
+
+Business Truth Revision
+        +
+Visitor State
+        +
+Experience Contract Version
+        +
+Available Component Versions
+        +
+Available Action Versions
+        +
+Experiment Context
+        +
+Intelligence Configuration
+        +
+Applicable Policy
+        ↓
+Decision
+        ↓
+Experience
+        ↓
+Events
+        ↓
+Outcome
+
+Not every relationship requires a full snapshot.
+
+The technical architecture must choose an efficient representation that preserves the required meaning.
+
+---
+
+# 09.C Compatibility Principle
+
+The default evolution preference is:
+
+Additive Compatible Change
+        ↓
+Preferred where semantically correct
+
+If not possible:
+
+Explicit Breaking Change
+        ↓
+New Version / Migration / Adapter
+        ↓
+Historical Compatibility Preserved
+
+Silent Semantic Drift
+        ↓
+Forbidden
+
+---
+
+# 09.D Core Versioning Invariants
+
+1. Current system evolution must not destroy historical meaning.
+2. Different concepts may require different versioning strategies.
+3. Business Truth changes preserve historical interpretability.
+4. Current Truth and historical Truth remain distinguishable.
+5. Recorded time and effective time may differ.
+6. Visitor State evolution must not fabricate prior knowledge.
+7. Accepted Decisions remain historical records.
+8. Learning changes future policy rather than historical Decisions.
+9. Experience Plans remain attributable to applicable contract versions.
+10. Breaking Experience Contract changes are explicit.
+11. Component capabilities are versionable.
+12. Component instances remain attributable to applicable definitions.
+13. Meaningful presentation variants retain identity.
+14. Action contracts may evolve without redefining historical execution.
+15. Event schemas are versioned.
+16. Event semantics must not drift silently.
+17. Producers and consumers may require compatibility across versions.
+18. Outcome definitions may evolve without silently rewriting historical meaning.
+19. Metric definitions are versionable.
+20. Experiment definitions and variants retain historical meaning.
+21. Intelligence configurations are versionable.
+22. Model version and Intelligence configuration version are different concepts.
+23. Learned strategies preserve relevant version context.
+24. Business, vertical, and network learning may evolve independently.
+25. Applicable platform policies may require version context.
+26. Schema version and data revision are distinct.
+27. Contract version and instance revision are distinct.
+28. Application release version is not domain semantic version.
+29. Version metadata is preserved where it materially affects meaning.
+30. Kablet avoids meaningless version proliferation.
+31. Breaking changes are explicit.
+32. Additive evolution is preferred where semantically appropriate.
+33. Deprecation is explicit.
+34. Historical interpretation does not require preserving all historical production code forever.
+35. Historical interpretation and pixel-perfect reproduction are distinct.
+36. Migrations preserve meaning.
+37. Migrations do not fabricate historical knowledge.
+38. Unknown remains valid where historical evidence does not exist.
+39. Compatibility must eventually be testable.
+40. Meaningful version context must be observable.
+41. Kablet owns its semantic version model independently of vendors.
+
+---
+
+# 09.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- semantic version number format
+- migration framework
+- database migration tool
+- API versioning syntax
+- Event serialization format
+- schema registry
+- compatibility library
+- deployment release process
+- feature flag system
+- rollback implementation
+- snapshot storage
+- temporal database implementation
+- exact Business Truth revision model
+- exact State persistence strategy
+- exact contract compatibility window
+- deprecation time periods
+- archival storage
+
+Those decisions belong to Technical Architecture.
+
+This section defines what semantic meaning Kablet must preserve as the system evolves.
+
+---
+
+# 09.F Foundation Dependency
+
+Data Ownership Rules established:
+
+**Whose data is this and what context does it belong to?**
+
+Versioning Rules establish:
+
+**When that data, its contracts, or the Intelligence operating on it changes, how does Kablet preserve what historical activity actually meant?**
+
+The next section establishes the boundaries governing how tenant and Visitor information may flow through the platform:
+
+**10 — Privacy & Tenant Isolation Principles.**
