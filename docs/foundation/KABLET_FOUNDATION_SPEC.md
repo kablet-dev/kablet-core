@@ -2413,3 +2413,1222 @@ Business Truth establishes:
 The next foundation defines the controlled language through which Kablet turns that Truth into customer-facing experiences:
 
 **03 — Experience & Component Contract.**
+
+---
+
+# 03. Experience & Component Contract
+
+## 03.1 Purpose
+
+The Experience & Component Contract defines the controlled language through which Kablet Intelligence creates and modifies customer-facing experiences.
+
+Kablet Intelligence must be capable of dynamically deciding:
+
+- what should appear
+- what should disappear
+- what should be emphasized
+- what information should be presented
+- what sequence should be used
+- what actions should be offered
+- how the experience should adapt as the visitor's state changes
+
+However, intelligence must not require unrestricted control over production interface code.
+
+The Experience Contract therefore establishes a boundary between:
+
+**Decision-making**
+
+and
+
+**Rendering**
+
+Conceptually:
+
+Intelligence
+    ↓
+Decision
+    ↓
+Experience Plan
+    ↓
+Validated Experience Contract
+    ↓
+Runtime
+    ↓
+Rendered Customer Experience
+
+Kablet Intelligence controls the experience through this contract.
+
+The runtime controls safe and deterministic execution of the contract.
+
+---
+
+## 03.2 Experience
+
+An Experience represents the customer-facing state Kablet intentionally presents to a Visitor at a particular point in the journey.
+
+An Experience may contain:
+
+- explanatory content
+- Business Truth
+- Products
+- Services
+- Pricing
+- Offers
+- Proof
+- People
+- Media
+- questions
+- recommendations
+- comparisons
+- Actions
+- interactive Components
+- other permitted customer-facing elements
+
+An Experience is contextual.
+
+It is produced for a particular customer situation and may change as Kablet learns more about the Visitor.
+
+An Experience is not Business Truth.
+
+It is a contextual presentation of Business Truth and other permitted experience information.
+
+---
+
+## 03.3 Experience Is State, Not a Page
+
+Kablet must not define Experience as equivalent to a webpage.
+
+A webpage is one possible rendering model.
+
+An Experience represents the current customer-facing state regardless of how it is visually rendered.
+
+For example:
+
+Visitor expresses interest in laser treatment.
+
+Kablet may produce:
+
+Experience
+├── Short response
+├── Relevant Service
+├── Practitioner proof
+├── Starting price
+└── Book Consultation action
+
+After the Visitor asks about recovery:
+
+Experience
+├── Recovery explanation
+├── Relevant FAQ
+├── Supporting proof
+└── Book Consultation action
+
+The URL may not change.
+
+No traditional page transition may occur.
+
+The Experience has nevertheless changed.
+
+---
+
+## 03.4 Experience Plan
+
+An Experience Plan represents Kablet Intelligence's intended customer-facing response to a Decision.
+
+The Experience Plan describes what the runtime should attempt to present or change.
+
+It may include concepts such as:
+
+- response
+- Components
+- Component ordering
+- Business Truth references
+- Actions
+- emphasis
+- visibility
+- composition
+- continuation behavior
+- replacement behavior
+
+The Experience Plan is declarative.
+
+It describes the intended experience rather than instructing the runtime how to manipulate low-level interface code.
+
+---
+
+## 03.5 Component
+
+A Component is a controlled customer-facing capability that the Kablet runtime knows how to render and operate.
+
+Examples may include:
+
+- Message
+- Service Card
+- Product Card
+- Price
+- Offer
+- Proof
+- Testimonial
+- Person
+- Comparison
+- FAQ
+- Media
+- Recommendation
+- Booking
+- Checkout
+- Lead Form
+- Contact Action
+- Option Selector
+- Question
+- Location
+- Availability
+
+The exact initial Component library will be defined later.
+
+The foundational requirement is that Components are known capabilities with defined contracts.
+
+---
+
+## 03.6 Intelligence Selects Components; It Does Not Invent Runtime Capabilities
+
+Kablet Intelligence may select from Components and capabilities made available to it.
+
+For example:
+
+Available Components:
+
+ServiceCard
+PriceCard
+ProofCard
+FAQCard
+BookingAction
+
+Intelligence may decide:
+
+1. show ServiceCard
+2. show ProofCard
+3. show PriceCard
+4. offer BookingAction
+
+It may not decide:
+
+"Create a completely new executable component with arbitrary JavaScript and run it."
+
+New Component capabilities must enter Kablet through controlled platform extension.
+
+This separates intelligence flexibility from runtime safety.
+
+---
+
+## 03.7 Components Are Semantic, Not Merely Visual
+
+A Component should represent meaningful customer-facing capability rather than only visual styling.
+
+For example:
+
+Price
+
+is semantically different from:
+
+Testimonial
+
+even if both could technically be displayed inside similar rectangular UI containers.
+
+Semantic Components allow Kablet Intelligence to reason about what each element means and when it may be useful.
+
+Visual design may evolve independently.
+
+Therefore:
+
+Component meaning
+≠
+Component appearance
+
+---
+
+## 03.8 Components May Have Multiple Renderings
+
+A semantic Component may support different valid visual representations.
+
+For example:
+
+Proof may render as:
+
+- compact review
+- testimonial card
+- rating summary
+- evidence carousel
+- expanded case study
+
+The Experience Contract should identify the semantic intent.
+
+The runtime and presentation system may determine the appropriate supported rendering according to:
+
+- device
+- available space
+- brand
+- experience context
+- tested variation
+- accessibility
+- other valid presentation conditions
+
+This allows visual evolution without changing the meaning of the underlying Component.
+
+---
+
+## 03.9 Component Payload
+
+Each Component receives a defined payload.
+
+The payload contains the information required to render and operate that Component.
+
+Conceptually:
+
+Component
+    type: Price
+    payload:
+        amount
+        currency
+        qualifier
+        source_reference
+
+Or:
+
+Component
+    type: Testimonial
+    payload:
+        quote
+        author
+        rating
+        proof_reference
+
+Payloads must conform to the contract defined for their Component type.
+
+The runtime must reject or safely handle invalid payloads.
+
+---
+
+## 03.10 Components Should Prefer References to Canonical Truth
+
+Where a Component represents Business Truth, the Experience Contract should preserve a relationship to the canonical Truth that produced it.
+
+For example:
+
+Experience Component
+    type: Service
+    source: Service_123
+
+rather than requiring intelligence to recreate the entire Service as arbitrary generated text.
+
+The runtime may resolve the referenced Business Truth into the information needed for rendering.
+
+Generated presentation may exist around that Truth.
+
+The canonical source relationship should remain available where meaningful.
+
+This improves:
+
+- consistency
+- traceability
+- freshness
+- debugging
+- attribution
+- historical reconstruction
+
+---
+
+## 03.11 Generated Content Must Remain Distinguishable From Referenced Truth
+
+An Experience may contain both:
+
+- canonical Business Truth
+- generated explanatory content
+
+Those must remain conceptually distinguishable.
+
+Example:
+
+Business Truth:
+
+Price = 399 AED
+
+Generated explanation:
+
+"This option starts from 399 AED and may suit visitors looking for..."
+
+The generated explanation is not the authoritative Price.
+
+The Experience Contract should preserve enough structure to distinguish generated language from canonical referenced Truth.
+
+---
+
+## 03.12 Composition
+
+Composition defines how Components form an Experience.
+
+Composition may include concepts such as:
+
+- order
+- grouping
+- hierarchy
+- prominence
+- relationship
+- replacement
+- insertion
+- removal
+- persistence
+
+For example:
+
+Experience
+├── Message
+├── Service
+├── Proof
+├── Price
+└── Booking Action
+
+Another Visitor may receive:
+
+Experience
+├── Message
+├── Comparison
+├── FAQ
+├── Proof
+└── Booking Action
+
+The same Component library can therefore create substantially different journeys.
+
+---
+
+## 03.13 Composition Must Not Become a Fixed Funnel
+
+The Experience Contract must allow Kablet to compose different sequences dynamically.
+
+It must not encode one permanent funnel such as:
+
+Hero
+↓
+Benefits
+↓
+Testimonials
+↓
+Pricing
+↓
+CTA
+
+Such a sequence may be produced when appropriate.
+
+It must not become the foundational customer journey.
+
+The Experience Contract exists specifically to permit adaptive composition.
+
+---
+
+## 03.14 Experience Changes May Be Incremental
+
+Kablet should not require regeneration of the entire frontend whenever the Visitor state changes.
+
+An Experience may evolve incrementally.
+
+For example:
+
+Current Experience:
+
+Service
+Proof
+Price
+
+Visitor asks:
+
+"Can I do this tomorrow?"
+
+Kablet may add:
+
+Availability
+Booking Action
+
+without necessarily destroying the useful existing context.
+
+The Experience Contract must therefore support the concept of experience transitions rather than only complete page replacement.
+
+---
+
+## 03.15 Experience Operations
+
+The contract may eventually support controlled operations such as:
+
+- present
+- append
+- insert
+- replace
+- remove
+- update
+- emphasize
+- collapse
+- expand
+- persist
+
+The exact operation vocabulary will be defined during Technical Architecture.
+
+The foundational principle is that intelligence modifies the experience through known operations rather than arbitrary interface manipulation.
+
+---
+
+## 03.16 Actions Are Distinct From Components
+
+A Component presents or facilitates part of the customer experience.
+
+An Action represents something the customer may actually do.
+
+For example:
+
+BookingCard
+
+may be a Component.
+
+BookAppointment
+
+is an Action.
+
+ProductCard
+
+may be a Component.
+
+AddToCart
+
+is an Action.
+
+This distinction allows presentation and business capability to evolve independently.
+
+Components may expose Actions.
+
+Actions remain governed by Business Truth, authorization, validation, and execution constraints.
+
+---
+
+## 03.17 Intelligence May Surface Only Available Actions
+
+The Experience Contract must not allow intelligence to invent business capabilities.
+
+If Business Truth permits:
+
+- Book
+- Call
+- WhatsApp
+
+Kablet may intelligently decide which of those Actions to surface.
+
+It may not offer:
+
+- Buy Now
+
+if no authorized purchase capability exists.
+
+Available Actions therefore constrain Experience generation.
+
+---
+
+## 03.18 Experience Must Respect Business Rules
+
+Experience optimization occurs inside Business Truth and Business Rules.
+
+If Business Truth states:
+
+Consultation required before Treatment A
+
+Kablet must not optimize the experience by offering an unauthorized direct purchase of Treatment A.
+
+If Offer B applies only to new customers, Kablet must not knowingly present it as available to an ineligible customer.
+
+The Experience Contract must allow the runtime to validate experience decisions against applicable constraints.
+
+---
+
+## 03.19 Experience Must Respect Brand Constraints
+
+Kablet controls experience composition.
+
+It does not mean Kablet ignores the Business's brand.
+
+Generated Experiences must operate within authorized Brand constraints defined in Business Truth.
+
+This may affect:
+
+- typography
+- visual language
+- tone
+- terminology
+- imagery
+- permitted styles
+- communication constraints
+
+Kablet may optimize within the brand system.
+
+It should not silently redefine the Business's identity.
+
+---
+
+## 03.20 Runtime Validation Is Mandatory
+
+An Experience Plan produced by intelligence is a proposal until validated.
+
+Conceptually:
+
+Intelligence
+    ↓
+Experience Plan
+    ↓
+Contract Validation
+    ↓
+Business Rule Validation
+    ↓
+Capability Validation
+    ↓
+Runtime
+    ↓
+Customer
+
+Validation may determine:
+
+- Component type exists
+- payload is valid
+- referenced Truth exists
+- referenced Truth belongs to the correct Business
+- Action exists
+- Action is permitted
+- required constraints are satisfied
+- operation is supported
+
+Invalid output must not become uncontrolled runtime behavior.
+
+---
+
+## 03.21 Invalid Intelligence Output Must Fail Predictably
+
+Kablet must assume intelligence can occasionally return:
+
+- malformed output
+- unsupported Components
+- missing references
+- invalid Actions
+- contradictory instructions
+- incomplete payloads
+
+The runtime must not treat these failures as impossible.
+
+It must safely:
+
+- reject
+- repair where deterministic and permitted
+- fall back
+- preserve the last valid Experience
+- request another Decision
+
+according to later-defined policies.
+
+The customer-facing runtime must remain stable even when intelligence output is imperfect.
+
+---
+
+## 03.22 Experience Contracts Must Be Versioned
+
+The Experience Contract will evolve.
+
+New Components, fields, operations, capabilities, and composition models will be introduced.
+
+Experience Contracts must therefore support explicit versions.
+
+A Decision created under one contract version must remain historically interpretable even after newer versions exist.
+
+The runtime must not silently reinterpret historical Experience Plans according to incompatible future semantics.
+
+---
+
+## 03.23 Component Contracts Must Be Versioned
+
+Individual Component types may evolve independently.
+
+For example:
+
+ServiceCard v1
+
+may support:
+
+- name
+- description
+- price
+
+ServiceCard v2
+
+may additionally support:
+
+- provider
+- availability
+- comparison metadata
+
+The exact versioning implementation belongs to Technical Architecture.
+
+The permanent requirement is controlled evolution without destroying historical meaning.
+
+---
+
+## 03.24 Components Must Be Extensible
+
+Kablet's initial Component library will be intentionally small.
+
+Future verticals will require specialized capabilities.
+
+Examples:
+
+Clinic:
+Treatment Comparison
+Practitioner Selector
+Consultation Eligibility
+
+Ecommerce:
+Variant Selector
+Cart
+Inventory Notice
+
+SaaS:
+Plan Comparison
+Feature Matrix
+Trial Signup
+
+Hospitality:
+Room Selector
+Date Availability
+
+These should extend the Component system rather than require a new frontend architecture for every vertical.
+
+---
+
+## 03.25 Vertical Components May Extend Universal Components
+
+Kablet should prefer reusable semantic primitives where possible.
+
+For example:
+
+Comparison
+
+may be universally useful.
+
+A clinic-specific Treatment Comparison may extend or configure that capability rather than requiring every vertical to reinvent comparison from zero.
+
+However, Kablet must not force genuinely different business semantics into overly generic abstractions merely for architectural purity.
+
+The Component system should support both:
+
+- universal primitives
+- specialized vertical Components
+
+---
+
+## 03.26 The Component Library Is a Capability Boundary
+
+The available Component library defines what Kablet Intelligence can currently express through the frontend.
+
+Adding a Component therefore expands Kablet's runtime capabilities.
+
+This means Component development is not merely UI work.
+
+It expands the action and experience vocabulary available to the intelligence layer.
+
+The Component registry should eventually allow Intelligence to understand:
+
+- what Components exist
+- what each Component means
+- what payload each requires
+- what Actions each can expose
+- what constraints apply
+- what contexts each supports
+
+---
+
+## 03.27 The Runtime Must Not Depend on a Specific Intelligence Provider
+
+The Experience Contract is the boundary between intelligence and frontend runtime.
+
+Any intelligence implementation capable of producing a valid contract should be usable.
+
+For example:
+
+Rules Engine
+        ↓
+
+LLM
+        ↓
+
+Experiment Policy
+        ↓
+
+Proprietary Model
+        ↓
+
+Hybrid Intelligence
+        ↓
+
+Experience Contract
+        ↓
+Runtime
+
+The frontend runtime must not require knowledge of which AI provider or reasoning mechanism produced the Experience Plan.
+
+---
+
+## 03.28 Intelligence Must Not Depend on Frontend Framework Internals
+
+Similarly, Intelligence should reason in Kablet semantic concepts rather than frontend framework details.
+
+Intelligence should think:
+
+"Show relevant proof before booking."
+
+Not:
+
+"Render React component X with CSS class Y inside DOM node Z."
+
+This preserves separation between:
+
+Experience reasoning
+
+and
+
+technical rendering implementation.
+
+Frontend technology may therefore evolve without requiring Kablet's intelligence model to be rebuilt around framework-specific concepts.
+
+---
+
+## 03.29 Experiences Must Be Observable
+
+Kablet must be capable of observing what Experience was actually presented.
+
+It is insufficient to record only what Intelligence intended to present.
+
+The system must eventually distinguish:
+
+Decision
+    ↓
+Planned Experience
+    ↓
+Validated Experience
+    ↓
+Rendered Experience
+    ↓
+Viewed / Interacted Experience
+    ↓
+Outcome
+
+This distinction is essential for debugging and learning.
+
+A Component cannot reasonably receive credit for an outcome if it was planned but never successfully rendered or viewed.
+
+---
+
+## 03.30 Component Exposure Must Be Measurable
+
+Meaningful Component exposure and interaction should be capable of producing Events.
+
+Examples may include:
+
+component.rendered
+component.viewed
+component.interacted
+
+The exact Event vocabulary belongs to Foundation 05.
+
+The Experience Contract must nevertheless support stable Component identity so Events can reference what was actually experienced.
+
+---
+
+## 03.31 Experience Identity Must Be Traceable
+
+An Experience should have stable identity sufficient to connect it to:
+
+- Visitor
+- Session
+- Decision
+- Contract version
+- Components
+- Business Truth references
+- Actions
+- Events
+- Outcomes
+- Experiments
+
+This does not imply that every tiny visual update must create an entirely new conceptual customer journey.
+
+It establishes that meaningful experience states must be traceable.
+
+---
+
+## 03.32 Component Instances Must Be Distinguishable
+
+A Component type and a Component instance are different concepts.
+
+For example:
+
+Component Type:
+Proof
+
+Component Instances:
+Proof #A — Sarah testimonial
+Proof #B — Google rating
+Proof #C — professional certification
+
+Kablet must be capable of knowing which specific instance was presented.
+
+This is required for:
+
+- attribution
+- experimentation
+- debugging
+- optimization
+- learning
+
+---
+
+## 03.33 Presentation Variants Must Be Distinguishable From Semantic Content
+
+Kablet may experiment with presentation without changing underlying Business Truth.
+
+For example:
+
+Same Offer
+Same Price
+Same Action
+
+but:
+
+Variant A:
+compact offer card
+
+Variant B:
+large offer presentation
+
+The system should distinguish:
+
+semantic content
+
+from
+
+presentation variant
+
+This enables Kablet to learn whether differences in presentation affect outcomes without incorrectly treating them as different business facts.
+
+---
+
+## 03.34 Conversation Is One Experience Capability, Not the Entire Product
+
+Kablet may use conversational interaction.
+
+Conversation may be important for:
+
+- understanding intent
+- answering questions
+- discovering constraints
+- resolving uncertainty
+- guiding decisions
+
+However, Kablet must not be architecturally reduced to a chatbot.
+
+Conversation is one mechanism through which Visitor State and Experience may evolve.
+
+The resulting frontend may contain rich visual and transactional Components.
+
+The foundational model is:
+
+Conversation can control and influence the interface.
+
+Conversation is not necessarily the interface.
+
+---
+
+## 03.35 Experiences Must Support Non-Conversational Interaction
+
+Visitors may communicate intent through:
+
+- text
+- clicks
+- selections
+- filters
+- form input
+- voice
+- behavior
+- direct Actions
+- other interaction modes
+
+The Experience Contract must not require a chat message before every intelligent adaptation.
+
+Kablet Intelligence should be capable of responding to relevant Visitor State changes regardless of how those changes were produced.
+
+---
+
+## 03.36 The Runtime Must Preserve Customer Continuity
+
+Dynamic adaptation must not make the interface feel randomly unstable.
+
+Kablet should preserve useful context where appropriate.
+
+For example, if a Visitor is comparing two Services, unrelated adaptation should not unexpectedly destroy the comparison state without reason.
+
+The intelligence layer may intentionally transition the Experience.
+
+The runtime must preserve enough continuity for the customer to understand and operate the interface.
+
+The exact UX rules belong to later product design.
+
+---
+
+## 03.37 Accessibility Is a Runtime Constraint
+
+Dynamic intelligence must not bypass accessibility requirements.
+
+Because Kablet controls customer-facing experiences dynamically, supported Components and renderers must be designed so that generated compositions can remain accessible.
+
+Intelligence should not be able to produce arbitrary structures that invalidate the runtime's accessibility guarantees.
+
+Detailed accessibility standards belong to Technical and Product specifications.
+
+The foundational principle is that accessibility is part of valid rendering, not an optional property of manually designed pages.
+
+---
+
+## 03.38 Experience Generation Must Respect Privacy Boundaries
+
+The Experience layer may use Visitor State to adapt what is shown.
+
+That does not authorize unrestricted exposure of internal or sensitive information.
+
+Experience generation must operate within:
+
+- Business Truth visibility rules
+- tenant boundaries
+- Visitor permissions
+- applicable privacy constraints
+- action authorization
+- data-use constraints
+
+The frontend must never become a mechanism through which internal Business Truth or another tenant's information is accidentally exposed.
+
+---
+
+## 03.39 The Experience Contract Is Not the Learning Brain
+
+The Experience Contract describes what Kablet decided to present.
+
+It does not itself determine whether the experience was effective.
+
+Learning occurs through the relationship:
+
+Visitor State
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Outcome
+
+The Experience Contract supplies the structured middle of that chain.
+
+Foundation 05 will define the Event & Outcome Spine.
+
+The Learning Brain will later use those records to improve future decisions.
+
+---
+
+# 03.A Canonical Experience Model
+
+The foundational model is:
+
+Business Truth
+      +
+Visitor State
+      +
+Available Components
+      +
+Available Actions
+      +
+Applicable Constraints
+      ↓
+Kablet Intelligence
+      ↓
+Decision
+      ↓
+Experience Plan
+      ↓
+Validation
+      ↓
+Experience
+      │
+      ├── Component Instance
+      ├── Component Instance
+      ├── Component Instance
+      └── Available Action
+      ↓
+Runtime
+      ↓
+Customer
+
+---
+
+# 03.B Component Model
+
+Conceptually:
+
+Component Type
+    │
+    ├── Semantic Purpose
+    ├── Payload Contract
+    ├── Supported Actions
+    ├── Constraints
+    ├── Supported Renderings
+    └── Version
+
+An Experience contains:
+
+Component Instances
+    │
+    ├── Type
+    ├── Identity
+    ├── Payload
+    ├── Business Truth References
+    ├── Generated Content
+    ├── Presentation Variant
+    ├── Actions
+    └── Position / Composition Context
+
+This model allows Kablet to know both:
+
+**what kind of capability was used**
+
+and
+
+**what specific thing the Visitor actually experienced.**
+
+---
+
+# 03.C Intelligence / Runtime Boundary
+
+The permanent boundary is:
+
+Kablet Intelligence
+        │
+        │ produces
+        ▼
+Decision + Experience Plan
+        │
+        ▼
+Contract Validation
+        │
+        ▼
+Authorized Runtime
+        │
+        ▼
+Rendered Experience
+
+Intelligence may determine:
+
+- what should be communicated
+- which Truth is relevant
+- which Components should appear
+- which Actions should be offered
+- how the Experience should evolve
+
+Runtime determines:
+
+- whether the contract is valid
+- whether references resolve
+- whether Actions are permitted
+- whether constraints are satisfied
+- how supported Components are safely rendered
+- how interaction is technically executed
+
+---
+
+# 03.D Core Experience Invariants
+
+1. Experience is contextual and is not Business Truth.
+2. Experience is customer-facing state, not necessarily a webpage.
+3. Intelligence controls the frontend through explicit contracts.
+4. Intelligence does not generate unrestricted executable frontend code.
+5. Components are controlled semantic capabilities.
+6. Component meaning is separate from visual appearance.
+7. Component payloads are validated.
+8. Components representing Business Truth preserve canonical references where meaningful.
+9. Generated content remains distinguishable from authoritative Truth.
+10. Composition is dynamic rather than a fixed funnel.
+11. Experiences may evolve incrementally.
+12. Actions and Components are separate concepts.
+13. Intelligence may surface only authorized Actions.
+14. Experiences must respect Business Rules and Brand constraints.
+15. Intelligence output is validated before runtime execution.
+16. Invalid intelligence output fails predictably.
+17. Experience and Component contracts are versioned.
+18. Component capabilities are extensible.
+19. Runtime does not depend on a specific intelligence provider.
+20. Intelligence does not depend on frontend framework internals.
+21. Planned, rendered, viewed, and interacted Experiences are distinguishable.
+22. Component instances are traceable.
+23. Semantic content and presentation variants are distinguishable.
+24. Conversation is a capability, not the entire Kablet product.
+25. Non-conversational interaction may also drive adaptation.
+26. Dynamic adaptation preserves reasonable customer continuity.
+27. Valid rendering must respect accessibility constraints.
+28. Experience generation respects ownership and privacy boundaries.
+29. Experience structure participates in Decision-to-Outcome lineage.
+
+---
+
+# 03.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- React components
+- frontend framework
+- CSS system
+- design system implementation
+- animation system
+- exact JSON schemas
+- structured-output technology
+- AI prompting
+- streaming implementation
+- browser state management
+- server rendering strategy
+- client rendering strategy
+- Component registry implementation
+- Component discovery implementation
+- exact Component library for MVP
+- exact Experience operations
+- accessibility implementation details
+- event schemas
+- experimentation algorithms
+
+Those decisions belong to Technical Architecture and implementation specifications.
+
+This section defines the permanent contract between Kablet Intelligence and the customer-facing runtime.
+
+---
+
+# 03.F Foundation Dependency
+
+Identity & Ownership established:
+
+**Whose system and data is this?**
+
+Business Truth established:
+
+**What is the Business-authorized truth?**
+
+Experience & Component Contract establishes:
+
+**How may Kablet Intelligence safely turn that truth into an adaptive customer-facing experience?**
+
+The next foundation defines the dynamic information Kablet maintains about the customer and the decisions produced from it:
+
+**04 — Visitor State & Decisions.**
