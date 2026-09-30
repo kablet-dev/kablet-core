@@ -6251,3 +6251,1347 @@ Event & Outcome Spine establishes:
 The next foundation defines the replaceable boundary through which reasoning systems operate on all of the above:
 
 **06 — Intelligence Interface.**
+
+---
+
+# 06. Intelligence Interface
+
+## 06.1 Purpose
+
+The Intelligence Interface defines the permanent boundary between Kablet's product state and the reasoning systems used to make customer-facing decisions.
+
+Its purpose is to allow Kablet to use intelligence without making the platform structurally dependent on:
+
+- one AI provider
+- one model
+- one prompt
+- one reasoning technique
+- one optimization algorithm
+- one experimentation strategy
+
+The Intelligence Interface receives authorized Kablet context and produces structured Kablet Decisions.
+
+The foundational relationship is:
+
+Kablet Context
+      ↓
+Intelligence Interface
+      ↓
+Reasoning / Policy
+      ↓
+Structured Decision
+      ↓
+Validation
+      ↓
+Experience / Action
+
+The intelligence implementation may evolve.
+
+The interface and Kablet-owned state remain stable.
+
+---
+
+## 06.2 Kablet Intelligence
+
+Kablet Intelligence is the platform capability responsible for deciding what Kablet should do next within an authorized customer interaction.
+
+It may use:
+
+- deterministic rules
+- large language models
+- classifiers
+- retrieval
+- experiment policies
+- optimization algorithms
+- recommendation systems
+- proprietary models
+- vertical-specific intelligence
+- business-specific learning
+- combinations of these systems
+
+Kablet Intelligence is therefore broader than any individual AI model.
+
+An external model may participate in Intelligence.
+
+It is not itself the Kablet Brain.
+
+---
+
+## 06.3 The Intelligence Interface Is a Platform Boundary
+
+Customer-facing runtime systems should interact with Intelligence through a defined Kablet contract.
+
+Conceptually:
+
+Runtime
+    ↓
+Intelligence Request
+    ↓
+Intelligence Interface
+    ↓
+Intelligence Implementation
+    ↓
+Intelligence Result
+    ↓
+Validation
+    ↓
+Runtime
+
+The runtime should not need to know:
+
+- which model was called
+- which provider hosted it
+- which prompt was used
+- whether rules participated
+- whether retrieval participated
+- whether an experiment influenced selection
+
+Those are intelligence implementation concerns.
+
+---
+
+## 06.4 Intelligence Input
+
+An Intelligence Request may include authorized context such as:
+
+- Organization context
+- Business context
+- Property / Location context
+- relevant Business Truth
+- applicable Business Rules
+- Visitor
+- Session
+- Visitor State
+- current Experience
+- relevant interaction history
+- available Components
+- available Actions
+- Experiment context
+- relevant prior learning
+- current objective
+- capability constraints
+
+Not every Decision requires every category of context.
+
+The Intelligence Interface should provide only the context required for the task.
+
+---
+
+## 06.5 Context Assembly
+
+Context Assembly is the process of constructing the relevant information required for an Intelligence Decision.
+
+Kablet should not assume that all Business Truth, all Visitor history, all Events, and all learned knowledge should be sent into every intelligence operation.
+
+Context Assembly determines what information is relevant and authorized for the current Decision.
+
+Conceptually:
+
+Business Truth ────────┐
+Visitor State ─────────┤
+Experience State ──────┤
+Recent Events ─────────┤
+Experiment Context ────┼──→ Context Assembly
+Prior Learning ────────┤
+Available Components ──┤
+Available Actions ─────┤
+Business Rules ────────┘
+                              ↓
+                    Intelligence Request
+
+The exact retrieval and context-selection implementation belongs to Technical Architecture.
+
+---
+
+## 06.6 Context Must Respect Ownership Boundaries
+
+Context Assembly must preserve tenant isolation.
+
+An Intelligence Request for Business A must not accidentally include private Business Truth, Visitor information, Decisions, Outcomes, or operational data belonging to Business B.
+
+Future vertical-level or network-level learning may contribute generalized knowledge according to explicit governance.
+
+Generalized learning does not authorize raw cross-tenant context leakage.
+
+---
+
+## 06.7 Context Must Respect Business Authority
+
+Intelligence receives Business Truth as authoritative input.
+
+It may reason over that Truth.
+
+It may not silently redefine it.
+
+For example:
+
+Business Truth:
+Price = 399 AED
+
+Intelligence may decide:
+
+"Show price now."
+
+It may not decide:
+
+"Change price to 299 AED."
+
+unless explicit delegated authority permits that class of change.
+
+The Intelligence Interface must therefore communicate both:
+
+what capabilities exist
+
+and
+
+what authority applies.
+
+---
+
+## 06.8 Available Components Are Intelligence Capabilities
+
+The Intelligence Interface must tell Intelligence what customer-facing Components it may use.
+
+Conceptually:
+
+Available Components:
+
+- Message
+- Service
+- Price
+- Proof
+- Comparison
+- FAQ
+- Booking
+
+Intelligence selects among those capabilities.
+
+It does not invent arbitrary executable frontend capabilities outside the Experience Contract.
+
+Adding a Component therefore expands the expressive vocabulary available to Intelligence.
+
+---
+
+## 06.9 Available Actions Are Intelligence Capabilities
+
+The Intelligence Interface must also provide the Actions currently available and authorized.
+
+Examples:
+
+- Book
+- Buy
+- Call
+- Message
+- Request Quote
+
+Intelligence may decide when an available Action is appropriate.
+
+It must not fabricate unavailable business capabilities.
+
+Available Action does not necessarily mean immediately executable.
+
+Eligibility, authorization, and runtime validation may still apply.
+
+---
+
+## 06.10 Intelligence Objective
+
+An Intelligence Request should have a meaningful objective or task.
+
+Examples:
+
+- understand Visitor intent
+- update Visitor State
+- determine next Experience strategy
+- resolve a concern
+- choose relevant Business Truth
+- recommend among Services
+- decide whether to surface an Action
+- select an Experiment strategy
+- generate permitted explanatory content
+
+Explicit objectives reduce ambiguity about what the Intelligence operation is expected to accomplish.
+
+---
+
+## 06.11 Intelligence May Perform Different Classes of Work
+
+Not all Intelligence operations are equivalent.
+
+Kablet may eventually distinguish capabilities such as:
+
+Interpretation
+
+Understanding signals and updating structured Visitor State.
+
+Retrieval
+
+Selecting relevant Business Truth or learned knowledge.
+
+Decision
+
+Choosing what should happen next.
+
+Generation
+
+Producing permitted customer-facing language.
+
+Optimization
+
+Selecting among strategies based on evidence or learned policy.
+
+Recommendation
+
+Suggesting changes to the Business or runtime strategy.
+
+These capabilities may use different models or systems.
+
+The Intelligence Interface must not assume that one giant model call must perform all intelligence functions forever.
+
+---
+
+## 06.12 Intelligence Output Must Be Structured
+
+Meaningful Intelligence output must not depend exclusively on free-form natural-language text.
+
+Customer-facing language may be natural language.
+
+Operational decisions must be represented through structured Kablet contracts.
+
+Conceptually:
+
+Intelligence Result
+├── Decision
+├── State Updates
+├── Experience Plan
+├── Selected Business Truth
+├── Selected Components
+├── Proposed Actions
+├── Generated Content
+└── Relevant Metadata
+
+The exact schema belongs to Technical Architecture.
+
+The foundational requirement is that software can validate and interpret the result deterministically.
+
+---
+
+## 06.13 Decision Output
+
+When Intelligence makes a meaningful customer-facing choice, it should produce or contribute to a canonical Decision as defined in Foundation 04.
+
+The Decision should preserve sufficient information to understand:
+
+- objective
+- relevant State
+- selected strategy
+- relevant Truth
+- selected capabilities
+- Experiment context
+- resulting Experience Plan
+
+The Decision becomes Kablet-owned history after acceptance.
+
+---
+
+## 06.14 State Updates Are Proposed Before Acceptance
+
+Intelligence may infer changes to Visitor State.
+
+For example:
+
+Current State:
+Intent uncertain
+
+New Signal:
+"I want to book Botox next week."
+
+Proposed State Update:
+Intent = book Service
+Timing constraint = next week
+
+Intelligence proposes the update.
+
+Kablet validates and persists accepted State according to its contracts.
+
+This preserves the principle:
+
+**Intelligence proposes. Kablet validates.**
+
+---
+
+## 06.15 Experience Plans Are Proposed Before Runtime
+
+Intelligence may produce an Experience Plan.
+
+The plan does not bypass the Experience Contract.
+
+It must be validated for:
+
+- supported Components
+- valid payloads
+- Business Truth references
+- available Actions
+- Business Rules
+- ownership
+- permissions
+- contract version
+
+Only a valid Experience Plan may become runtime behavior.
+
+---
+
+## 06.16 Proposed Actions Are Not Automatically Executed
+
+Intelligence may propose that an Action should occur or be offered.
+
+For example:
+
+Offer booking.
+
+Start checkout.
+
+Request lead information.
+
+Apply authorized discount.
+
+A proposed Action does not itself constitute execution.
+
+Conceptually:
+
+Intelligence
+    ↓
+Proposed Action
+    ↓
+Authorization
+    ↓
+Validation
+    ↓
+Execution
+    ↓
+Verified Result
+
+This boundary becomes increasingly important as Kablet gains more autonomous capabilities.
+
+---
+
+## 06.17 Consequential Actions Require Explicit Capability Boundaries
+
+Actions capable of producing consequential business effects must operate through defined capabilities.
+
+Examples include:
+
+- creating bookings
+- creating orders
+- charging money
+- applying discounts
+- changing Business Truth
+- creating CRM records
+- sending communications
+- cancelling transactions
+
+Intelligence must not obtain unrestricted infrastructure access merely because it can reason about these actions.
+
+The permanent rule is:
+
+**Reasoning authority and execution authority are separate.**
+
+---
+
+## 06.18 Intelligence Must Operate Under Constraints
+
+An Intelligence Request may include constraints derived from:
+
+- Business Rules
+- Business Truth
+- delegated authority
+- Visitor eligibility
+- privacy requirements
+- Component capabilities
+- Action capabilities
+- Experiment policy
+- platform policy
+- runtime state
+
+Intelligence is an optimizer inside these boundaries.
+
+It is not authorized to remove the boundaries in pursuit of conversion.
+
+---
+
+## 06.19 Conversion Optimization Is Constrained Optimization
+
+Kablet exists to improve business outcomes.
+
+That objective does not supersede:
+
+- Business Truth
+- Business Rules
+- customer authorization
+- delegated authority
+- privacy
+- platform constraints
+- valid Action boundaries
+
+The correct conceptual objective is therefore not:
+
+"maximize conversion at any cost."
+
+It is:
+
+**Improve authorized business outcomes within applicable constraints.**
+
+---
+
+## 06.20 Intelligence Output Must Be Validated
+
+No Intelligence output becomes authoritative merely because an AI or optimization system produced it.
+
+Validation may include:
+
+- structural validation
+- contract validation
+- ownership validation
+- reference validation
+- capability validation
+- authorization validation
+- Business Rule validation
+- Action validation
+- safety validation where applicable
+
+The exact validation pipeline belongs to Technical Architecture.
+
+---
+
+## 06.21 Deterministic Validation Should Not Be Delegated Back to the Model
+
+Where Kablet can deterministically validate something, it should not rely exclusively on the reasoning model to validate itself.
+
+For example:
+
+Does Service ID exist?
+
+Does it belong to this Business?
+
+Is this Component supported?
+
+Is this Action authorized?
+
+Does this Offer exist?
+
+These questions should be enforced by Kablet software where practical.
+
+The model may reason.
+
+Kablet enforces contracts.
+
+---
+
+## 06.22 Invalid Output Must Fail Predictably
+
+Intelligence may occasionally produce:
+
+- malformed structure
+- unsupported references
+- invalid Components
+- unauthorized Actions
+- contradictory State updates
+- unavailable Business Truth
+- incomplete output
+
+Kablet must assume these failures can occur.
+
+The Intelligence Interface must support predictable failure handling rather than allowing malformed output to reach customers or business systems.
+
+---
+
+## 06.23 Fallback Behavior Is Part of the Interface
+
+A failed Intelligence operation must not automatically destroy the customer experience.
+
+Fallback strategies may eventually include:
+
+- retry
+- alternate model
+- deterministic rule
+- reduced-capability Experience
+- last valid Experience
+- safe default
+- human escalation
+- temporary static Business Truth presentation
+
+The exact policy belongs to Technical Architecture.
+
+The foundational requirement is that failure is an expected system state.
+
+---
+
+## 06.24 Intelligence Providers Must Be Replaceable
+
+Kablet must not structurally depend on one external model provider.
+
+A future implementation may use:
+
+Provider A today.
+
+Provider B tomorrow.
+
+A proprietary Kablet model later.
+
+Different providers simultaneously.
+
+The Intelligence Interface isolates the rest of Kablet from those changes.
+
+Provider-specific capabilities may be used internally.
+
+They must not redefine the Kablet product model.
+
+---
+
+## 06.25 Models Must Be Replaceable Independently
+
+Even within one provider, Kablet may use different models for different tasks.
+
+For example:
+
+Fast Model:
+intent classification
+
+Reasoning Model:
+complex Decision
+
+Generation Model:
+customer-facing language
+
+Specialized Model:
+vertical recommendation
+
+Kablet should be capable of routing tasks according to capability, cost, latency, quality, or policy.
+
+The foundation does not require one universal model.
+
+---
+
+## 06.26 Prompts Are Implementation, Not Product Contracts
+
+Prompts may be important implementation assets.
+
+They are not the canonical definition of Kablet's product behavior.
+
+If the only place a Business Rule, Decision contract, or Component definition exists is inside a prompt, Kablet's architecture is too dependent on model behavior.
+
+Permanent product constraints belong in Kablet contracts and software-controlled state.
+
+Prompts instruct reasoning within those boundaries.
+
+---
+
+## 06.27 Model Conversation History Is Not Canonical Visitor State
+
+An AI provider may maintain conversational context for operational convenience.
+
+That context must not become the sole source of Visitor State.
+
+Kablet owns structured Visitor State.
+
+If a model conversation disappears, Kablet should still retain the customer state required by its product model, subject to applicable retention rules.
+
+---
+
+## 06.28 Model Output Is Not Canonical Decision History
+
+Similarly, raw model responses are not a substitute for canonical Decisions.
+
+Once Kablet accepts a meaningful Decision:
+
+- it receives Kablet identity
+- it participates in lineage
+- it can connect to Experience
+- it can connect to Events
+- it can connect to Outcomes
+
+The provider response may be retained where useful and permitted.
+
+The canonical Decision belongs to Kablet.
+
+---
+
+## 06.29 Intelligence Configuration Must Be Attributable
+
+Where useful for evaluation, a Decision should be attributable to the Intelligence configuration that produced it.
+
+This may eventually include:
+
+- policy version
+- model family
+- model version
+- prompt/configuration version
+- retrieval strategy
+- experiment policy
+- decision engine version
+
+This allows Kablet to evaluate whether changes to Intelligence improve outcomes.
+
+The exact metadata belongs to Technical Architecture.
+
+---
+
+## 06.30 Intelligence Must Be Versionable
+
+Kablet's intelligence behavior will evolve.
+
+Changes may affect:
+
+- interpretation
+- context selection
+- Decision policy
+- prompts
+- models
+- optimization logic
+- learned strategies
+
+Historical Decisions must remain interpretable according to the Intelligence configuration active when they were produced.
+
+Kablet should therefore support explicit versioning of meaningful Intelligence configurations.
+
+---
+
+## 06.31 Intelligence Must Be Observable
+
+Kablet must be capable of observing meaningful Intelligence operations.
+
+Relevant observability may include:
+
+- request identity
+- objective
+- input context references
+- Intelligence configuration
+- latency
+- success or failure
+- Decision produced
+- validation result
+- fallback used
+- cost where relevant
+
+Operational observability must remain distinguishable from canonical business Events.
+
+Both may be connected where useful.
+
+---
+
+## 06.32 Intelligence Cost Is an Operational Concern
+
+AI reasoning may have variable computational cost.
+
+Kablet should eventually be capable of understanding cost by:
+
+- operation
+- model
+- Business
+- Session
+- Decision type
+- traffic volume
+
+Cost optimization must not require changing the permanent Intelligence Interface.
+
+The platform should be capable of routing routine work to cheaper intelligence and reserving expensive reasoning for cases where it creates sufficient value.
+
+Exact routing policy belongs to Technical Architecture.
+
+---
+
+## 06.33 Intelligence Latency Is a Runtime Constraint
+
+Customer-facing Intelligence operates inside an interactive product.
+
+A theoretically excellent Decision that arrives too slowly may produce a poor Experience.
+
+Kablet should therefore support intelligence architectures that consider:
+
+- latency
+- streaming
+- caching
+- precomputation
+- deterministic shortcuts
+- asynchronous work
+- model routing
+
+These are implementation concerns.
+
+The permanent interface must permit them without changing the product model.
+
+---
+
+## 06.34 Retrieval Is Not Authority
+
+Kablet may retrieve information from:
+
+- Business Truth
+- prior Decisions
+- prior Outcomes
+- vertical knowledge
+- generalized learning
+- external sources
+
+Retrieval makes information available to Intelligence.
+
+It does not automatically make retrieved information authoritative.
+
+Business Truth authority, source provenance, ownership, and governance rules continue to apply.
+
+---
+
+## 06.35 Prior Learning Is Input, Not Absolute Truth
+
+The Learning Brain may eventually provide strategies such as:
+
+"Visitors with high trust concern often respond well to Proof before Pricing."
+
+This may inform a Decision.
+
+It must not become an immutable rule merely because historical data suggested it.
+
+Learning may be:
+
+- uncertain
+- Business-specific
+- vertical-specific
+- time-sensitive
+- experimentally validated
+- observational
+- outdated
+
+The Intelligence Interface should preserve enough metadata for Decision systems to interpret learned knowledge appropriately.
+
+---
+
+## 06.36 Business-Level Learning Must Remain Identifiable
+
+Learning derived primarily from one Business should remain attributable to that Business context.
+
+For example:
+
+Business A:
+Proof-before-price performs strongly.
+
+That does not automatically establish the same strategy for Business B.
+
+The Intelligence Interface should be capable of receiving Business-specific learning separately from broader generalized learning.
+
+---
+
+## 06.37 Vertical Learning Must Remain Distinguishable
+
+Future vertical intelligence may provide patterns derived across similar Businesses.
+
+For example:
+
+Aesthetic clinics:
+Practitioner proof often matters when treatment outcome concern is high.
+
+Such learning may influence Decisions where governance permits.
+
+It must remain distinguishable from:
+
+- Business-specific learning
+- universal platform rules
+- raw tenant data
+
+---
+
+## 06.38 Network-Level Learning Must Remain Distinguishable
+
+Future Kablet intelligence may derive generalized commercial principles across verticals.
+
+For example:
+
+High uncertainty may increase the value of evidence before commitment.
+
+These principles should remain identifiable as generalized learned strategies rather than being confused with Business Truth.
+
+---
+
+## 06.39 Learning Must Not Directly Rewrite Business Truth
+
+Observed performance may suggest changes to:
+
+- pricing
+- offers
+- descriptions
+- FAQs
+- Services
+- policies
+
+Learning may generate recommendations.
+
+It must not silently rewrite authoritative Business Truth unless explicit delegated authority permits that class of modification.
+
+The Business remains the authority over its Truth.
+
+---
+
+## 06.40 Learning May Change Decision Policy
+
+Unlike Business Truth, Decision policy is a Kablet-controlled optimization domain.
+
+Where evidence supports it, Kablet may change how it chooses among authorized strategies.
+
+For example:
+
+Earlier policy:
+Show pricing before proof.
+
+Learned policy:
+For high trust concern, show proof before pricing.
+
+This is precisely where Kablet's intelligence should become more capable over time.
+
+The change must remain attributable and measurable.
+
+---
+
+## 06.41 Experimentation May Override Normal Decision Policy
+
+Controlled experiments may intentionally choose a strategy different from the current preferred policy.
+
+Conceptually:
+
+Normal Policy
+    ↓
+Experiment Assignment
+    ↓
+Treatment Policy
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Outcome
+
+Experiment context must remain attached to the resulting Decision and Outcome lineage.
+
+This allows Kablet to discover whether an alternative strategy performs better.
+
+---
+
+## 06.42 Intelligence Must Support Exploration and Exploitation
+
+Long-term optimization may require balancing:
+
+**Exploitation**
+
+Use the strategy currently believed to perform best.
+
+and
+
+**Exploration**
+
+Test plausible alternatives to discover better strategies.
+
+The Intelligence Interface must not assume that every Decision always uses the currently preferred strategy.
+
+Detailed optimization algorithms belong to future learning architecture.
+
+---
+
+## 06.43 Intelligence Must Support Business Overrides
+
+The Business may impose constraints or preferences on Kablet Intelligence.
+
+Examples:
+
+- never show price before consultation
+- always disclose a required policy
+- do not use a particular Offer
+- prioritize a specific Business objective
+- disable a particular Action
+
+Such overrides become part of the authorized Decision context.
+
+Kablet optimization occurs within them.
+
+---
+
+## 06.44 Human Review May Participate in Intelligence
+
+Some future Decisions or Business recommendations may require human review.
+
+The Intelligence Interface should not assume every proposed result must be automatically executed.
+
+A possible lifecycle is:
+
+Intelligence
+    ↓
+Recommendation
+    ↓
+Human Review
+    ↓
+Approval
+    ↓
+Execution
+
+Human review is therefore compatible with Kablet's architecture rather than an exception to it.
+
+---
+
+## 06.45 Intelligence Must Support Progressive Autonomy
+
+Kablet may begin with relatively constrained intelligence.
+
+Over time, businesses may permit greater autonomy.
+
+Conceptually:
+
+Level 1:
+Recommend only
+
+Level 2:
+Control Experience composition
+
+Level 3:
+Select among approved Offers
+
+Level 4:
+Perform constrained commercial Actions
+
+Level 5:
+Optimize broader customer-facing strategy within delegated authority
+
+The exact autonomy model is not defined here.
+
+The foundation requires that increased autonomy result from explicit capability and authority expansion rather than architectural bypass.
+
+---
+
+## 06.46 Intelligence Must Remain Auditable
+
+For meaningful Decisions, Kablet should eventually be able to answer:
+
+- What was the objective?
+- What State existed?
+- What Business Truth was relevant?
+- What capabilities were available?
+- What constraints applied?
+- Which Intelligence configuration acted?
+- What Decision was produced?
+- Was it validated?
+- What Experience resulted?
+- What Outcome followed?
+
+This auditability is essential for:
+
+- debugging
+- experimentation
+- business trust
+- optimization
+- future learning
+
+---
+
+## 06.47 Intelligence Must Not Require Storing Hidden Reasoning
+
+Auditability does not require Kablet to persist unrestricted internal chain-of-thought from AI models.
+
+Kablet's durable intelligence record should rely on structured artifacts such as:
+
+- inputs
+- relevant context references
+- State
+- objective
+- Decision
+- strategy
+- Experience Plan
+- validation
+- configuration metadata
+- Outcome
+
+These provide operational and commercial traceability without making provider-specific hidden reasoning the foundation of Kablet's data model.
+
+---
+
+## 06.48 Intelligence Interface Must Support Future Proprietary Intelligence
+
+Kablet's long-term architecture must permit external models to become only one component of a larger proprietary intelligence system.
+
+Future Intelligence may combine:
+
+Business-specific learning
+        +
+Vertical intelligence
+        +
+Network-level strategies
+        +
+Experiment history
+        +
+Outcome models
+        +
+Rules
+        +
+External models
+        +
+Proprietary models
+        ↓
+Kablet Decision Engine
+
+The rest of the platform should not need to be rebuilt when this evolution occurs.
+
+This is one of the primary purposes of the Intelligence Interface.
+
+---
+
+# 06.A Canonical Intelligence Input
+
+Conceptually:
+
+Intelligence Request
+│
+├── Request Identity
+├── Objective
+├── Ownership Context
+│   ├── Organization
+│   ├── Business
+│   └── Property / Location
+├── Visitor Context
+│   ├── Visitor
+│   ├── Session
+│   └── Visitor State
+├── Business Context
+│   ├── Relevant Business Truth
+│   └── Business Rules
+├── Experience Context
+│   ├── Current Experience
+│   ├── Available Components
+│   └── Available Actions
+├── Experiment Context
+├── Relevant Prior Learning
+├── Capability Constraints
+└── Intelligence Contract Version
+
+Only relevant and authorized context should be included.
+
+---
+
+# 06.B Canonical Intelligence Output
+
+Conceptually:
+
+Intelligence Result
+│
+├── Result Identity
+├── Request Identity
+├── Proposed State Updates
+├── Decision
+│   ├── Objective
+│   ├── Strategy
+│   ├── Relevant Inputs
+│   └── Selected Capabilities
+├── Experience Plan
+│   ├── Selected Truth
+│   ├── Components
+│   ├── Composition
+│   └── Generated Content
+├── Proposed Actions
+├── Intelligence Metadata
+└── Contract Version
+
+The result then passes through:
+
+Validation
+    ↓
+Accepted State Changes
+    ↓
+Canonical Decision
+    ↓
+Validated Experience
+    ↓
+Authorized Actions
+
+---
+
+# 06.C Canonical Intelligence Boundary
+
+The permanent boundary is:
+
+KABLET-OWNED STATE
+│
+├── Business Truth
+├── Visitor State
+├── Decision History
+├── Experience History
+├── Event History
+├── Outcome History
+├── Experiment Context
+└── Learned Strategies
+        ↓
+CONTEXT ASSEMBLY
+        ↓
+INTELLIGENCE INTERFACE
+        ↓
+REASONING SYSTEMS
+│
+├── Rules
+├── LLMs
+├── Retrieval
+├── Experiments
+├── Optimizers
+├── Proprietary Models
+└── Future Intelligence
+        ↓
+STRUCTURED RESULT
+        ↓
+KABLET VALIDATION
+        ↓
+CANONICAL DECISION / EXPERIENCE / ACTION
+
+The reasoning systems are replaceable.
+
+Kablet-owned state and contracts are not delegated to them.
+
+---
+
+# 06.D Intelligence Failure Model
+
+The Intelligence Interface must assume failure is possible.
+
+Conceptually:
+
+Intelligence Request
+        ↓
+Reasoning Attempt
+        ↓
+┌──────────────────────┐
+│ Valid Result?        │
+└──────────┬───────────┘
+           │
+     Yes   │   No
+      ↓    │    ↓
+Validation │  Retry / Alternate
+      ↓    │    ↓
+Runtime    │  Safe Fallback
+           │    ↓
+           └→ Runtime Continues
+
+Failure handling must preserve:
+
+- valid Business Truth
+- current Session integrity
+- last valid Experience where appropriate
+- Action correctness
+- Event lineage
+
+An intelligence failure must not become corrupted business state.
+
+---
+
+# 06.E Core Intelligence Interface Invariants
+
+1. Kablet Intelligence is broader than any individual AI model.
+2. Intelligence operates through a Kablet-owned interface.
+3. Runtime does not depend directly on a particular intelligence provider.
+4. Intelligence receives only relevant and authorized context.
+5. Context Assembly preserves ownership boundaries.
+6. Business Truth remains authoritative.
+7. Available Components constrain what Intelligence can present.
+8. Available Actions constrain what Intelligence can propose.
+9. Intelligence operations have explicit objectives.
+10. Different intelligence tasks may use different reasoning systems.
+11. Operational Intelligence output is structured.
+12. State updates are proposed before acceptance.
+13. Experience Plans are proposed before runtime execution.
+14. Proposed Actions are separate from Action execution.
+15. Reasoning authority and execution authority are separate.
+16. Intelligence optimizes inside explicit constraints.
+17. Conversion optimization does not override Business authority or platform constraints.
+18. Intelligence output is validated.
+19. Deterministic constraints are enforced by Kablet software where practical.
+20. Invalid output fails predictably.
+21. Fallback behavior is part of the Intelligence boundary.
+22. Providers are replaceable.
+23. Models are replaceable.
+24. Prompts are implementation assets, not foundational product contracts.
+25. Model conversation history is not canonical Visitor State.
+26. Raw model output is not canonical Decision history.
+27. Intelligence configurations are attributable and versionable.
+28. Intelligence is observable.
+29. Cost and latency may influence implementation without changing the product contract.
+30. Retrieval does not create authority.
+31. Prior learning is evidence, not absolute truth.
+32. Business, vertical, and network learning remain distinguishable.
+33. Learning does not silently rewrite Business Truth.
+34. Learning may improve Decision policy.
+35. Experiment policy may intentionally alter normal Decision policy.
+36. Future optimization may balance exploration and exploitation.
+37. Business constraints and overrides participate in Decision context.
+38. Human review is compatible with the Intelligence architecture.
+39. Autonomy expands through explicit authority and capabilities.
+40. Meaningful Intelligence behavior is auditable through structured artifacts.
+41. Hidden model reasoning is not required as canonical Kablet data.
+42. The Interface supports future proprietary Kablet intelligence.
+
+---
+
+# 06.F Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- AI provider
+- model names
+- model routing implementation
+- prompt templates
+- system prompts
+- token budgets
+- structured-output library
+- agent framework
+- orchestration framework
+- retrieval technology
+- vector database
+- embedding model
+- reranking model
+- cache
+- model gateway
+- model fallback order
+- proprietary ML architecture
+- training pipeline
+- fine-tuning strategy
+- reinforcement learning
+- bandit algorithm
+- experiment algorithm
+- confidence formulas
+- exact Intelligence Request schema
+- exact Intelligence Result schema
+- latency thresholds
+- cost thresholds
+
+Those decisions belong to Technical Architecture and future Intelligence specifications.
+
+This section defines the permanent interface within which those technologies operate.
+
+---
+
+# 06.G Foundation Dependency
+
+Identity & Ownership established:
+
+**Whose system and data is this?**
+
+Business Truth established:
+
+**What is authorized and true?**
+
+Experience & Component Contract established:
+
+**What may Kablet present and how may Intelligence control the frontend?**
+
+Visitor State & Decisions established:
+
+**What does Kablet understand and what did it choose?**
+
+Event & Outcome Spine established:
+
+**What actually happened and what resulted?**
+
+Intelligence Interface establishes:
+
+**How may replaceable reasoning systems use Kablet-owned context to produce validated Kablet Decisions?**
+
+Together, Foundations 01 through 06 form the permanent conceptual core of Kablet.
