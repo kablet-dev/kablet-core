@@ -1316,3 +1316,1100 @@ Identity & Ownership establishes the ownership context required by every remaini
 The next foundation defines what exists inside that context:
 
 **02 — Business Truth.**
+
+---
+
+# 02. Business Truth
+
+## 02.1 Purpose
+
+Business Truth is Kablet's canonical structured representation of what a Business says is true about itself, what it offers, how it operates, and what customers are permitted to do.
+
+Business Truth provides the trusted commercial knowledge upon which Kablet Intelligence operates.
+
+Kablet may decide how Business Truth is selected, explained, composed, sequenced, and presented.
+
+Kablet does not independently redefine authoritative Business Truth.
+
+The foundational boundary is:
+
+**The Business controls WHAT is true.**
+
+**Kablet controls HOW that truth is used to create and optimize the customer experience.**
+
+---
+
+## 02.2 The Business Is the Authority Over Business Truth
+
+The Business, acting through authorized Users and explicitly authorized systems, is the ultimate authority over its Business Truth.
+
+This includes authoritative decisions such as:
+
+- what services exist
+- what products exist
+- what prices apply
+- what offers exist
+- which locations operate
+- which people represent the Business
+- what policies apply
+- what availability exists
+- what actions customers may perform
+- what commercial constraints apply
+
+Kablet may assist with creating, importing, organizing, validating, extracting, or maintaining this information.
+
+Assistance does not transfer authority from the Business to Kablet.
+
+Kablet must not silently invent or materially change authoritative Business Truth merely because the system predicts that doing so could improve conversion.
+
+For example, Kablet may decide that a price should be presented earlier in an experience.
+
+It may not independently change that price from 399 AED to 299 AED.
+
+---
+
+## 02.3 Delegated Authority
+
+The Business may explicitly delegate limited authority to Kablet for defined classes of change.
+
+For example, a Business may authorize Kablet to:
+
+- select among approved offers
+- apply an approved discount within a defined range
+- change availability according to an authorized external system
+- activate or deactivate predefined promotions under specified conditions
+- perform another explicitly permitted commercial action
+
+Delegation must be intentional and constrained.
+
+Conceptually:
+
+Business Authority
+        ↓
+Delegated Capability
+        ↓
+Defined Constraints
+        ↓
+Kablet Decision
+        ↓
+Validation
+        ↓
+Authorized Change / Action
+
+Delegated authority must never be inferred merely because Kablet technically has the ability to perform an action.
+
+The permanent rule is:
+
+**Capability does not imply authority.**
+
+Where authority has not been delegated, Kablet may recommend a change but must not silently make the authoritative change.
+
+---
+
+## 02.4 Business Truth Is Not Website Content
+
+Business Truth must not be modeled merely as pages, text blocks, or website content.
+
+A traditional website might contain:
+
+"Laser Hair Removal starts from 399 AED."
+
+Kablet should be capable of understanding the underlying commercial structure:
+
+Service
+    name: Laser Hair Removal
+
+Price
+    amount: 399
+    currency: AED
+    qualification: starting_from
+
+The sentence shown to a visitor is an Experience representation.
+
+The underlying structured information is Business Truth.
+
+This separation allows the same truth to support many different customer experiences without duplicating or rewriting the canonical business information.
+
+---
+
+## 02.5 Canonical Business Truth Model
+
+Business Truth may include the following foundational domains:
+
+Business Truth
+│
+├── Brand
+├── Services
+├── Products
+├── Pricing
+├── Offers
+├── People
+├── Proof
+├── FAQs
+├── Policies
+├── Media
+├── Locations
+├── Availability
+├── Actions
+└── Business Rules
+
+These domains describe the business.
+
+They do not prescribe how the customer experience must be laid out.
+
+The model must be extensible so future vertical-specific truth can be added without redefining the core concept of Business Truth.
+
+---
+
+## 02.6 Brand
+
+Brand represents the authorized identity and presentation constraints of the Business.
+
+Brand may include:
+
+- business name
+- public display name
+- logo
+- colors
+- typography guidance
+- tone
+- voice
+- approved terminology
+- visual assets
+- brand rules
+- communication constraints
+
+Brand information provides boundaries within which Kablet may generate customer-facing experiences.
+
+Brand does not define a fixed website layout.
+
+---
+
+## 02.7 Services
+
+A Service represents something the Business performs or provides for a customer.
+
+A Service may contain concepts such as:
+
+- name
+- description
+- category
+- benefits
+- price relationships
+- duration
+- eligibility
+- requirements
+- locations
+- providers
+- availability
+- related proof
+- related FAQs
+- related policies
+- permitted actions
+
+Services must be represented as business entities rather than only as pieces of marketing copy.
+
+This allows Kablet to reason about them and compose different experiences around the same canonical Service.
+
+---
+
+## 02.8 Products
+
+A Product represents something the Business offers as a purchasable or selectable item.
+
+A Product may contain concepts such as:
+
+- name
+- description
+- variants
+- attributes
+- price relationships
+- inventory state
+- availability
+- media
+- related offers
+- related proof
+- policies
+- permitted actions
+
+Product representation must remain sufficiently generic to support different commerce models without making ecommerce assumptions part of every Business.
+
+---
+
+## 02.9 Pricing
+
+Pricing represents the Business-authorized commercial terms associated with Products, Services, or other purchasable outcomes.
+
+Pricing may eventually support concepts such as:
+
+- fixed price
+- starting price
+- price range
+- recurring price
+- promotional price
+- package price
+- currency
+- taxes
+- conditions
+- effective periods
+- location-specific pricing
+- customer-specific authorized pricing
+
+Pricing is authoritative Business Truth.
+
+Kablet may determine how and when authorized pricing is presented.
+
+Kablet may not independently alter authoritative pricing unless explicitly delegated authority permits it.
+
+---
+
+## 02.10 Offers
+
+An Offer represents an authorized commercial proposition made available by the Business.
+
+An Offer may include:
+
+- discount
+- bundle
+- package
+- trial
+- promotion
+- incentive
+- eligibility
+- conditions
+- start time
+- expiration
+- applicable Products or Services
+- applicable Locations
+- permitted actions
+
+An Offer must exist as Business Truth before Kablet presents it as an active commercial proposition, unless the Business has explicitly delegated authority to create that class of offer.
+
+Kablet may intelligently decide which authorized Offer is most relevant to a particular visitor.
+
+---
+
+## 02.11 People
+
+People represents individuals the Business has authorized Kablet to represent within customer-facing experiences.
+
+Examples may include:
+
+- practitioners
+- consultants
+- sales representatives
+- instructors
+- specialists
+- team members
+
+People may contain:
+
+- name
+- role
+- biography
+- credentials
+- specialties
+- associated Services
+- associated Locations
+- availability
+- approved media
+- approved proof
+
+Kablet must not fabricate credentials, roles, qualifications, or associations.
+
+---
+
+## 02.12 Proof
+
+Proof represents Business-authorized evidence that may support customer confidence or decision-making.
+
+Examples may include:
+
+- reviews
+- testimonials
+- ratings
+- certifications
+- credentials
+- awards
+- case studies
+- results
+- customer counts
+- business statistics
+- third-party recognition
+
+Proof should preserve sufficient provenance to understand what it represents and where it came from.
+
+Kablet may decide when particular Proof is useful in an experience.
+
+It must not manufacture Proof.
+
+---
+
+## 02.13 FAQs
+
+FAQs represent Business-approved answers to recurring customer questions.
+
+An FAQ may contain:
+
+- question
+- approved answer
+- related Products
+- related Services
+- related Locations
+- related Policies
+- applicability conditions
+
+FAQs are a source of Business Truth.
+
+They do not require Kablet to present a traditional FAQ page.
+
+Kablet may surface the relevant information contextually when a visitor's intent or concern makes it useful.
+
+---
+
+## 02.14 Policies
+
+Policies represent Business-authorized operational or commercial rules communicated to or affecting customers.
+
+Examples may include:
+
+- cancellation
+- refund
+- return
+- shipping
+- rescheduling
+- payment
+- privacy
+- eligibility
+- warranty
+- service conditions
+
+Policies must remain distinguishable from generated explanations of those policies.
+
+Kablet may simplify or contextualize a policy for an experience where permitted, but the canonical policy remains the authoritative source.
+
+---
+
+## 02.15 Media
+
+Media represents Business-authorized assets available to Kablet.
+
+Examples include:
+
+- images
+- video
+- documents
+- logos
+- demonstrations
+- product photography
+- before-and-after material
+- downloadable resources
+
+Media should retain ownership context, provenance, metadata, and applicable usage constraints where required.
+
+Kablet may select and compose appropriate Media within customer experiences.
+
+---
+
+## 02.16 Locations
+
+Business Truth may describe operational Locations defined by the Identity & Ownership foundation.
+
+Location-specific truth may include:
+
+- address
+- contact information
+- operating hours
+- Services
+- Products
+- People
+- Pricing
+- Offers
+- Availability
+- Policies
+- Actions
+
+Location-specific truth must not require duplication of all Business-level truth.
+
+Kablet should be capable of representing inherited truth together with intentional location-specific differences.
+
+---
+
+## 02.17 Availability
+
+Availability represents whether and under what conditions a Business capability can currently be offered or performed.
+
+Availability may apply to:
+
+- Services
+- Products
+- People
+- Locations
+- appointments
+- inventory
+- delivery
+- another operational capability
+
+Availability may be dynamic.
+
+Its authoritative source may therefore be an authorized external operational system rather than manual Business entry.
+
+Kablet must distinguish current authoritative availability from generated assumptions.
+
+If reliable availability is unknown, Kablet must not represent guessed availability as established truth.
+
+---
+
+## 02.18 Actions
+
+An Action represents something the Business authorizes a customer to do.
+
+Examples may include:
+
+- book
+- buy
+- call
+- message
+- request a quote
+- submit a lead
+- schedule a consultation
+- start checkout
+- request information
+- apply
+- subscribe
+
+An Action may contain:
+
+- type
+- target
+- applicable entity
+- eligibility
+- constraints
+- required information
+- execution capability
+- expected outcome
+
+Actions define what customer-facing experiences are permitted to offer.
+
+The Experience layer decides when and how an authorized Action should be surfaced.
+
+The Action & Transaction systems eventually determine how it is executed.
+
+---
+
+## 02.19 Business Rules
+
+Business Rules represent explicit constraints or requirements imposed by the Business.
+
+Examples may include:
+
+- Service A is available only at Location X
+- Product B cannot be shipped to Region Y
+- Offer C applies only to new customers
+- Consultation is required before Treatment D
+- discounts may not exceed 10%
+- bookings require a deposit
+
+Business Rules constrain Kablet's intelligence.
+
+Optimization must occur inside these rules rather than silently violating them.
+
+---
+
+## 02.20 Source Data Is Not Automatically Business Truth
+
+Kablet may receive information from many sources.
+
+Examples include:
+
+Manual Entry
+Website
+Commerce Platform
+CRM
+Booking System
+POS
+ERP
+CSV
+API
+External Database
+AI Extraction
+
+Information obtained from a source is not automatically canonical Business Truth merely because Kablet can access it.
+
+Conceptually:
+
+Source Data
+    ↓
+Ingestion
+    ↓
+Normalization
+    ↓
+Validation / Resolution
+    ↓
+Business Truth
+
+The exact ingestion architecture will be defined later.
+
+The foundational principle is that source information and canonical Business Truth are separate concepts.
+
+---
+
+## 02.21 Business Truth Must Preserve Provenance
+
+Where meaningful, Kablet should be capable of identifying where Business Truth originated and how it became authoritative.
+
+Provenance may eventually include concepts such as:
+
+- source type
+- source system
+- source reference
+- created by
+- modified by
+- imported at
+- synchronized at
+- verified at
+- override relationship
+- authority status
+
+For example:
+
+Price: 249 AED
+Source: Shopify
+External Reference: Product 48291
+Synchronization: Active
+
+Or:
+
+Price: 229 AED
+Source: Manual Override
+Changed By: Authorized User
+Overrides: Synchronized Price
+
+The precise technical representation belongs to later architecture.
+
+The permanent requirement is that Kablet must not lose meaningful source lineage when that lineage affects trust, synchronization, debugging, or authority.
+
+---
+
+## 02.22 Source Precedence Must Be Explicit
+
+Multiple authorized sources may disagree.
+
+For example:
+
+Website: 299 AED
+Commerce System: 249 AED
+Manual Override: 229 AED
+
+Kablet must not resolve meaningful conflicts through hidden assumptions.
+
+Precedence must be governed by explicit Business configuration, source authority rules, synchronization rules, or authorized resolution.
+
+A possible future policy may be:
+
+Manual Override
+    >
+Authorized Commerce System
+    >
+Imported Website Content
+
+But no universal precedence order is established by this foundation.
+
+Different Businesses and truth domains may require different authority models.
+
+The permanent rule is:
+
+**Conflict resolution must be explicit and traceable.**
+
+---
+
+## 02.23 Manual Business Authority Must Remain Possible
+
+External integrations must not remove the Business's ability to intentionally control its truth.
+
+Where operationally appropriate, authorized Users must be capable of reviewing, correcting, overriding, or changing Business Truth.
+
+If a synchronized source is authoritative for a particular field, Kablet must make that authority clear rather than creating the illusion that a manual change will persist when synchronization will overwrite it.
+
+The system must distinguish:
+
+- editable truth
+- synchronized truth
+- derived truth
+- overridden truth
+
+The exact user interface is outside this foundation.
+
+---
+
+## 02.24 Facts and Business-Provided Claims Must Remain Distinguishable
+
+Not every statement supplied by a Business should be treated as independently established fact.
+
+For example:
+
+"Consultation price is 200 AED"
+
+may be structured commercial truth.
+
+"Our clinic is the best clinic in Dubai"
+
+is a Business-provided claim.
+
+Kablet must be capable of preserving that distinction.
+
+Relevant information may therefore carry semantic status such as:
+
+- structured fact
+- Business-provided claim
+- customer testimonial
+- third-party evidence
+- derived information
+- system observation
+
+The exact taxonomy may evolve.
+
+The permanent requirement is that Kablet must not silently convert promotional claims into independently verified facts.
+
+---
+
+## 02.25 Generated Content Is Not Canonical Business Truth
+
+Kablet Intelligence may generate:
+
+- explanations
+- summaries
+- recommendations
+- comparisons
+- responses
+- headlines
+- calls to action
+- contextual descriptions
+
+Those outputs do not automatically become Business Truth.
+
+For example:
+
+Business Truth:
+
+Service: Laser Hair Removal
+Price: 399 AED
+Duration: 45 minutes
+
+Generated Experience:
+
+"Get started with a 45-minute laser session from 399 AED."
+
+The generated sentence is an experience artifact.
+
+The underlying Service, Price, and Duration remain canonical Business Truth.
+
+This boundary prevents generated language from contaminating the business knowledge layer.
+
+---
+
+## 02.26 Derived Information Must Retain Its Derivation
+
+Kablet may derive useful information from authoritative truth.
+
+For example:
+
+Price: 1,200 AED
+Installments: 4
+
+Derived display value:
+
+300 AED per installment
+
+Derived information may be useful in customer experiences.
+
+It must remain distinguishable from source Business Truth and, where consequential, be reproducible from the information that produced it.
+
+Derived information must not silently replace its authoritative inputs.
+
+---
+
+## 02.27 Truth May Have Scope
+
+Not all Business Truth applies everywhere.
+
+Truth may be scoped by concepts such as:
+
+- Business
+- Property / Location
+- Product
+- Service
+- Person
+- customer eligibility
+- geography
+- channel
+- effective period
+- other authorized conditions
+
+For example:
+
+Business-level price:
+399 AED
+
+Dubai location price:
+449 AED
+
+Kablet must be capable of determining which authorized truth applies to the current customer context.
+
+Specific scoped truth may override broader truth according to explicit rules.
+
+---
+
+## 02.28 Truth May Have Time
+
+Business Truth may change.
+
+Examples include:
+
+- prices
+- promotions
+- staff
+- availability
+- operating hours
+- policies
+- inventory
+
+Kablet must not assume that the current value was always true or will remain true indefinitely.
+
+Where historically important, Business Truth should preserve enough temporal meaning to determine what was authoritative when a Decision or Outcome occurred.
+
+This is essential for reconstructing historical decisions.
+
+---
+
+## 02.29 Historical Decisions Must Be Reconstructable Against Historical Truth
+
+If Kablet made a Decision when a Product cost 199 AED and the Business later changes the price to 249 AED, historical analysis must not incorrectly assume the Decision occurred using the new price.
+
+The system must therefore preserve sufficient lineage between:
+
+Decision
+    ↓
+Relevant Business Truth
+    ↓
+Truth Version / State
+    ↓
+Experience
+    ↓
+Outcome
+
+The exact storage strategy belongs to Technical Architecture.
+
+The foundational requirement is historical interpretability.
+
+---
+
+## 02.30 Business Truth Must Be Machine-Usable
+
+Business Truth exists not only for display to humans.
+
+It must be structured sufficiently for Kablet Intelligence to reason about:
+
+- relationships
+- eligibility
+- constraints
+- alternatives
+- prices
+- offers
+- actions
+- availability
+- proof
+- policies
+- operational context
+
+Unstructured text may exist as part of Business Truth.
+
+However, critical commercial concepts must not depend exclusively on parsing arbitrary prose every time the runtime needs them.
+
+The structure should become richer as Kablet's capabilities expand.
+
+---
+
+## 02.31 Business Truth Must Be Extensible
+
+Kablet cannot know every future vertical-specific concept in advance.
+
+The foundation must therefore support extension.
+
+For example, future verticals may introduce:
+
+Clinic:
+Treatment
+Practitioner
+Consultation Requirement
+
+Ecommerce:
+Variant
+Inventory
+Shipping Method
+
+SaaS:
+Plan
+Feature
+Usage Limit
+
+Hospitality:
+Room Type
+Stay Policy
+Occupancy
+
+These concepts should extend Kablet's Business Truth model without requiring the foundational definition of Business Truth to be replaced.
+
+---
+
+## 02.32 Intelligence May Recommend Truth Changes
+
+Kablet's Learning Brain may eventually identify opportunities such as:
+
+- an offer appears ineffective
+- customers repeatedly ask for information that is missing
+- pricing information creates confusion
+- an FAQ should be added
+- a Service description appears incomplete
+- a different approved commercial configuration may perform better
+
+Kablet may present these findings as recommendations to the Business.
+
+A recommendation does not itself modify authoritative Business Truth.
+
+Conceptually:
+
+Observed Outcomes
+      ↓
+Learning
+      ↓
+Recommendation
+      ↓
+Business Approval
+      ↓
+Business Truth Change
+
+Unless explicit delegated authority exists, approval remains with the Business.
+
+---
+
+## 02.33 Business Truth Changes Must Be Attributable
+
+Meaningful changes to authoritative Business Truth should be attributable to an actor or authorized source.
+
+A change may originate from:
+
+- an authorized User
+- an authorized external system
+- an approved synchronization
+- an explicitly delegated Kablet capability
+
+Kablet should eventually be capable of answering:
+
+- what changed?
+- when?
+- from what?
+- to what?
+- who or what changed it?
+- under what authority?
+- which later Decisions used the new truth?
+
+This lineage supports trust, debugging, auditing, and learning.
+
+---
+
+## 02.34 Business Truth Is Business-Specific by Default
+
+Business Truth belongs to its Business ownership context.
+
+The fact that Kablet knows Business A's prices, services, customers, policies, or performance does not make those facts available to Business B.
+
+Cross-business intelligence may derive generalized patterns according to the governance principles defined elsewhere.
+
+Underlying private Business Truth remains tenant-bound unless explicitly authorized otherwise.
+
+---
+
+# 02.A Canonical Business Truth Model
+
+The foundational model is:
+
+Business
+   │
+   ▼
+Business Truth
+   │
+   ├── Brand
+   ├── Services
+   ├── Products
+   ├── Pricing
+   ├── Offers
+   ├── People
+   ├── Proof
+   ├── FAQs
+   ├── Policies
+   ├── Media
+   ├── Locations
+   ├── Availability
+   ├── Actions
+   └── Business Rules
+
+Business Truth may be populated through:
+
+Manual Input
+External Systems
+Imports
+APIs
+Synchronization
+AI-Assisted Extraction
+
+But all paths converge on the same canonical Business Truth layer.
+
+The runtime consumes Business Truth rather than coupling itself directly to every source system.
+
+---
+
+# 02.B Authority Model
+
+The foundational authority model is:
+
+Business / Authorized Operator
+            │
+            │ defines or authorizes
+            ▼
+      Business Truth
+            │
+            ▼
+    Kablet Intelligence
+            │
+            │ selects / composes /
+            │ explains / sequences /
+            │ recommends / optimizes
+            ▼
+    Customer Experience
+
+Where explicitly delegated:
+
+Business
+   ↓
+Delegated Authority
+   ↓
+Constraints
+   ↓
+Kablet Intelligence
+   ↓
+Validated Change / Action
+
+The permanent rule is:
+
+**Kablet optimizes inside authority. It does not manufacture authority.**
+
+---
+
+# 02.C Truth Lifecycle
+
+A generalized Business Truth lifecycle is:
+
+Source
+   ↓
+Ingestion
+   ↓
+Normalization
+   ↓
+Validation / Resolution
+   ↓
+Authoritative Business Truth
+   ↓
+Version / State
+   ↓
+Runtime Consumption
+   ↓
+Decision
+   ↓
+Experience
+   ↓
+Outcome
+
+Changes may then occur through:
+
+Business Change
+External Synchronization
+Authorized Override
+Approved Recommendation
+Explicit Delegation
+
+The resulting Truth becomes available to future Decisions while historical lineage remains interpretable.
+
+---
+
+# 02.D Core Business Truth Invariants
+
+1. The Business is the ultimate authority over Business Truth.
+2. Authorized systems may maintain Truth where the Business has delegated that authority.
+3. Kablet must not silently change authoritative Truth merely to improve conversion.
+4. Capability does not imply authority.
+5. Delegated authority must be explicit and constrained.
+6. Business Truth is structured business knowledge, not website layout.
+7. Source Data is not automatically canonical Business Truth.
+8. Meaningful Truth preserves provenance.
+9. Conflicting sources require explicit and traceable resolution.
+10. Manual business authority remains possible where operationally appropriate.
+11. Business-provided claims are distinguishable from independently established facts.
+12. Generated Experience does not automatically become Business Truth.
+13. Derived information remains distinguishable from authoritative inputs.
+14. Truth may be scoped.
+15. Truth may change over time.
+16. Historical Decisions must remain interpretable against the Truth available when they occurred.
+17. Business Truth must be machine-usable.
+18. Business Truth must support vertical extension.
+19. Kablet may recommend changes without silently applying them.
+20. Meaningful Truth changes are attributable.
+21. Business Truth is tenant-bound by default.
+
+---
+
+# 02.E Explicitly Not Defined Here
+
+This section intentionally does not define:
+
+- database tables
+- database schemas
+- ingestion pipelines
+- synchronization workers
+- external connector implementations
+- specific commerce integrations
+- specific CRM integrations
+- vector databases
+- embedding strategies
+- retrieval architecture
+- AI extraction prompts
+- administrative forms
+- Business onboarding UI
+- approval workflow UI
+- detailed version-storage implementation
+- conflict-resolution algorithms
+- caching
+- search infrastructure
+- specific vertical schemas
+
+Those belong to Technical Architecture or later domain specifications.
+
+This section defines the permanent authority, structure, provenance, and lifecycle principles of Business Truth.
+
+---
+
+# 02.F Foundation Dependency
+
+Business Truth establishes what Kablet is allowed to know and represent about a Business.
+
+Identity & Ownership established:
+
+**Whose truth is this?**
+
+Business Truth establishes:
+
+**What is true, who authorized it, and under what conditions does it apply?**
+
+The next foundation defines the controlled language through which Kablet turns that Truth into customer-facing experiences:
+
+**03 — Experience & Component Contract.**
