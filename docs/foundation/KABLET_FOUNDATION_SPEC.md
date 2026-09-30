@@ -14444,3 +14444,1272 @@ The answer is:
 The final section of Foundation Specification v0.1 defines what this document deliberately does not attempt to solve:
 
 **12 — Explicitly Out of Scope for Foundation v0.1.**
+
+---
+
+# 12. Explicitly Out of Scope for Foundation v0.1
+
+## 12.1 Purpose
+
+Foundation Specification v0.1 defines Kablet's permanent conceptual architecture.
+
+It intentionally does not define the concrete technologies, implementation patterns, infrastructure, algorithms, operational systems, or product features used to implement that architecture.
+
+The purpose of this section is to establish a clear boundary between:
+
+**Foundation Architecture**
+
+and
+
+**Implementation Architecture**
+
+This prevents temporary technology choices from becoming mistaken for permanent Kablet concepts.
+
+---
+
+## 12.2 Foundation v0.1 Defines Meaning, Not Implementation
+
+Foundation v0.1 defines concepts such as:
+
+- Organization
+- Business
+- Business Truth
+- Visitor
+- Session
+- Visitor State
+- Decision
+- Experience
+- Component
+- Action
+- Event
+- Outcome
+- Intelligence
+- ownership
+- versioning
+- privacy
+- extension
+
+It does not determine how those concepts are implemented in software.
+
+For example:
+
+Foundation says:
+
+Business Truth must have canonical authority and provenance.
+
+Foundation does not say:
+
+Business Truth must be stored in a particular PostgreSQL schema.
+
+That decision belongs to Technical Architecture.
+
+---
+
+## 12.3 Programming Languages Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- TypeScript
+- JavaScript
+- Python
+- Go
+- Rust
+- Java
+- any other programming language
+
+Language selection belongs to Technical Architecture.
+
+The Foundation contracts should remain valid if implementation languages change.
+
+---
+
+## 12.4 Application Frameworks Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- Next.js
+- React
+- Vue
+- Svelte
+- FastAPI
+- NestJS
+- Express
+- Django
+- any other application framework
+
+Frameworks implement Kablet.
+
+They do not define Kablet.
+
+---
+
+## 12.5 Repository Architecture Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- monorepo vs multiple repositories
+- package boundaries
+- application folders
+- module layout
+- shared libraries
+- build tooling
+- dependency management
+- workspace configuration
+
+Repository Architecture will be derived after Technical Architecture.
+
+---
+
+## 12.6 Service Architecture Is Out of Scope
+
+Foundation v0.1 does not decide whether Kablet uses:
+
+- modular monolith
+- microservices
+- serverless functions
+- long-running services
+- edge functions
+- background workers
+- combinations of these
+
+The Foundation defines semantic boundaries.
+
+Technical Architecture determines whether those boundaries require physical service boundaries.
+
+---
+
+## 12.7 Database Technology Is Out of Scope
+
+Foundation v0.1 does not select:
+
+- PostgreSQL
+- MySQL
+- document databases
+- graph databases
+- key-value stores
+- event databases
+- vector databases
+- data warehouses
+
+The Foundation defines canonical concepts and relationships.
+
+Technical Architecture determines appropriate persistence technologies.
+
+---
+
+## 12.8 Database Schema Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- tables
+- columns
+- indexes
+- foreign keys
+- constraints
+- partitions
+- database triggers
+- database functions
+- views
+- materialized views
+
+Those will be designed from the Foundation contracts during Technical Architecture and implementation planning.
+
+---
+
+## 12.9 Persistence Patterns Are Out of Scope
+
+Foundation v0.1 does not require:
+
+- CRUD persistence
+- event sourcing
+- CQRS
+- temporal tables
+- append-only storage
+- snapshots
+- change-data capture
+- specific ORM patterns
+
+Different Foundation concepts may eventually use different persistence strategies.
+
+---
+
+## 12.10 Authentication Technology Is Out of Scope
+
+Foundation v0.1 defines:
+
+- User
+- Membership
+- ownership
+- authorization context
+
+It does not select:
+
+- authentication provider
+- OAuth implementation
+- password system
+- magic links
+- SSO provider
+- session library
+- identity SDK
+
+Authentication technology belongs to Technical Architecture.
+
+---
+
+## 12.11 Authorization Implementation Is Out of Scope
+
+Foundation v0.1 establishes that authorization is contextual and tenant-aware.
+
+It does not define:
+
+- RBAC implementation
+- ABAC implementation
+- policy engine
+- database RLS
+- middleware
+- permission library
+- authorization cache
+
+Technical Architecture must implement the Foundation's authorization semantics.
+
+---
+
+## 12.12 AI Providers Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- OpenAI
+- Anthropic
+- Google
+- open-source models
+- proprietary Kablet models
+- any particular model vendor
+
+These systems may implement parts of Kablet Intelligence.
+
+They do not define the Intelligence Interface.
+
+---
+
+## 12.13 AI Models Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- model families
+- model sizes
+- reasoning levels
+- context windows
+- multimodal models
+- specialized classifiers
+
+Model selection is an implementation and optimization concern.
+
+---
+
+## 12.14 Prompt Engineering Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- system prompts
+- prompt templates
+- few-shot examples
+- prompt chaining
+- prompt optimization
+- prompt storage
+
+Prompts may become important implementation assets.
+
+They remain below the permanent Intelligence Interface.
+
+---
+
+## 12.15 Agent Frameworks Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- agent frameworks
+- orchestration frameworks
+- multi-agent architectures
+- planner/executor libraries
+- tool-protocol frameworks
+
+If agentic behavior is introduced, it must operate within Kablet's Intelligence, authority, Action, Event, and privacy contracts.
+
+---
+
+## 12.16 Retrieval Implementation Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- embeddings
+- vector databases
+- hybrid search
+- rerankers
+- chunking
+- retrieval pipelines
+- semantic search providers
+
+Retrieval is an implementation capability used by Intelligence and other systems.
+
+---
+
+## 12.17 Learning Algorithms Are Out of Scope
+
+Foundation v0.1 defines the conceptual learning loop.
+
+It does not select:
+
+- machine-learning algorithms
+- reinforcement learning
+- contextual bandits
+- recommendation algorithms
+- predictive models
+- causal models
+- training procedures
+- fine-tuning
+- online learning
+
+These belong to future Intelligence and Learning Architecture.
+
+---
+
+## 12.18 Experimentation Mathematics Are Out of Scope
+
+Foundation v0.1 establishes:
+
+- assignment
+- exposure
+- treatment identity
+- Outcome lineage
+- distinction between attribution and causation
+
+It does not define:
+
+- statistical tests
+- Bayesian vs frequentist methods
+- sample-size calculations
+- significance thresholds
+- sequential testing
+- multi-armed bandits
+- experiment stopping rules
+
+These belong to the Experimentation specification.
+
+---
+
+## 12.19 Event Infrastructure Is Out of Scope
+
+Foundation v0.1 defines canonical Event semantics.
+
+It does not select:
+
+- Kafka
+- queues
+- streams
+- pub/sub systems
+- webhook architecture
+- event buses
+- transport protocols
+- schema registries
+
+Technical Architecture determines how Events move through Kablet.
+
+---
+
+## 12.20 Queue and Background Job Technology Is Out of Scope
+
+Foundation v0.1 does not select:
+
+- queue provider
+- job framework
+- scheduler
+- retry infrastructure
+- worker runtime
+
+It only requires asynchronous work to preserve ownership, authority, and semantic context.
+
+---
+
+## 12.21 Cache Technology Is Out of Scope
+
+Foundation v0.1 does not select:
+
+- Redis
+- memory caches
+- edge caches
+- CDN caching
+- distributed cache providers
+
+It establishes only that caching must not violate ownership, privacy, or historical meaning.
+
+---
+
+## 12.22 Storage Technology Is Out of Scope
+
+Foundation v0.1 does not select:
+
+- object storage
+- file storage
+- image storage
+- CDN provider
+- media processing provider
+
+These systems implement Kablet's storage needs.
+
+They do not define its domain model.
+
+---
+
+## 12.23 Analytics Vendors Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- PostHog
+- Mixpanel
+- Amplitude
+- Google Analytics
+- warehouse tooling
+- BI tooling
+
+Kablet's canonical Event and Outcome Spine remains independent of analytics vendors.
+
+---
+
+## 12.24 Observability Technology Is Out of Scope
+
+Foundation v0.1 does not select:
+
+- logging provider
+- tracing provider
+- metrics platform
+- error monitoring provider
+- APM system
+
+It requires meaningful operations to remain observable where necessary.
+
+The implementation belongs to Technical Architecture.
+
+---
+
+## 12.25 Hosting and Cloud Providers Are Out of Scope
+
+Foundation v0.1 does not select:
+
+- Vercel
+- AWS
+- Cloudflare
+- Google Cloud
+- Azure
+- Supabase
+- Railway
+- Fly.io
+- any other hosting platform
+
+Infrastructure providers must remain replaceable where practical.
+
+---
+
+## 12.26 Deployment Architecture Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- regions
+- edge deployment
+- containers
+- Kubernetes
+- serverless deployment
+- autoscaling
+- load balancing
+- failover
+- disaster recovery
+
+Those belong to Technical and Infrastructure Architecture.
+
+---
+
+## 12.27 Custom Domain Implementation Is Out of Scope
+
+Kablet may eventually serve customer-facing Experiences through Business-owned domains.
+
+Foundation v0.1 does not define:
+
+- DNS setup
+- certificates
+- domain verification
+- reverse proxy architecture
+- edge routing
+- tenant domain resolution
+
+These belong to Technical Architecture.
+
+---
+
+## 12.28 API Design Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- REST
+- GraphQL
+- RPC
+- API route names
+- payload schemas
+- pagination
+- API authentication
+- public APIs
+
+APIs must eventually expose Foundation concepts without redefining them.
+
+---
+
+## 12.29 Concrete JSON Schemas Are Out of Scope
+
+The Foundation describes conceptual structures such as:
+
+- Intelligence Request
+- Decision
+- Experience Plan
+- Event
+- Outcome
+
+It does not define their final:
+
+- JSON representation
+- field names
+- serialization
+- validation syntax
+- generated types
+
+Those belong to Technical Architecture and contract specifications.
+
+---
+
+## 12.30 Frontend Rendering Implementation Is Out of Scope
+
+Foundation v0.1 defines the Experience and Component contracts.
+
+It does not define:
+
+- React Components
+- CSS
+- design system implementation
+- hydration
+- server rendering
+- client rendering
+- streaming UI
+- state-management libraries
+- animation systems
+
+Those belong to runtime implementation.
+
+---
+
+## 12.31 Final Component Library Is Out of Scope
+
+Foundation v0.1 establishes the Component concept.
+
+It does not lock the final Component catalog.
+
+The MVP may implement only a small set.
+
+Future Kablet versions may introduce many more.
+
+The important requirement is that Components extend the Experience vocabulary through controlled contracts.
+
+---
+
+## 12.32 Final Action Library Is Out of Scope
+
+Foundation v0.1 establishes the Action concept.
+
+It does not lock all future Actions.
+
+MVP Actions may be limited.
+
+Future Actions may include:
+
+- commerce
+- booking
+- lead generation
+- messaging
+- quoting
+- subscription
+- other vertical capabilities
+
+They must use the Action boundary.
+
+---
+
+## 12.33 Exact Vertical Model Is Out of Scope
+
+Foundation v0.1 does not select Kablet's first production vertical or define every vertical-specific object.
+
+Vertical models will extend the Foundation.
+
+The Foundation intentionally remains broader than the first implementation.
+
+---
+
+## 12.34 Product UI Is Out of Scope
+
+Foundation v0.1 does not define the exact Business Control Center UI.
+
+It does not define:
+
+- onboarding screens
+- dashboards
+- settings screens
+- analytics screens
+- editor interfaces
+- admin screens
+
+Those are product-design concerns built upon Foundation concepts.
+
+---
+
+## 12.35 Customer Experience Design Is Out of Scope
+
+Foundation v0.1 defines how customer Experiences are represented and controlled.
+
+It does not define the final:
+
+- visual language
+- typography
+- animation
+- layout
+- interaction design
+- conversation design
+- responsive behavior
+
+Those belong to Product and Design specifications.
+
+---
+
+## 12.36 Billing Architecture Is Out of Scope
+
+Foundation v0.1 does not define how Kablet charges its own customers.
+
+It does not select:
+
+- subscription provider
+- pricing model
+- metering system
+- invoices
+- usage billing
+- revenue-share model
+
+Kablet billing is separate from customer-facing Business transactions powered through Kablet.
+
+---
+
+## 12.37 Business Transaction Processing Is Not Assumed
+
+Foundation v0.1 defines Actions and Outcomes.
+
+It does not require Kablet to directly process:
+
+- payments
+- bookings
+- orders
+- refunds
+
+Kablet may initially orchestrate existing Business systems.
+
+Future versions may own more transaction infrastructure.
+
+The Foundation supports either direction.
+
+---
+
+## 12.38 Security Implementation Is Out of Scope
+
+Foundation v0.1 establishes important security-related principles such as:
+
+- tenant isolation
+- authorization
+- least necessary context
+- controlled Actions
+- untrusted client input
+
+It does not define:
+
+- encryption algorithms
+- WAF
+- secret management
+- penetration testing
+- vulnerability scanning
+- key rotation
+- incident response
+- security monitoring
+
+These require dedicated Technical and Security Architecture.
+
+---
+
+## 12.39 Legal and Regulatory Compliance Is Out of Scope
+
+Foundation v0.1 does not claim compliance with any jurisdiction or regulatory framework.
+
+It does not define:
+
+- GDPR compliance
+- UAE privacy compliance
+- HIPAA compliance
+- PCI compliance
+- consumer-protection compliance
+- healthcare regulations
+- financial regulations
+
+The Foundation provides architectural concepts that future compliance implementations can build upon.
+
+Actual compliance requires separate legal and technical work.
+
+---
+
+## 12.40 Exact Data Retention Policy Is Out of Scope
+
+Foundation v0.1 requires retention to be explicit.
+
+It does not define exact retention durations.
+
+Those depend on:
+
+- product requirements
+- contracts
+- jurisdiction
+- security
+- privacy
+- operational needs
+
+---
+
+## 12.41 Exact Cross-Tenant Learning Policy Is Out of Scope
+
+Foundation v0.1 permits the architectural possibility of:
+
+- Business-level learning
+- vertical learning
+- network-level learning
+
+It does not determine:
+
+- which tenant data may participate
+- contractual permissions
+- opt-in / opt-out mechanisms
+- anonymization requirements
+- aggregation thresholds
+- model-training rights
+- retention rules
+
+These require a dedicated Learning Governance specification and legal review.
+
+---
+
+## 12.42 Exact Attribution Model Is Out of Scope
+
+Foundation v0.1 preserves lineage between:
+
+Decision
+Experience
+Interaction
+Action
+Outcome
+
+It does not define a final attribution algorithm.
+
+Attribution may later consider:
+
+- sessions
+- channels
+- multiple Decisions
+- multiple Experiences
+- delayed conversions
+- external touchpoints
+
+Foundation v0.1 explicitly preserves the distinction:
+
+**Attribution ≠ Causation**
+
+---
+
+## 12.43 Exact Revenue Model Is Out of Scope
+
+Foundation v0.1 recognizes Revenue as an important Outcome.
+
+It does not define:
+
+- gross vs net revenue
+- taxes
+- refunds
+- cost of goods
+- margins
+- recurring revenue accounting
+- lifetime value
+- financial reporting standards
+
+Those require dedicated commercial and financial definitions.
+
+---
+
+## 12.44 Performance Targets Are Out of Scope
+
+Foundation v0.1 does not establish final:
+
+- latency targets
+- uptime targets
+- throughput targets
+- concurrency targets
+- model response times
+- page-load targets
+
+These belong to Technical Architecture and product requirements.
+
+---
+
+## 12.45 Scale Architecture Is Out of Scope
+
+Foundation v0.1 does not attempt to solve hypothetical massive scale before Kablet has earned it.
+
+It does not require architecture today for:
+
+- millions of Businesses
+- billions of Events
+- global multi-region active-active infrastructure
+- massive ML training clusters
+
+Technical Architecture should preserve reasonable evolution paths without prematurely building infrastructure for unproven scale.
+
+---
+
+## 12.46 High Availability and Disaster Recovery Are Out of Scope
+
+Foundation v0.1 does not define:
+
+- recovery point objectives
+- recovery time objectives
+- replication
+- failover
+- disaster recovery procedures
+
+These belong to Infrastructure Architecture.
+
+---
+
+## 12.47 CI/CD Is Out of Scope
+
+Foundation v0.1 does not define:
+
+- GitHub Actions
+- deployment pipelines
+- preview environments
+- release automation
+- rollback procedures
+
+These belong to Technical Architecture and engineering operations.
+
+---
+
+## 12.48 Testing Technology Is Out of Scope
+
+Foundation v0.1 establishes behaviors and invariants that should eventually be tested.
+
+It does not select:
+
+- unit-test framework
+- integration-test framework
+- browser-test framework
+- load-testing tool
+- AI evaluation framework
+
+Those belong to Technical Architecture.
+
+---
+
+## 12.49 Development Environments Are Out of Scope
+
+Foundation v0.1 does not define:
+
+- local development setup
+- staging
+- preview
+- production
+- environment configuration
+- seed data
+- local infrastructure
+
+Those belong to Technical Architecture and repository setup.
+
+---
+
+## 12.50 Repository and Coding Standards Are Out of Scope
+
+Foundation v0.1 does not define:
+
+- linting
+- formatting
+- naming conventions
+- commit conventions
+- branching model
+- pull-request rules
+- code ownership
+
+These belong to Engineering Architecture and development process.
+
+---
+
+## 12.51 MVP Scope Is Not the Same as Foundation Scope
+
+The Foundation deliberately describes capabilities beyond the first MVP.
+
+The MVP should implement only the smallest subset required to validate Kablet's core economic hypothesis.
+
+Therefore:
+
+Foundation Capability
+≠
+Required MVP Feature
+
+A concept may exist in the Foundation because the architecture must preserve its boundary even when the MVP implementation is minimal.
+
+---
+
+## 12.52 Foundation v0.1 Does Not Require Full Implementation
+
+A Foundation concept being defined does not mean it must immediately be implemented at maximum sophistication.
+
+For example:
+
+Learning exists conceptually.
+
+MVP learning may initially consist of:
+
+- Event collection
+- Outcome history
+- experiment evidence
+- simple policy changes
+
+rather than proprietary machine learning.
+
+Similarly:
+
+Intelligence may initially use:
+
+- rules
+- external models
+- simple retrieval
+
+while preserving the interface required for future sophistication.
+
+---
+
+## 12.53 Build Thinly Against Permanent Boundaries
+
+The implementation principle following from Foundation v0.1 is:
+
+**Build the smallest useful implementation that respects the permanent boundaries.**
+
+Do not:
+
+- build every future capability now
+- prematurely distribute the system
+- create speculative infrastructure
+- implement complex ML before evidence exists
+
+But also do not:
+
+- collapse Business Truth into prompts
+- collapse Decisions into chat messages
+- collapse Events into third-party analytics
+- collapse ownership into frontend filtering
+- collapse Intelligence into one provider SDK
+
+Thin implementation is encouraged.
+
+Structural shortcuts that destroy Foundation boundaries are not.
+
+---
+
+## 12.54 Foundation v0.1 Is a Constraint on Technical Architecture
+
+Technical Architecture may choose technologies freely within the requirements established here.
+
+A technical decision is acceptable only if it can preserve the relevant Foundation invariants.
+
+For example:
+
+A database choice must support:
+
+- tenant ownership
+- canonical Truth
+- Decision lineage
+- historical interpretation
+
+An AI architecture must support:
+
+- structured Intelligence boundaries
+- provider replaceability
+- validation
+- Decision attribution
+
+A frontend architecture must support:
+
+- controlled Experience Contracts
+- dynamic Components
+- exposure measurement
+
+Foundation therefore constrains implementation without prescribing it.
+
+---
+
+## 12.55 Technical Convenience Does Not Override Foundation Semantics
+
+During implementation, a technology may encourage a simpler but semantically incorrect representation.
+
+For example:
+
+Provider SDK conversation history
+
+may be convenient.
+
+It must not replace canonical Visitor State.
+
+Analytics vendor Events
+
+may be convenient.
+
+They must not replace Kablet's canonical Event model.
+
+Frontend route structure
+
+may be convenient.
+
+It must not redefine Kablet's Experience model as static pages.
+
+Technical convenience does not redefine product architecture.
+
+---
+
+## 12.56 Foundation Changes Require Deliberation
+
+Foundation v0.1 is not immutable forever.
+
+Kablet may discover that a foundational concept is incomplete or wrong.
+
+However, changes to the Foundation should be deliberate because they may affect:
+
+- data
+- contracts
+- APIs
+- runtime
+- Intelligence
+- learning
+- historical interpretation
+- extensions
+
+A Foundation change should therefore be treated differently from an ordinary feature change.
+
+---
+
+## 12.57 Foundation Changes Must Preserve Migration Paths
+
+If future evidence requires a Foundation change, Kablet should evaluate:
+
+- semantic impact
+- historical impact
+- ownership impact
+- compatibility impact
+- migration requirements
+- extension impact
+
+The existence of Foundation v0.1 does not prohibit evolution.
+
+It makes evolution explicit.
+
+---
+
+# 12.A What Foundation v0.1 Does Define
+
+Foundation v0.1 defines:
+
+01 — Identity & Ownership
+
+02 — Business Truth
+
+03 — Experience & Component Contract
+
+04 — Visitor State & Decisions
+
+05 — Event & Outcome Spine
+
+06 — Intelligence Interface
+
+07 — Cross-Foundation Contracts
+
+08 — Data Ownership Rules
+
+09 — Versioning Rules
+
+10 — Privacy & Tenant Isolation Principles
+
+11 — Extension Principles
+
+12 — Foundation Scope Boundary
+
+Together these define Kablet's permanent conceptual architecture at v0.1.
+
+---
+
+# 12.B What Comes Next
+
+Foundation Specification v0.1
+        ↓
+Technical Architecture v0.1
+        ↓
+Repository Architecture
+        ↓
+Codex Build Plan
+        ↓
+Controlled Implementation Slices
+        ↓
+First End-to-End Kablet Runtime
+        ↓
+Measured Customer Outcomes
+        ↓
+Learning
+        ↓
+Architecture Evolution Based on Evidence
+
+---
+
+# 12.C Technical Architecture Must Decide
+
+The next specification must make concrete decisions regarding:
+
+- programming language
+- frontend framework
+- backend architecture
+- database
+- authentication
+- authorization
+- tenant isolation enforcement
+- AI provider integration
+- Intelligence orchestration
+- structured outputs
+- Business Truth persistence
+- Visitor State persistence
+- Decision persistence
+- Event persistence
+- Outcome persistence
+- caching
+- background jobs
+- queues
+- object storage
+- analytics
+- observability
+- custom domains
+- hosting
+- environments
+- secrets
+- testing
+- CI/CD
+- deployment
+- repository structure boundaries
+
+These decisions will be evaluated against Foundation v0.1.
+
+---
+
+# 12.D MVP Architecture Principle
+
+The first implementation should optimize for:
+
+- correctness
+- speed of iteration
+- low operational complexity
+- strong observability
+- clean tenant boundaries
+- reliable Decision / Outcome lineage
+- ability to run controlled experiments
+
+It should not optimize prematurely for hypothetical global scale.
+
+The desired architecture is:
+
+**simple enough to ship**
+
+while remaining:
+
+**structurally compatible with the Kablet Foundation.**
+
+---
+
+# 12.E First Engineering North Star
+
+The first engineering milestone is not:
+
+"Build the entire Kablet platform."
+
+It is:
+
+**One real Visitor experiences Kablet from intent to conversion while every meaningful State, Decision, Experience, interaction, Action, and Outcome is captured through the Foundation contracts.**
+
+Conceptually:
+
+Visitor Arrives
+      ↓
+Session
+      ↓
+Signal
+      ↓
+Visitor State
+      ↓
+Intelligence
+      ↓
+Decision
+      ↓
+Experience
+      ↓
+Interaction
+      ↓
+Action
+      ↓
+Conversion
+      ↓
+Outcome
+      ↓
+Complete Lineage
+
+Once this loop works correctly, Kablet has the structural core required to begin testing its economic hypothesis.
+
+---
+
+# 12.F Foundation v0.1 Completion
+
+With Sections 00 through 12 defined, Kablet Foundation Specification v0.1 establishes:
+
+- what Kablet owns
+- what the Business owns
+- what the Business says is true
+- what Kablet understands about a Visitor
+- how Kablet makes Decisions
+- how Decisions become Experiences
+- how Experiences expose Actions
+- how customer behavior becomes Events
+- how Events connect to Outcomes
+- how Intelligence remains replaceable
+- how historical meaning survives change
+- how tenants remain isolated
+- how learning may compound
+- how future capabilities extend the system
+- where Foundation ends and implementation begins
+
+The Foundation is now sufficient to begin Technical Architecture v0.1.
+
+---
+
+# FOUNDATION v0.1 STATUS
+
+**COMPLETE**
+
+The next artifact is:
+
+# KABLET TECHNICAL ARCHITECTURE v0.1
