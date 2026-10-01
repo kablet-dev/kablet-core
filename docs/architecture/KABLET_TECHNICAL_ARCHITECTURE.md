@@ -19400,3 +19400,815 @@ Section 19 establishes:
 The next section defines the exact technical boundary of the first Kablet MVP, distinguishing what must be implemented immediately from capabilities that belong to the permanent architecture but should remain deferred.
 
 # 20 — MVP Technical Boundary
+---
+
+# 20. MVP Technical Boundary
+
+## 20.1 Purpose
+
+This section defines the implementation boundary of Kablet v0.1.
+
+It translates the permanent Foundation and Technical Architecture into a constrained first engineering milestone.
+
+The objective is to prove Kablet's core mechanism:
+
+**A real Visitor expresses intent, Kablet interprets the context, accepts a structured Decision, composes an adaptive Experience, enables a consequential Action, and records a verified commercial Outcome.**
+
+The MVP must prove this complete mechanism before expanding its breadth.
+
+---
+
+# 20.A MVP Definition
+
+## 20.2 Primary Objective
+
+The MVP must demonstrate that Kablet can operate as an intelligent customer-facing frontend for one real Business.
+
+It must support a complete customer journey from initial arrival to verified conversion.
+
+---
+
+## 20.3 Commercial Hypothesis
+
+The initial product hypothesis is:
+
+An adaptive, intent-driven customer Experience can improve conversion performance from existing Business traffic compared with an appropriate conventional presentation.
+
+The MVP establishes the technical and measurement foundation required to test this hypothesis.
+
+It does not assume that conversion lift has already been demonstrated.
+
+---
+
+## 20.4 Initial Scope
+
+The first implementation will target:
+
+| Dimension | MVP scope |
+|---|---|
+| Business | One real pilot Business |
+| Vertical | One selected vertical |
+| Primary objective | One conversion objective |
+| Customer surface | Responsive web Runtime |
+| Intelligence | One initial provider |
+| Experience | Controlled adaptive canvas |
+| Components | Approximately 8–10 |
+| Consequential Action | One booking flow |
+| Database | PostgreSQL |
+| Background processing | PostgreSQL-backed Worker |
+| Analytics | Essential conversion evidence |
+| Experimentation | Minimal comparison capability |
+
+The architecture must remain tenant-safe even though the initial commercial rollout targets one Business.
+
+---
+
+# 20.B First Vertical
+
+## 20.5 Vertical Selection
+
+The first vertical should have:
+
+- A clear customer intent.
+- Understandable Business offerings.
+- A short path from interest to conversion.
+- A measurable booking Outcome.
+- Sufficient approved Business Truth.
+- Limited integration complexity.
+
+---
+
+## 20.6 Vertical-Specific Extension
+
+The selected vertical may introduce controlled configuration and vocabulary.
+
+It must not redefine Kablet's permanent domain primitives.
+
+---
+
+## 20.7 No Multi-Vertical Launch Requirement
+
+Supporting multiple verticals is not a prerequisite for the first working product.
+
+The MVP should prove one complete implementation before expanding vertical coverage.
+
+---
+
+# 20.C Business Configuration
+
+## 20.8 Initial Business Setup
+
+The first pilot Business requires enough configuration to operate the Customer Runtime.
+
+This includes:
+
+- Organization ownership.
+- Business identity.
+- Approved Business profile.
+- Primary commercial objective.
+- Relevant offerings.
+- Applicable pricing.
+- Essential policies.
+- Approved proof or supporting content.
+- Booking configuration.
+- Basic brand presentation.
+
+---
+
+## 20.9 Configuration Method
+
+The MVP does not require a comprehensive self-service onboarding interface.
+
+Some initial Business configuration may be established through controlled administrative workflows or seeded configuration.
+
+However, canonical ownership, validation, provenance, and revision requirements remain mandatory.
+
+---
+
+## 20.10 Business Truth
+
+The MVP must use authoritative Business Truth.
+
+Intelligence must not invent:
+
+- Services.
+- Prices.
+- Availability.
+- Testimonials.
+- Commercial guarantees.
+- Business policies.
+
+---
+
+# 20.D Identity and Access
+
+## 20.11 Business User Authentication
+
+Supabase Auth will provide the initial Business User authentication mechanism.
+
+---
+
+## 20.12 Authorization
+
+Kablet must enforce applicable Organization, Business, Membership, and capability boundaries.
+
+---
+
+## 20.13 Anonymous Visitors
+
+Customer Visitors must not require a Business User account.
+
+They operate through constrained, Business-scoped Visitor Sessions.
+
+---
+
+## 20.14 Tenant Safety
+
+Although the initial pilot may involve one Business, cross-tenant isolation must be implemented and tested from the beginning.
+
+Tenant isolation is a permanent architectural requirement, not a future scaling feature.
+
+---
+
+# 20.E Customer Runtime
+
+## 20.15 Runtime Form
+
+The MVP Customer Runtime is a responsive web application.
+
+It presents a persistent adaptive canvas rather than a mandatory predefined sequence of static pages.
+
+Scrolling is allowed.
+
+---
+
+## 20.16 Initial Entry
+
+A Visitor arriving at the Business's Kablet address should encounter a minimal branded surface that makes it easy to express intent.
+
+---
+
+## 20.17 Intent Capture
+
+The Runtime must capture at least one meaningful customer intent signal.
+
+Examples may include:
+
+- A customer question.
+- A selected need.
+- A service preference.
+- A booking-related request.
+
+The exact interaction design will be finalized for the first vertical.
+
+---
+
+## 20.18 Visitor State
+
+Kablet must establish and maintain canonical Visitor State independently of the external Intelligence provider's conversation history.
+
+---
+
+## 20.19 Adaptive Transition
+
+The MVP must demonstrate at least one meaningful Experience transition driven by an accepted Decision.
+
+Merely displaying a static page with an AI chat box does not satisfy the MVP.
+
+---
+
+# 20.F Initial Component Inventory
+
+## 20.20 Controlled Registry
+
+The MVP will use a small, versioned Component Registry.
+
+The initial target is approximately 8–10 Component types.
+
+---
+
+## 20.21 Proposed Initial Components
+
+| Component | Purpose |
+|---|---|
+| Message | Present contextual information |
+| Question | Capture customer intent |
+| Option Selector | Capture structured preferences |
+| Service Card | Present an approved offering |
+| Price Display | Present authoritative pricing |
+| Proof Card | Present approved supporting evidence |
+| FAQ | Resolve relevant objections |
+| Recommendation | Present a contextual suggestion |
+| Lead Form | Collect required customer details |
+| Booking Action | Initiate the primary conversion |
+
+This inventory is the initial implementation target, subject to final first-vertical requirements.
+
+---
+
+## 20.22 Component Constraints
+
+Every Component must use a validated declarative contract.
+
+Intelligence cannot generate unrestricted executable frontend code.
+
+---
+
+## 20.23 Brand Presentation
+
+The MVP should support basic Business-controlled visual identity, including applicable:
+
+- Logo.
+- Typography.
+- Colors.
+- Approved media.
+- Layout tokens.
+
+A complete visual design system editor is not required.
+
+---
+
+# 20.G Intelligence MVP
+
+## 20.24 Initial Provider
+
+OpenAI remains the initial Intelligence provider behind the Kablet-owned Intelligence Interface.
+
+---
+
+## 20.25 Minimum Intelligence Capabilities
+
+The MVP must support:
+
+1. Interpreting an incoming Visitor signal.
+2. Proposing an applicable State update.
+3. Assembling authorized Business context.
+4. Producing a structured Decision proposal.
+5. Validating the proposal.
+6. Accepting or rejecting the Decision.
+7. Producing an applicable Experience Plan.
+8. Falling back safely when required.
+
+---
+
+## 20.26 No Autonomous Execution
+
+Intelligence may propose registered Actions.
+
+It cannot independently execute consequential Business operations.
+
+---
+
+## 20.27 No Initial Learning Engine Requirement
+
+The MVP must preserve Decision and Outcome evidence suitable for future Learning Brain development.
+
+It does not require a production machine-learning training pipeline.
+
+---
+
+# 20.H Primary Conversion Action
+
+## 20.28 Booking as Initial Action
+
+Booking is the preferred first consequential conversion Action.
+
+The final implementation will depend on the selected pilot Business.
+
+---
+
+## 20.29 Booking Flow
+
+The MVP must support:
+
+Customer Intent
+      |
+      v
+Booking Action Presented
+      |
+      v
+Customer Confirms Required Information
+      |
+      v
+Server-Side Validation
+      |
+      v
+Action Authorization
+      |
+      v
+Canonical Action Invocation
+      |
+      v
+Booking Execution
+      |
+      v
+Result Verification
+      |
+      v
+Canonical Outcome
+
+---
+
+## 20.30 Integration Scope
+
+The MVP should support one complete booking execution path.
+
+It does not require a universal integration marketplace.
+
+---
+
+## 20.31 Idempotency
+
+Repeated technical execution must not automatically create duplicate bookings.
+
+---
+
+## 20.32 Unknown Results
+
+An uncertain external booking result must remain explicitly distinguishable from verified success or failure.
+
+---
+
+# 20.I Canonical Data Requirements
+
+## 20.33 Required Domain Groups
+
+The first implementation must establish the applicable canonical records for:
+
+- Organization.
+- Business.
+- User.
+- Membership.
+- Business Truth.
+- Visitor.
+- Session.
+- Visitor State.
+- Decision.
+- Experience.
+- Action.
+- Event.
+- Outcome.
+
+Additional supporting records may be introduced where required by the permanent contracts.
+
+---
+
+## 20.34 Historical Lineage
+
+The MVP must preserve sufficient references to reconstruct the customer journey.
+
+Conceptually:
+
+Business
+   |
+Visitor
+   |
+Session
+   |
+State Revision
+   |
+Decision
+   |
+Experience
+   |
+Interaction
+   |
+Action Invocation
+   |
+Outcome
+
+Not every Session is required to reach every stage.
+
+---
+
+## 20.35 Event Spine
+
+The MVP must implement a versioned canonical Event envelope.
+
+Events must distinguish actual domain occurrences from ordinary operational logs.
+
+---
+
+## 20.36 Outcome Integrity
+
+The system must distinguish:
+
+- Customer interaction.
+- Action request.
+- Action completion.
+- Verified booking.
+- Revenue, if independently established.
+
+A button click must not be counted as a verified conversion.
+
+---
+
+# 20.J Background Processing
+
+## 20.37 Minimum Worker
+
+The MVP requires one logical TypeScript Worker using PostgreSQL-backed durable jobs.
+
+---
+
+## 20.38 Required Processing
+
+The initial worker should support the necessary:
+
+- Outbox dispatch.
+- Consequential Action follow-up.
+- Retry handling.
+- Outcome reconciliation.
+- Basic operational maintenance.
+
+---
+
+## 20.39 No External Queue Requirement
+
+Redis, Kafka, RabbitMQ, and Temporal are not required for the initial implementation.
+
+---
+
+# 20.K Analytics and Experimentation
+
+## 20.40 Initial Analytics Objective
+
+The MVP must measure the customer journey using canonical evidence.
+
+---
+
+## 20.41 Initial Metrics
+
+The first reporting implementation should support applicable counts of:
+
+- Eligible Sessions.
+- Decisions.
+- Delivered Experiences.
+- Observed exposures.
+- Interactions.
+- Action requests.
+- Verified bookings.
+- Conversion rate.
+- Failed or unresolved consequential operations.
+
+---
+
+## 20.42 Conversion Definition
+
+The initial primary conversion metric must use a defined, verified booking Outcome.
+
+It must not substitute clicks, generated Decisions, or displayed booking Components.
+
+---
+
+## 20.43 Initial Experiment Capability
+
+The architecture should support one controlled two-condition comparison.
+
+The initial implementation must distinguish assignment from actual exposure.
+
+---
+
+## 20.44 Statistical Claims
+
+The MVP must not automatically declare conversion lift from insufficient or uncontrolled evidence.
+
+Experiment interpretation requires an appropriate population, metric definition, and uncertainty assessment.
+
+---
+
+# 20.L Operational Requirements
+
+## 20.45 Minimum Security
+
+The MVP requires:
+
+- Business User authentication.
+- Trusted tenant context.
+- Application authorization.
+- Applicable PostgreSQL RLS.
+- Server-side secret management.
+- Controlled public Sessions.
+- Validated Intelligence output.
+- Authorized Action execution.
+- Verified external ingestion.
+
+---
+
+## 20.46 Minimum Observability
+
+The MVP must expose sufficient telemetry to investigate one complete customer journey.
+
+Required visibility includes:
+
+- Runtime request.
+- Intelligence invocation.
+- Decision acceptance.
+- Experience delivery.
+- Action execution.
+- Outcome verification.
+- Worker processing.
+- Failure classification.
+
+---
+
+## 20.47 Minimum Recovery
+
+The MVP must support:
+
+- Controlled Intelligence fallback.
+- Durable canonical transactions.
+- Consequential Action idempotency.
+- Explicit unknown external results.
+- Worker lease recovery.
+- Inspectable terminal failures.
+- Basic reconciliation.
+
+---
+
+## 20.48 Minimum Deployment
+
+The MVP requires:
+
+- Reproducible local development.
+- Disposable PostgreSQL testing.
+- GitHub Actions CI.
+- Version-controlled migrations.
+- Controlled Production deployment.
+- Separate Web and Worker execution.
+- Health verification.
+
+---
+
+# 20.M Explicitly Deferred Capabilities
+
+## 20.49 Product Capabilities Deferred
+
+The first implementation does not require:
+
+- Multiple verticals.
+- A comprehensive onboarding wizard.
+- A drag-and-drop site builder.
+- A universal integration marketplace.
+- Native mobile applications.
+- Voice-based customer interaction.
+- A large Component marketplace.
+- Autonomous multi-agent workflows.
+- Automated Business Truth mutation.
+- Advanced cross-Business learning.
+- A complete enterprise analytics suite.
+- Advanced revenue attribution.
+- A full self-service experimentation studio.
+
+---
+
+## 20.50 Infrastructure Deferred
+
+The MVP does not require:
+
+- Microservices.
+- Kubernetes.
+- Kafka.
+- Mandatory Redis.
+- A dedicated data warehouse.
+- Database sharding.
+- Multi-region active-active infrastructure.
+- A proprietary workflow engine.
+- A custom authentication provider.
+- Proprietary certificate management.
+
+---
+
+## 20.51 Deferred Does Not Mean Architecturally Ignored
+
+Deferred capabilities must not be implemented prematurely.
+
+However, the MVP must preserve the permanent contracts required for their future introduction.
+
+---
+
+# 20.N First Engineering Acceptance Gate
+
+## 20.52 Gate Definition
+
+The first major implementation gate is:
+
+**One real Visitor completes one valid adaptive journey that produces one verified booking Outcome with full canonical lineage.**
+
+---
+
+## 20.53 Required Evidence
+
+The implementation must demonstrate:
+
+1. A configured Business with approved Truth.
+2. A valid public Visitor Session.
+3. A meaningful captured intent signal.
+4. A canonical State update.
+5. A structured Intelligence proposal.
+6. An accepted Decision.
+7. A validated adaptive Experience.
+8. Successful Runtime rendering.
+9. A captured customer interaction.
+10. An authorized booking Action.
+11. Idempotent execution.
+12. A verified booking Outcome.
+13. Complete applicable Event lineage.
+14. Observable technical execution.
+15. Correct Business ownership throughout.
+
+---
+
+## 20.54 Gate Failure Conditions
+
+The milestone is not complete if:
+
+- The Experience is effectively static.
+- Intelligence output bypasses validation.
+- Business Truth is fabricated.
+- Visitor State exists only in provider conversation history.
+- The booking is merely simulated in the final acceptance demonstration.
+- A click is counted as a verified booking.
+- Consequential retries can create duplicate bookings.
+- Required canonical lineage is missing.
+- Cross-tenant isolation fails.
+
+Deterministic adapters remain appropriate for automated tests, but the real pilot acceptance must verify the actual selected conversion path.
+
+---
+
+# 20.O Implementation Order
+
+## 20.55 Recommended Vertical Slice Sequence
+
+Implementation should proceed through small, testable vertical slices.
+
+| Slice | Deliverable |
+|---|---|
+| 1 | Repository, configuration, database and test infrastructure |
+| 2 | Identity, Organization, Business and tenant isolation |
+| 3 | Approved Business Truth and revisions |
+| 4 | Visitor, Session and State |
+| 5 | Intelligence Interface and structured proposal validation |
+| 6 | Decision acceptance and persistence |
+| 7 | Experience Contract and Component Registry |
+| 8 | Customer Runtime and adaptive transitions |
+| 9 | Action Registry and booking execution |
+| 10 | Event Spine, Outcome verification and full lineage |
+| 11 | Durable jobs, outbox and recovery |
+| 12 | Analytics, basic experiment support and production hardening |
+
+This sequence is a planning guide, not permission to defer correctness requirements that an earlier slice depends upon.
+
+---
+
+# 20.P Architecture Decision Records
+
+## ADR-118 — One Complete Commercial Vertical Slice
+
+**Status:** Accepted.
+
+The first MVP will prioritize one complete Visitor-to-verified-Outcome journey over broad but incomplete product functionality.
+
+---
+
+## ADR-119 — One Business and One Vertical Initially
+
+**Status:** Accepted.
+
+The initial commercial implementation targets one pilot Business and one vertical while retaining permanent tenant-safe architecture.
+
+---
+
+## ADR-120 — Controlled Initial Component Registry
+
+**Status:** Accepted.
+
+The MVP will implement approximately 8–10 controlled Component types rather than arbitrary AI-generated frontend code.
+
+---
+
+## ADR-121 — Booking as Preferred First Conversion
+
+**Status:** Accepted.
+
+Booking is the preferred first consequential Action, subject to the selected pilot Business and integration requirements.
+
+---
+
+## ADR-122 — Canonical Evidence Before Advanced Learning
+
+**Status:** Accepted.
+
+The MVP must preserve high-quality Decision, Experience, Interaction, Action, and Outcome evidence before introducing advanced learning infrastructure.
+
+---
+
+## ADR-123 — Thin Implementation Against Permanent Boundaries
+
+**Status:** Accepted.
+
+MVP scope reduction must not collapse permanent Foundation distinctions or compromise canonical ownership, authorization, lineage, and versioning.
+
+---
+
+# 20.Q MVP Technical Invariants
+
+1. The MVP proves a complete commercial mechanism.
+2. One Business and one vertical are sufficient for the initial pilot.
+3. Tenant isolation remains mandatory.
+4. Business Truth remains authoritative.
+5. Visitor State remains Kablet-owned.
+6. Intelligence proposes rather than directly executes.
+7. Decisions require validation and acceptance.
+8. Experiences use controlled declarative contracts.
+9. The Customer Runtime must demonstrate meaningful adaptation.
+10. Arbitrary AI-generated executable frontend code is prohibited.
+11. Consequential Actions require independent authorization.
+12. Booking execution requires idempotency.
+13. Unknown external results remain explicit.
+14. Canonical Events preserve applicable lineage.
+15. Verified booking is distinct from customer interaction.
+16. Conversion reporting uses defined Outcome evidence.
+17. Learning infrastructure is not required before evidence collection.
+18. Durable processing must support necessary recovery.
+19. Production requires minimum security and observability.
+20. Deferred capabilities must not distort the permanent architecture.
+21. The first acceptance gate requires a real Visitor-to-verified-Outcome journey.
+22. Implementation proceeds through small, testable vertical slices.
+
+---
+
+# 20.R Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- First pilot Business.
+- First vertical.
+- Exact conversion definition for that Business.
+- Final Component inventory.
+- Initial Business onboarding interface.
+- Booking integration provider.
+- Detailed Runtime interaction design.
+- Exact Intelligence prompt configuration.
+- Production hosting provider.
+- Initial traffic volume.
+- Experiment sample-size planning.
+- Commercial pricing.
+- MVP launch date.
+
+These decisions will be finalized during product implementation and pilot preparation.
+
+---
+
+# 20.S Dependency
+
+Section 19 established Kablet's Scaling Path.
+
+Section 20 establishes:
+
+**A constrained first implementation focused on one real Business, one vertical, one adaptive customer-facing Runtime, a controlled Component Registry, one consequential booking Action, and a verified Outcome with complete canonical lineage—while preserving the permanent Foundation contracts needed for future expansion.**
+
+The next section consolidates the Technical Architecture's major decisions into a traceable Architecture Decision Record register and defines how future changes must be proposed, accepted, superseded, and documented.
+
+# 21 — Architecture Decisions / ADRs
