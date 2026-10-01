@@ -3415,3 +3415,1046 @@ Section 02 establishes:
 The next section defines how Kablet's canonical domain is persisted and how its historical lineage is preserved.
 
 # 03 — Data Architecture
+---
+
+# 03. Data Architecture
+
+## 03.1 Purpose
+
+This section defines how Kablet v0.1 will persist, protect, retrieve, and evolve its canonical domain data.
+
+It translates the Foundation's data concepts into an initial PostgreSQL-based persistence architecture.
+
+The architecture must support:
+
+- Multi-tenant ownership.
+- Canonical Business Truth.
+- Historical Business Truth revisions.
+- Anonymous Visitors and Sessions.
+- Structured Visitor State.
+- First-class Decisions.
+- Validated Experiences.
+- Canonical Events.
+- Verified Outcomes.
+- Decision-to-Outcome lineage.
+- Future experimentation and learning.
+
+The objective is to preserve the right data relationships from day one without prematurely implementing a distributed data platform.
+
+---
+
+## 03.2 Primary Data Architecture Decision
+
+Kablet v0.1 will use PostgreSQL as its primary transactional system of record.
+
+The initial architecture will use:
+
+- One primary PostgreSQL database.
+- Logical domain ownership.
+- Explicit tenant-scoping rules.
+- Relational integrity.
+- Typed database access.
+- Transactional persistence.
+- Append-oriented historical records.
+- Versioned domain contracts.
+- JSONB where controlled flexibility is appropriate.
+
+A separate operational event database, vector database, analytical warehouse, or distributed data platform is not required initially.
+
+---
+
+# 03.A Canonical Data Ownership
+
+## 03.3 Organization Is the Tenant Boundary
+
+Every tenant-owned canonical resource must have a determinable relationship to an Organization.
+
+Business-scoped resources must additionally resolve to their Business.
+
+Conceptually:
+
+Organization
+    |
+    +-- Business
+          |
+          +-- Business Truth
+          +-- Visitors
+          +-- Sessions
+          +-- Visitor State
+          +-- Decisions
+          +-- Experiences
+          +-- Actions
+          +-- Events
+          +-- Outcomes
+
+Property / Location may further refine the Business context.
+
+The architecture must not assume every Business has only one physical location.
+
+---
+
+## 03.4 Ownership Must Be Explicitly Enforceable
+
+Tenant-sensitive persistence must support reliable ownership validation.
+
+The implementation must not depend on application developers remembering to manually filter every query correctly.
+
+Kablet will use defense in depth:
+
+1. Trusted request-context resolution.
+2. Application-level authorization.
+3. Tenant-scoped repository operations.
+4. PostgreSQL-enforced isolation where applicable.
+5. Database constraints supporting ownership consistency.
+
+The exact RLS policies and database-role configuration will be specified in Section 04 and the physical schema design.
+
+---
+
+## 03.5 IDs Are Not Authorization
+
+Possessing a valid Business ID, Visitor ID, Session ID, or Decision ID does not grant access to the corresponding resource.
+
+Database access must be evaluated against trusted ownership and authorization context.
+
+Client-supplied ownership identifiers must never be accepted as proof of authority.
+
+---
+
+## 03.6 Ownership and Authorship Remain Separate
+
+Canonical resources may record:
+
+- Owning Organization.
+- Owning Business.
+- Creating actor.
+- Last modifying actor.
+- Source system.
+
+These concepts must not be conflated.
+
+A User creating a Service for a Business does not personally own that Service.
+
+Similarly, an integration importing Business Truth does not become the owner of that Truth.
+
+---
+
+# 03.B Logical Data Domains
+
+## 03.7 Initial Domain Groups
+
+The primary database will organize canonical data around the following logical groups.
+
+| Domain | Primary responsibility |
+|---|---|
+| Identity | Organization, Business, Property, User, Membership |
+| Business Truth | Authoritative commercial information and revisions |
+| Visitor | Visitor identity, Sessions and continuity |
+| Visitor State | Structured observations and interpretations |
+| Decision | Explicit accepted Decisions and their context |
+| Experience | Plans, validated Experiences and instances |
+| Component | Controlled definitions and version references |
+| Action | Action attempts, execution and results |
+| Event | Canonical domain occurrences |
+| Outcome | Conversions, business results and Revenue |
+| Experiment | Definitions, assignments and exposures |
+| Integration | External connections, mappings and provenance |
+| Intelligence | Configuration and invocation metadata |
+
+These are logical ownership groups, not a requirement to create one PostgreSQL schema per group.
+
+Physical organization will be decided during schema design.
+
+---
+
+## 03.8 Domain-Owned Persistence
+
+Each domain module owns its persistence behavior.
+
+Other modules should access its data through explicit application interfaces where practical.
+
+For example:
+
+Customer Runtime
+    ↓
+Business Truth Query Interface
+    ↓
+Business Truth Persistence
+    ↓
+PostgreSQL
+
+A shared database must not turn domain modules into an unrestricted collection of cross-table queries.
+
+---
+
+## 03.9 Relational Data Is the Default
+
+Stable business relationships should use relational modeling.
+
+Examples include:
+
+- Organization → Business.
+- Business → Visitor.
+- Visitor → Session.
+- Session → Decision.
+- Decision → Experience.
+- Action → Outcome.
+
+Relational constraints should protect structural correctness where appropriate.
+
+Flexible payload storage should complement these relationships rather than replace them.
+
+---
+
+# 03.C Relational Data and JSONB
+
+## 03.10 JSONB Usage
+
+PostgreSQL JSONB may be used for controlled variable structures such as:
+
+- Versioned Component payloads.
+- Experience composition.
+- Intelligence metadata.
+- Event-specific payloads.
+- Structured Decision metadata.
+- External integration metadata.
+
+JSONB must not become an excuse to avoid modeling critical domain relationships.
+
+---
+
+## 03.11 Critical Lineage Must Remain Queryable
+
+Important relationships must be available through stable identifiers and queryable structures.
+
+For example, Kablet must be able to identify:
+
+Which Decision produced an Experience?
+
+Which Session contained that Decision?
+
+Which Experiment influenced it?
+
+Which Outcome followed?
+
+These questions must not depend exclusively on parsing arbitrary generated text or unvalidated JSON.
+
+---
+
+## 03.12 JSONB Must Be Validated
+
+JSONB payloads that implement Kablet contracts must be validated against the relevant versioned schema before acceptance.
+
+Examples:
+
+- Experience Plan.
+- Component payload.
+- Event payload.
+- Intelligence result.
+- Action input.
+
+The database stores accepted canonical representations, not arbitrary untrusted model output.
+
+---
+
+# 03.D Business Truth Persistence
+
+## 03.13 Canonical Business Truth
+
+Business Truth will be persisted as structured, Business-scoped canonical data.
+
+It must support:
+
+- Entity identity.
+- Business ownership.
+- Current authoritative value.
+- Source provenance.
+- Relevant authority.
+- Validation.
+- Revision history.
+- Effective-time context where necessary.
+
+The Business Truth model must remain independent of the method used to ingest it.
+
+---
+
+## 03.14 Source Data Is Not Automatically Canonical Truth
+
+External information may arrive from:
+
+- Manual Business input.
+- Website extraction.
+- Commerce integrations.
+- Booking integrations.
+- CRM systems.
+- APIs.
+- Imported files.
+
+Incoming information must pass through the appropriate normalization, validation, and authority-resolution process before becoming canonical Business Truth.
+
+---
+
+## 03.15 Business Truth Revisions
+
+Kablet must preserve sufficient revision information to interpret historical Decisions correctly.
+
+Example:
+
+A Business offers a service for 399 AED.
+
+A Visitor receives an Experience referencing that price.
+
+Later, the Business changes the price to 449 AED.
+
+The historical Experience must remain interpretable against the 399 AED revision.
+
+Current Business Truth must not silently rewrite historical commercial meaning.
+
+---
+
+## 03.16 Current Truth and Historical Truth
+
+The architecture should distinguish:
+
+Current authoritative representation
+
+from:
+
+Historical revision context.
+
+The implementation may use current-state records together with revision records, snapshots, or another suitable persistence strategy.
+
+The exact physical mechanism is deferred.
+
+---
+
+# 03.E Visitor and Session Persistence
+
+## 03.17 Visitor Identity
+
+Visitors are customer-side identities, distinct from Business Users.
+
+Anonymous Visitors must be supported.
+
+Visitor identity is Business-scoped by default.
+
+The same physical person interacting with two unrelated Businesses must not automatically become one shared Kablet Visitor identity.
+
+---
+
+## 03.18 Session Identity
+
+Sessions represent bounded customer interaction periods.
+
+A Visitor may have multiple Sessions.
+
+Each Session must resolve to the correct Business ownership context.
+
+Session records should support linking relevant:
+
+- Signals.
+- State.
+- Decisions.
+- Experiences.
+- Actions.
+- Events.
+- Outcomes.
+
+Exact session-expiration and continuity rules will be defined during Runtime implementation.
+
+---
+
+# 03.F Visitor State Persistence
+
+## 03.19 Canonical Visitor State
+
+Visitor State must be persisted independently from the AI provider.
+
+It may contain structured representations of:
+
+- Context.
+- Intent.
+- Needs.
+- Constraints.
+- Concerns.
+- Preferences.
+- Journey State.
+- Relevant observations.
+- Inferences.
+- Confidence where applicable.
+
+The State representation must distinguish observed information from inferred information.
+
+---
+
+## 03.20 State Revision Strategy
+
+The initial persistence design must support current State together with enough historical context to interpret accepted Decisions.
+
+A practical implementation may maintain:
+
+- Current State.
+- State revision identity.
+- Relevant historical revisions or snapshots.
+- State-update Events.
+
+The exact balance between full snapshots and incremental history will be decided during physical schema design.
+
+---
+
+## 03.21 State Is Not Conversation History
+
+Provider conversation history may be retained where justified, but it is not the canonical Visitor State model.
+
+Kablet must remain capable of reconstructing the structured context used for meaningful Decisions without relying exclusively on provider-hosted memory.
+
+---
+
+# 03.G Decision Persistence
+
+## 03.22 Decisions Are First-Class Records
+
+Accepted meaningful Decisions must have stable canonical identity.
+
+A Decision record must preserve enough information to establish:
+
+- Owning Business.
+- Visitor and Session.
+- Relevant State context.
+- Decision objective.
+- Selected strategy.
+- Relevant Business Truth references.
+- Intelligence configuration.
+- Experiment context where applicable.
+- Resulting Experience relationship.
+- Decision status and timing.
+
+---
+
+## 03.23 Accepted Decision History Is Immutable in Meaning
+
+Once a Decision has been accepted as an executed historical occurrence, subsequent Intelligence activity must not silently overwrite what that Decision represented.
+
+New information produces new State and new Decisions.
+
+Administrative correction, privacy deletion, and explicit supersession remain separate governed operations.
+
+---
+
+## 03.24 Decision Context Must Be Reconstructable
+
+Kablet must preserve sufficient references, revisions, or accepted context snapshots to understand why a historical Decision was possible.
+
+The system is not required to persist unrestricted private model reasoning.
+
+Structured decision basis and configuration attribution are the relevant canonical artifacts.
+
+---
+
+## 03.25 Decision and Experience Are Separate
+
+A Decision represents what Kablet chose.
+
+An Experience represents the customer-facing realization of that choice.
+
+They must remain separately identifiable.
+
+One Decision may reference its intended Experience Plan and resulting validated Experience.
+
+The physical cardinality and exact persistence structure will be finalized in schema design.
+
+---
+
+# 03.H Experience Persistence
+
+## 03.26 Experience Records
+
+Experience persistence must support:
+
+- Experience identity.
+- Business and Session context.
+- Originating Decision.
+- Contract version.
+- Component instances.
+- Component payloads.
+- Relevant Truth references.
+- Presentation variants.
+- Validation status.
+- Lifecycle timestamps.
+
+---
+
+## 03.27 Planned Is Not Rendered
+
+The database must not treat creation of an Experience Plan as proof that the Visitor actually saw it.
+
+The system must distinguish:
+
+Experience Planned
+    ↓
+Experience Validated
+    ↓
+Experience Delivered
+    ↓
+Experience Rendered
+    ↓
+Component Exposed
+    ↓
+Customer Interaction
+
+Delivery and exposure evidence must be recorded according to their actual semantics.
+
+---
+
+## 03.28 Historical Experience Integrity
+
+A historical Experience must remain interpretable even after:
+
+- Business Truth changes.
+- Component implementations change.
+- presentation variants change.
+- Intelligence configuration changes.
+
+The architecture must preserve relevant contract and revision context.
+
+Pixel-perfect historical replay is not a v0.1 requirement.
+
+---
+
+# 03.I Event Persistence
+
+## 03.29 Canonical Event Store
+
+Kablet will initially persist canonical domain Events in PostgreSQL.
+
+Events represent meaningful occurrences rather than arbitrary application logs.
+
+The Event model must support stable identity and versioned semantics.
+
+---
+
+## 03.30 Event Envelope
+
+The canonical Event envelope should support, where applicable:
+
+- Event ID.
+- Event type.
+- Schema version.
+- Occurred timestamp.
+- Recorded timestamp.
+- Organization.
+- Business.
+- Property / Location.
+- Visitor.
+- Session.
+- Decision.
+- Experience.
+- Component.
+- Action.
+- Experiment.
+- Actor or source.
+- Validated payload.
+- Correlation / causation references.
+
+Not every Event requires every optional reference.
+
+The exact physical schema will be defined later.
+
+---
+
+## 03.31 Append-Oriented Event History
+
+Canonical historical Events should generally be recorded as new occurrences rather than repeatedly rewritten.
+
+Corrections and superseding information must be explicit.
+
+Append-oriented history does not override applicable privacy deletion requirements.
+
+---
+
+## 03.32 Event Idempotency
+
+The architecture must support protection against duplicate Event creation where retries or repeated delivery are possible.
+
+A retried webhook must not automatically become a second real-world conversion.
+
+Exact idempotency keys, uniqueness constraints, and retry policies will be defined during implementation.
+
+---
+
+## 03.33 Occurred Time and Recorded Time
+
+Events must distinguish when an occurrence happened from when Kablet recorded it.
+
+This supports:
+
+- delayed integrations.
+- webhook processing.
+- asynchronous Actions.
+- historical reconstruction.
+- accurate reporting.
+
+---
+
+# 03.J Outcome Persistence
+
+## 03.34 Outcomes Are Distinct From Events
+
+An Event records an occurrence.
+
+An Outcome represents a meaningful Business result.
+
+Examples include:
+
+- Appointment completed.
+- Lead qualified.
+- Purchase completed.
+- Subscription started.
+- Revenue realized.
+- Cancellation.
+- Refund.
+
+Outcome records must preserve relevant source and verification context.
+
+---
+
+## 03.35 Conversion Is Not Automatically Revenue
+
+Kablet must distinguish:
+
+- Conversion.
+- Estimated value.
+- Confirmed Revenue.
+- Realized Revenue.
+- Refund or reversal.
+
+A booking submission does not automatically establish realized Revenue.
+
+---
+
+## 03.36 Outcome Evolution
+
+Business Outcomes may change after the initial conversion.
+
+For example:
+
+Booking Created
+    ↓
+Booking Confirmed
+    ↓
+Appointment Attended
+    ↓
+Revenue Recorded
+
+The persistence model must support these developments without falsifying the original historical occurrence.
+
+---
+
+## 03.37 Outcome Verification
+
+Outcomes may originate from:
+
+- Kablet-controlled Actions.
+- External integrations.
+- Verified webhook events.
+- Authorized Business updates.
+
+Source provenance and verification status must be retained.
+
+---
+
+# 03.K Decision-to-Outcome Lineage
+
+## 03.38 Canonical Lineage Requirement
+
+Kablet's strategically important persistence relationship is:
+
+Business
+    ↓
+Visitor
+    ↓
+Session
+    ↓
+State Revision
+    ↓
+Decision
+    ↓
+Experience
+    ↓
+Exposure
+    ↓
+Interaction
+    ↓
+Action
+    ↓
+Outcome
+    ↓
+Revenue
+
+Not every Session will produce every stage.
+
+Missing stages must remain distinguishable from confirmed stages.
+
+---
+
+## 03.39 Lineage Must Be Queryable
+
+The database architecture must eventually support questions such as:
+
+- Which Decisions were produced for a Business?
+- Which Experiences resulted from those Decisions?
+- Which Experiences were actually exposed?
+- Which Components received interaction?
+- Which Actions were attempted?
+- Which Actions completed?
+- Which Outcomes were verified?
+- Which Decisions participated in an Experiment?
+- Which Business Truth revisions informed a Decision?
+
+These relationships are essential to Kablet's future Learning Brain.
+
+---
+
+## 03.40 Attribution Is Not Causation
+
+The persistence model must preserve relationships without automatically declaring that a Decision caused a Conversion.
+
+Controlled experiments and appropriate analysis are required to establish incremental effects.
+
+---
+
+# 03.L Transaction Architecture
+
+## 03.41 PostgreSQL Transactions
+
+Operations that must succeed or fail together should use appropriate PostgreSQL transactions.
+
+Examples may include:
+
+- Creating canonical State revisions.
+- Accepting Decisions.
+- Persisting associated Experiences.
+- Recording required domain Events.
+- Recording verified Action results and Outcomes.
+
+Exact transaction boundaries will be defined at implementation level.
+
+---
+
+## 03.42 External Calls Must Not Be Treated as Database Transactions
+
+External AI, booking, commerce, and messaging calls cannot be assumed to participate in a local PostgreSQL transaction.
+
+The architecture must account for partial failures and retries.
+
+Long-running external calls should not unnecessarily hold database transactions open.
+
+---
+
+## 03.43 Transactional Outbox Direction
+
+When a canonical database change must reliably trigger asynchronous work, Kablet should use a transactional outbox pattern or an equivalent reliability mechanism.
+
+Conceptually:
+
+Database Transaction
+    |
+    +-- Canonical Domain Change
+    |
+    +-- Outbox Record
+              |
+              v
+       Background Processing
+
+This avoids the failure mode in which a canonical change commits but its required asynchronous notification is silently lost.
+
+The exact implementation belongs to the Event and Async Architecture sections.
+
+---
+
+## 03.44 Idempotent Consequential Operations
+
+Duplicate-sensitive operations must support idempotency where appropriate.
+
+This is particularly important for:
+
+- Booking creation.
+- Payment-related Actions.
+- Lead creation.
+- Webhook processing.
+- Conversion recording.
+- External Outcome ingestion.
+
+Retries must not be interpreted automatically as new commercial activity.
+
+---
+
+# 03.M Historical Versioning
+
+## 03.45 Version Dimensions
+
+Persistence must distinguish, where applicable:
+
+- Record identity.
+- Data revision.
+- Schema version.
+- Contract version.
+- Intelligence configuration version.
+- Experiment version.
+- Relevant policy version.
+
+These dimensions are not interchangeable.
+
+---
+
+## 03.46 Historical Interpretation
+
+A Decision created yesterday must not silently inherit today's:
+
+- Price.
+- Offer.
+- Visitor State.
+- Component definition.
+- Experiment configuration.
+- Intelligence configuration.
+
+The architecture must preserve sufficient historical references or snapshots to interpret that Decision accurately.
+
+---
+
+## 03.47 Unknown Historical Data
+
+If historical information was not captured, the system must represent it as unknown rather than fabricate it during migration or reconstruction.
+
+---
+
+# 03.N Data Access Architecture
+
+## 03.48 Repository Boundaries
+
+Domain modules will use controlled persistence interfaces.
+
+A repository or equivalent data-access abstraction should enforce appropriate query context.
+
+Tenant-sensitive operations must not expose unrestricted access merely because a record ID is known.
+
+---
+
+## 03.49 Administrative Access
+
+Privileged platform administration must use explicit authorization and auditability.
+
+Administrative capabilities must not silently bypass tenant isolation.
+
+---
+
+## 03.50 Background Data Access
+
+Background workers must receive sufficient trusted ownership context to perform their operations safely.
+
+Tenant context must not disappear when execution moves outside an HTTP request.
+
+---
+
+# 03.O Data Growth and Evolution
+
+## 03.51 Start With One Primary Database
+
+Kablet v0.1 will not introduce multiple operational databases without a demonstrated requirement.
+
+PostgreSQL is sufficient as the initial canonical persistence platform.
+
+---
+
+## 03.52 Indexing
+
+Indexes should follow actual access patterns.
+
+Important expected query dimensions include:
+
+- Organization.
+- Business.
+- Visitor.
+- Session.
+- Decision.
+- Experience.
+- Event type.
+- Occurrence time.
+- Outcome.
+- Experiment.
+
+Exact indexes belong to physical schema design.
+
+---
+
+## 03.53 Partitioning
+
+Table partitioning is not mandatory from day one.
+
+It may be introduced for high-volume data such as Events when supported by measured volume and operational requirements.
+
+---
+
+## 03.54 Analytical Projections
+
+Future analytical workloads may require:
+
+- Materialized views.
+- Reporting tables.
+- Read replicas.
+- Analytical warehouses.
+- Specialized projections.
+
+These remain derived representations of canonical domain data.
+
+---
+
+## 03.55 Future Learning Infrastructure
+
+Future Learning Architecture may introduce:
+
+- Feature extraction.
+- Embeddings.
+- Vector retrieval.
+- Experiment aggregates.
+- Learned strategy records.
+- Model-training datasets.
+
+These capabilities must preserve ownership, provenance, versioning, and applicable privacy boundaries.
+
+The MVP does not require their full implementation.
+
+---
+
+# 03.P Data Architecture Decision Records
+
+## ADR-010 — PostgreSQL as Canonical Transactional Store
+
+**Status:** Accepted.
+
+Kablet v0.1 will use one primary PostgreSQL database for canonical operational data.
+
+Additional specialized storage systems require demonstrated need.
+
+## ADR-011 — Relational Core With Validated JSONB
+
+**Status:** Accepted.
+
+Stable relationships use relational modeling.
+
+Variable contract payloads may use JSONB with explicit validation and versioning.
+
+Critical lineage must remain queryable.
+
+## ADR-012 — Preserve Historical Decision Context
+
+**Status:** Accepted.
+
+Accepted Decisions must remain interpretable against relevant historical State, Business Truth, Experience, Experiment, and Intelligence configuration.
+
+Current-state mutation must not silently rewrite historical meaning.
+
+## ADR-013 — PostgreSQL-Backed Canonical Events
+
+**Status:** Accepted.
+
+Canonical Events will initially be persisted in PostgreSQL.
+
+A separate distributed event platform is not required for v0.1.
+
+## ADR-014 — Reliable Async Publication
+
+**Status:** Accepted as an architectural requirement.
+
+Canonical changes requiring reliable asynchronous publication will use a transactional outbox or an equivalent mechanism.
+
+The concrete implementation is deferred.
+
+## ADR-015 — Tenant Isolation Through Defense in Depth
+
+**Status:** Accepted.
+
+Tenant isolation must combine trusted context, application authorization, scoped persistence, and appropriate database-level enforcement.
+
+The exact RLS and database-role implementation is defined in Section 04.
+
+---
+
+# 03.Q Data Architecture Invariants
+
+1. PostgreSQL is the initial canonical transactional store.
+2. Organization remains the primary tenant boundary.
+3. Business remains the primary commercial data context.
+4. Ownership and authorship remain separate.
+5. IDs do not grant authorization.
+6. Domain modules own persistence behavior.
+7. Stable domain relationships are relational by default.
+8. JSONB payloads require appropriate validation.
+9. Critical lineage must remain queryable.
+10. Source data is not automatically authoritative Business Truth.
+11. Business Truth revisions preserve historical interpretation.
+12. Visitor identity is Business-scoped by default.
+13. Anonymous Visitors are supported.
+14. Visitor State exists independently of AI provider memory.
+15. Accepted Decisions are first-class historical records.
+16. Decision and Experience remain distinct.
+17. Planned Experience is not proof of rendered Experience.
+18. Canonical Events are distinct from operational logs.
+19. Events use stable identity and versioned semantics.
+20. Duplicate delivery must not automatically create duplicate reality.
+21. Outcome is distinct from Event.
+22. Conversion is distinct from realized Revenue.
+23. Outcome provenance must be retained.
+24. Decision-to-Outcome lineage must be reconstructable.
+25. Attribution must not be mistaken for causation.
+26. Related canonical operations use appropriate transactions.
+27. External calls are not assumed to participate in database transactions.
+28. Required asynchronous publication must be reliable.
+29. Consequential operations require appropriate idempotency.
+30. Historical meaning must survive current-state changes.
+31. Background access preserves tenant context.
+32. Analytical projections do not replace canonical records.
+33. Future Learning infrastructure must preserve ownership and privacy.
+34. Database complexity should grow from demonstrated requirements.
+
+---
+
+# 03.R Explicitly Not Defined Yet
+
+Section 03 does not finalize:
+
+- Exact SQL tables.
+- Column names.
+- Primary-key representation.
+- Foreign-key definitions.
+- Index definitions.
+- PostgreSQL schema organization.
+- RLS policy SQL.
+- Database roles.
+- Connection-pooling configuration.
+- Migration implementation.
+- Exact revision-storage strategy.
+- Event payload schemas.
+- Outbox table schema.
+- Retention durations.
+- Partitioning strategy.
+- Backup configuration.
+- Replication configuration.
+
+These decisions will be specified in the relevant technical sections and implementation contracts.
+
+---
+
+# 03.S Dependency
+
+Section 02 selected:
+
+TypeScript, Node.js, Next.js, React, PostgreSQL, Drizzle, Zod, and provider-isolated Intelligence.
+
+Section 03 establishes:
+
+**A PostgreSQL-centered canonical data architecture that preserves tenant ownership, authoritative Business Truth, historical State, first-class Decisions, validated Experiences, canonical Events, verified Outcomes, and reconstructable commercial lineage.**
+
+The next section defines the mechanisms that prevent one actor, Business, Visitor, or integration from accessing or modifying data outside its authority.
+
+# 04 — Authentication & Authorization
