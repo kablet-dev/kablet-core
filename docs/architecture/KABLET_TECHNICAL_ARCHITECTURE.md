@@ -14467,3 +14467,783 @@ Section 13 establishes:
 The next section defines how Kablet connects Business-owned domains to the public Customer Runtime without allowing untrusted hostnames or preview routes to compromise Business resolution and tenant isolation.
 
 # 14 — Custom Domains & Traffic Routing
+---
+
+# 14. Custom Domains & Traffic Routing
+
+## 14.1 Purpose
+
+This section defines how incoming web traffic resolves to the correct Kablet Business and Customer Runtime.
+
+It establishes the architecture for:
+
+- Kablet-managed subdomains.
+- Business-owned custom domains.
+- Domain ownership verification.
+- DNS configuration.
+- TLS certificate management.
+- Hostname-to-Business resolution.
+- Domain lifecycle management.
+- Preview and production separation.
+- Secure request routing.
+- Canonical URLs.
+- Domain migration and recovery.
+
+The primary objective is to let a Business expose Kablet as its customer-facing frontend while preserving trusted tenant resolution and operational simplicity.
+
+---
+
+# 14.A Fundamental Routing Model
+
+## 14.2 Domain Registry
+
+Kablet will maintain a canonical Domain Registry in PostgreSQL.
+
+The registry maps an authorized hostname to the applicable Business and runtime configuration.
+
+The hosting provider manages physical request ingress and applicable TLS infrastructure.
+
+Kablet remains authoritative for the domain's commercial ownership and runtime association.
+
+---
+
+## 14.3 Initial Domain Types
+
+The architecture should support:
+
+| Domain type | Purpose |
+|---|---|
+| Kablet-managed domain | Default public Business address |
+| Custom domain | Business-owned hostname |
+| Preview domain | Non-production Experience inspection |
+| Platform domain | Kablet Control Plane and operational interfaces |
+
+These types must not be treated as interchangeable.
+
+---
+
+## 14.4 Default Business Address
+
+A Business may initially receive a Kablet-managed address.
+
+Conceptually:
+
+`business-slug.kablet.com`
+
+The exact production hostname convention will be finalized during deployment.
+
+The default address allows a Business to operate without first configuring external DNS.
+
+---
+
+## 14.5 Custom Domain
+
+A Business may connect an authorized hostname.
+
+Examples:
+
+`www.example-business.com`
+
+or:
+
+`experience.example-business.com`
+
+The implementation must validate ownership and complete the required hosting configuration before activating public traffic.
+
+---
+
+# 14.B Canonical Domain Model
+
+## 14.6 Domain Identity
+
+Every registered Domain must have a stable canonical identity independent of its hostname.
+
+A conceptual Domain record should include:
+
+- Domain ID.
+- Organization ID.
+- Business ID.
+- Normalized hostname.
+- Domain type.
+- Verification status.
+- TLS status.
+- Routing status.
+- Primary-domain designation.
+- Provider reference.
+- Creation timestamp.
+- Relevant lifecycle timestamps.
+
+The exact physical schema will be finalized during implementation.
+
+---
+
+## 14.7 Hostname Uniqueness
+
+An active hostname must not resolve to multiple unrelated Businesses.
+
+The database must enforce appropriate uniqueness and ownership constraints.
+
+---
+
+## 14.8 Hostname Normalization
+
+Hostnames must be normalized before registration and lookup.
+
+Normalization should account for applicable:
+
+- Case handling.
+- Internationalized domain representation.
+- Trailing-dot handling.
+- Port separation.
+- Valid hostname syntax.
+
+Normalization must not create ambiguous ownership.
+
+---
+
+## 14.9 Primary Domain
+
+A Business may designate one active hostname as its primary public address.
+
+Additional verified hostnames may redirect to the primary address where appropriate.
+
+The system must preserve the requested path and safe query parameters according to the routing policy.
+
+---
+
+# 14.C Domain Connection Lifecycle
+
+## 14.10 Registration Flow
+
+The intended custom-domain connection flow is:
+
+Business User
+      |
+      v
+Submit Hostname
+      |
+      v
+Membership & Capability Validation
+      |
+      v
+Hostname Normalization
+      |
+      v
+Uniqueness Check
+      |
+      v
+Create Pending Domain Record
+      |
+      v
+Issue Verification Instructions
+      |
+      v
+Verify Domain Control
+      |
+      v
+Configure Hosting Provider
+      |
+      v
+Verify TLS Readiness
+      |
+      v
+Activate Routing
+
+A submitted hostname must not become publicly active merely because it was entered in the Control Plane.
+
+---
+
+## 14.11 Domain Ownership Verification
+
+Custom domains require evidence that the connecting Business controls the applicable hostname.
+
+The exact method may depend on the hosting provider.
+
+Examples include DNS-based verification challenges.
+
+---
+
+## 14.12 Verification Evidence
+
+Kablet should preserve appropriate verification metadata, including:
+
+- Verification method.
+- Challenge reference.
+- Verification status.
+- Verification timestamp.
+- Relevant provider response.
+
+Verification evidence must be associated with the correct Domain and Business.
+
+---
+
+## 14.13 DNS Instructions
+
+The Control Plane should present the required DNS records using provider-specific configuration returned through the Domain Adapter.
+
+Kablet must not assume every DNS provider exposes the same interface or propagation behavior.
+
+---
+
+## 14.14 Activation Requirements
+
+A custom hostname should become active only when:
+
+1. The requesting actor is authorized.
+2. The hostname is valid.
+3. No conflicting active ownership exists.
+4. Required ownership verification succeeds.
+5. Hosting-provider configuration succeeds.
+6. TLS is ready.
+7. The Domain Registry maps the hostname to the intended Business.
+
+---
+
+# 14.D TLS Architecture
+
+## 14.15 Managed TLS
+
+Kablet v0.1 will rely on managed TLS capabilities supplied by the selected hosting or edge provider.
+
+Kablet will not implement a proprietary certificate authority or certificate-issuance engine.
+
+---
+
+## 14.16 TLS Readiness
+
+Domain activation must account for certificate provisioning status.
+
+A DNS record pointing toward Kablet does not independently establish that secure public delivery is ready.
+
+---
+
+## 14.17 Renewal
+
+Certificate renewal should be managed through the selected infrastructure provider.
+
+Kablet must retain enough operational visibility to detect failed or degraded certificate provisioning.
+
+---
+
+## 14.18 Secure Transport
+
+Production customer-facing traffic must use HTTPS.
+
+Applicable HTTP requests should be redirected to HTTPS through the selected ingress configuration.
+
+---
+
+# 14.E Request Routing
+
+## 14.19 Trusted Request Entry
+
+Incoming requests must pass through the configured hosting or ingress boundary.
+
+Kablet must not blindly trust arbitrary forwarding headers supplied directly by external clients.
+
+---
+
+## 14.20 Hostname Resolution
+
+The Customer Runtime must resolve the effective hostname against the canonical Domain Registry.
+
+Conceptually:
+
+Incoming HTTPS Request
+          |
+          v
+Trusted Ingress
+          |
+          v
+Hostname Normalization
+          |
+          v
+Domain Registry Lookup
+          |
+          v
+Domain Status Validation
+          |
+          v
+Business Resolution
+          |
+          v
+Trusted Runtime Context
+          |
+          v
+Customer Experience
+
+---
+
+## 14.21 Unknown Hostnames
+
+An unknown or inactive hostname must fail closed.
+
+It must not automatically fall back to an unrelated default Business.
+
+---
+
+## 14.22 Business Context
+
+After successful Domain resolution, the server establishes the applicable Business context.
+
+The browser must not be permitted to override that resolved ownership by submitting a different Business ID.
+
+---
+
+## 14.23 Host Header Protection
+
+The implementation must protect against Host header manipulation and untrusted forwarding information.
+
+Only hostnames resolved through the trusted ingress and Domain Registry may establish Business routing.
+
+---
+
+## 14.24 Routing Cache
+
+Hostname resolution may eventually use caching for performance.
+
+However:
+
+- PostgreSQL remains canonical.
+- Cache keys must be normalized.
+- Inactive domains must not remain indefinitely routable.
+- Domain reassignment requires safe invalidation.
+
+A dedicated routing cache is not mandatory for the MVP.
+
+---
+
+# 14.F Runtime and Control Plane Separation
+
+## 14.25 Logical Separation
+
+The Control Plane and Customer Runtime remain separate logical surfaces, consistent with Section 01.
+
+They may share an initial deployment.
+
+Their routing and authorization behavior must remain distinct.
+
+---
+
+## 14.26 Platform Routes
+
+Platform administration routes must not become available merely because a Business connects a custom hostname.
+
+Business custom domains are intended to resolve customer-facing Runtime traffic.
+
+---
+
+## 14.27 Reserved Hostnames
+
+Kablet must reserve applicable platform hostnames and prevent Business registration conflicts.
+
+Examples may include hostnames used for:
+
+- Control Plane.
+- Authentication.
+- Internal administration.
+- Operational endpoints.
+- Preview infrastructure.
+
+The final reserved-hostname policy will be defined during implementation.
+
+---
+
+# 14.G Preview Architecture
+
+## 14.28 Preview Is Not Production
+
+Kablet must support a controlled method for inspecting Experiences before public activation.
+
+Preview traffic must remain distinguishable from real production customer traffic.
+
+---
+
+## 14.29 Preview Context
+
+A preview may reference:
+
+- Business.
+- Experience revision.
+- Applicable Truth revision.
+- Preview configuration.
+- Authorized reviewing actor.
+
+Preview access must not independently grant administrative authority.
+
+---
+
+## 14.30 Preview Isolation
+
+Preview Sessions and interactions must not silently contaminate production conversion metrics or experiment measurements.
+
+Where preview Events are retained, they must be clearly classified.
+
+---
+
+## 14.31 Preview Actions
+
+Consequential Actions must be explicitly controlled in preview mode.
+
+A preview booking button must not accidentally create a real external booking unless the workflow deliberately authorizes live testing.
+
+---
+
+## 14.32 Preview URLs
+
+Preview access may use a dedicated Kablet-managed route or hostname.
+
+Preview tokens, where used, must be scoped and appropriately protected.
+
+The exact implementation will be finalized during Runtime development.
+
+---
+
+# 14.H Domain Lifecycle
+
+## 14.33 Lifecycle States
+
+The conceptual Domain lifecycle may include:
+
+- Pending.
+- Awaiting verification.
+- Verified.
+- Configuring.
+- Active.
+- Degraded.
+- Suspended.
+- Removing.
+- Removed.
+
+The final physical status vocabulary will be defined during implementation.
+
+---
+
+## 14.34 Domain Removal
+
+Removing a custom domain must revoke its active routing association.
+
+The implementation must also coordinate applicable hosting-provider cleanup.
+
+---
+
+## 14.35 Domain Reassignment
+
+A hostname previously associated with one Business must not be silently reassigned to another.
+
+Reassignment requires a controlled ownership and verification process.
+
+---
+
+## 14.36 DNS Changes
+
+A Business may modify its DNS after activation.
+
+The architecture must support detecting relevant routing degradation and presenting actionable configuration status.
+
+---
+
+## 14.37 Provider Failure
+
+Hosting-provider failures must not silently modify canonical Business ownership.
+
+Domain configuration and activation should support appropriate retry and reconciliation through the background-processing architecture.
+
+---
+
+# 14.I URL and Navigation Policy
+
+## 14.38 Canonical Public URL
+
+A Business should have a clearly established primary public URL.
+
+This supports consistent navigation, sharing, and applicable indexing behavior.
+
+---
+
+## 14.39 Experience Navigation
+
+Kablet's adaptive canvas does not require a traditional multi-page website structure.
+
+However, the Runtime must support necessary URL behavior for:
+
+- Initial entry.
+- Public sharing.
+- Browser navigation.
+- Reloading.
+- Applicable redirects.
+
+The exact route grammar will be finalized in the Experience implementation contract.
+
+---
+
+## 14.40 Redirect Safety
+
+Redirect destinations must be controlled.
+
+Untrusted customer input must not create unrestricted open redirects through Kablet's domain-routing system.
+
+---
+
+## 14.41 Domain Changes and Historical Records
+
+Historical Decisions, Experiences, Events, and Outcomes must retain canonical Business and Session identity independently of the hostname used at the time.
+
+Changing a Business's primary domain must not break its commercial history.
+
+---
+
+# 14.J Search and Indexing Considerations
+
+## 14.42 Indexing Policy
+
+Kablet should distinguish public production surfaces from preview and internal surfaces.
+
+Preview and administrative routes should not be unintentionally presented as ordinary public search destinations.
+
+---
+
+## 14.43 Dynamic Experience Considerations
+
+The initial Customer Runtime must account for appropriate public metadata and crawlable entry behavior where required.
+
+The adaptive nature of an Experience must not automatically eliminate basic web metadata and accessibility requirements.
+
+---
+
+## 14.44 SEO Scope
+
+Advanced SEO optimization is not a prerequisite for the first conversion-flow milestone.
+
+However, the architecture must not unnecessarily prevent future support for canonical URLs, structured metadata, and appropriate indexing controls.
+
+---
+
+# 14.K Domain Security
+
+## 14.45 Ownership Validation
+
+Custom-domain registration must require authorized Business control and successful verification.
+
+---
+
+## 14.46 Cross-Tenant Routing
+
+A request for Business A's hostname must never resolve to Business B because of client-controlled identifiers or stale routing configuration.
+
+---
+
+## 14.47 Trusted Forwarding
+
+Forwarded hostname and protocol information must only be trusted from configured infrastructure.
+
+---
+
+## 14.48 Domain Takeover Protection
+
+Domain removal, reassignment, and stale provider configurations must be handled carefully to reduce takeover risks.
+
+The implementation should coordinate canonical registry state with provider configuration and verification status.
+
+---
+
+## 14.49 Domain-Based Session Security
+
+Visitor Session behavior must account for domain boundaries.
+
+Cookies and tokens must not be scoped so broadly that unrelated Business domains unintentionally share privileged Session authority.
+
+---
+
+# 14.L Observability
+
+## 14.50 Domain Health
+
+Kablet should expose relevant operational status, including:
+
+- Verification status.
+- DNS configuration status.
+- TLS readiness.
+- Routing activation.
+- Provider configuration errors.
+- Relevant domain degradation.
+
+---
+
+## 14.51 Routing Diagnostics
+
+Routing failures should preserve appropriate correlation information.
+
+Unknown hostname requests must not expose unrelated tenant details.
+
+---
+
+## 14.52 Operational Alerts
+
+Repeated domain activation failures or production TLS degradation should be visible to operators.
+
+Exact alert thresholds will be defined during deployment planning.
+
+---
+
+# 14.M MVP Domain Boundary
+
+## 14.53 Initial Requirements
+
+The first implementation should support:
+
+1. One Kablet-managed public Business address.
+2. Canonical hostname-to-Business resolution.
+3. Secure HTTPS delivery.
+4. Trusted tenant context establishment.
+5. Unknown-hostname rejection.
+6. Basic domain status visibility.
+7. Preview/production separation.
+
+---
+
+## 14.54 Custom-Domain Rollout
+
+Custom-domain connection may follow the first working end-to-end conversion flow.
+
+However, the Domain Registry and Business-resolution architecture must not assume that Kablet-managed subdomains are the only possible production addresses.
+
+---
+
+## 14.55 Explicit MVP Exclusions
+
+The first milestone does not require:
+
+- A proprietary DNS service.
+- Custom certificate infrastructure.
+- Automated DNS modification across every registrar.
+- Advanced edge routing.
+- Multi-region traffic steering.
+- A global routing control plane.
+- Enterprise domain-management workflows.
+- Advanced SEO tooling.
+
+The objective is secure and extensible Business routing.
+
+---
+
+# 14.N Architecture Decision Records
+
+## ADR-081 — Canonical Domain Registry
+
+**Status:** Accepted.
+
+PostgreSQL will own the canonical mapping between verified hostnames and Businesses.
+
+The hosting provider manages physical ingress and applicable TLS infrastructure.
+
+---
+
+## ADR-082 — Managed TLS and Domain Provisioning
+
+**Status:** Accepted.
+
+Kablet v0.1 will use managed hosting-provider capabilities for custom-domain provisioning and TLS.
+
+A proprietary certificate-management system is deferred.
+
+---
+
+## ADR-083 — Trusted Hostname Resolution
+
+**Status:** Accepted.
+
+Business context must be established through trusted hostname resolution and canonical Domain Registry validation.
+
+Client-provided Business identifiers cannot override routing ownership.
+
+---
+
+## ADR-084 — Verified Activation
+
+**Status:** Accepted.
+
+A custom domain requires applicable ownership verification, hosting configuration, and TLS readiness before public activation.
+
+---
+
+## ADR-085 — Preview and Production Separation
+
+**Status:** Accepted.
+
+Preview traffic and consequential preview Actions must remain explicitly distinguishable from production customer activity.
+
+---
+
+## ADR-086 — Domain-Independent Commercial Identity
+
+**Status:** Accepted.
+
+Canonical Business, Visitor, Session, Decision, Experience, Action, and Outcome identity must not depend on a mutable public hostname.
+
+---
+
+# 14.O Custom Domains & Traffic Routing Invariants
+
+1. PostgreSQL owns canonical Domain identity and Business association.
+2. A hostname is a routing identity, not an authorization credential.
+3. Active hostnames must resolve unambiguously.
+4. Hostnames require normalization.
+5. Custom-domain registration requires authorized Business capability.
+6. Custom-domain activation requires applicable ownership verification.
+7. TLS readiness is separate from DNS verification.
+8. Production customer-facing traffic uses HTTPS.
+9. Untrusted Host and forwarding headers cannot establish Business authority.
+10. Unknown or inactive hostnames fail closed.
+11. Client-provided Business IDs cannot override trusted domain resolution.
+12. Custom domains do not expose Control Plane authority.
+13. Reserved platform hostnames cannot be claimed as ordinary Business domains.
+14. Preview remains distinct from production.
+15. Preview activity must not silently contaminate production metrics.
+16. Consequential preview Actions require explicit controls.
+17. Domain removal revokes active routing.
+18. Domain reassignment requires controlled verification.
+19. Domain configuration failures must remain observable.
+20. Routing caches cannot become the source of canonical ownership.
+21. Redirect behavior must not permit unrestricted open redirects.
+22. Historical commercial identity remains independent of domain changes.
+23. Session security must respect domain boundaries.
+24. The MVP uses managed ingress and TLS rather than proprietary infrastructure.
+
+---
+
+# 14.P Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Hosting provider.
+- Production hostname convention.
+- Exact Domain table schema.
+- Domain verification mechanism.
+- DNS record templates.
+- Provider Domain Adapter interface.
+- TLS provisioning API.
+- Domain health-check frequency.
+- Routing-cache implementation.
+- Primary-domain redirect rules.
+- Preview URL format.
+- Preview token format.
+- Exact Session cookie policy.
+- SEO metadata implementation.
+- Custom-domain rollout date.
+
+These decisions will be finalized during implementation and deployment planning.
+
+---
+
+# 14.Q Dependency
+
+Section 13 established Kablet's Security and Secrets architecture.
+
+Section 14 establishes:
+
+**A canonical PostgreSQL-backed Domain Registry, managed HTTPS and custom-domain provisioning, verified hostname activation, trusted Business resolution, and strict separation between production Runtime traffic, platform administration, and preview Experiences.**
+
+The next section defines Kablet's development, testing, staging, and production environments, including how infrastructure configuration and data remain isolated across deployments.
+
+# 15 — Environments
