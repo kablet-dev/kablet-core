@@ -2818,3 +2818,600 @@ Section 01 establishes the initial system shape:
 The next section selects the concrete technologies that will implement this architecture:
 
 # 02 — Technology Stack
+
+# 02. Technology Stack
+
+## 02.1 Purpose
+
+This section selects the concrete technologies used to implement Kablet Technical Architecture v0.1.
+
+Selections are evaluated against:
+
+- Foundation Specification v0.1.
+- Architecture Goals & Constraints (Section 00).
+- System Architecture (Section 01).
+- Development speed.
+- Operational simplicity.
+- Type safety.
+- Data integrity.
+- Provider replaceability.
+- Future extensibility.
+
+The objective is to establish one coherent initial engineering stack, not to build infrastructure for hypothetical massive scale.
+
+---
+
+## 02.2 Primary Technology Decision
+
+**Kablet v0.1 will use TypeScript as its primary application language.**
+
+The initial application will share a consistent language across:
+
+- Control Plane.
+- Customer Runtime.
+- API.
+- Intelligence orchestration.
+- Experience Contracts.
+- Component Contracts.
+- Action Contracts.
+- Domain modules.
+- Background workers.
+
+Python is not required for the first implementation.
+
+It may be introduced later for specialized learning, statistical analysis, or machine-learning workloads where justified.
+
+The initial architecture must not depend on Python merely because Kablet uses AI.
+
+---
+
+## 02.3 Selected Stack
+
+| Layer | Selection | Status |
+|---|---|---|
+| Primary language | TypeScript | Selected |
+| Runtime | Node.js LTS | Selected |
+| Frontend | React + Next.js | Selected |
+| Application framework | Next.js | Selected |
+| API contracts | TypeScript + Zod | Selected |
+| Domain validation | Zod + explicit domain rules | Selected |
+| Primary database | PostgreSQL | Selected |
+| Database access | Drizzle ORM + SQL where necessary | Selected |
+| Authentication direction | Managed authentication, adapter-isolated | Provider deferred |
+| Authorization | Kablet-owned domain authorization | Selected |
+| AI integration | Kablet Intelligence Interface | Selected |
+| Initial AI provider | OpenAI adapter | Initial implementation |
+| Package manager | pnpm | Selected |
+| Repository strategy | TypeScript monorepo | Selected |
+| Background execution | Node.js worker when required | Selected |
+| Canonical Events | PostgreSQL-backed | Selected |
+| Analytics | Canonical Events first | Vendor deferred |
+| Caching | Not required initially | Deferred |
+| Vector database | Not required initially | Deferred |
+| Hosting | Managed infrastructure | Provider deferred |
+
+This table establishes the technology direction.
+
+Later sections define detailed configuration, persistence, security, and deployment decisions.
+
+---
+
+## 02.4 Node.js Runtime
+
+Kablet will use an active or maintenance-supported Node.js LTS release.
+
+The exact major version will be pinned during Repository Architecture.
+
+Production, CI, and local development must use compatible runtime versions.
+
+The application should not rely on experimental runtime features without a documented requirement.
+
+---
+
+## 02.5 Next.js
+
+Next.js will provide the initial application framework.
+
+It will support:
+
+- Business-facing Control Plane.
+- Customer-facing Runtime.
+- Public application entry points.
+- API entry points.
+- Server-side application orchestration.
+- React rendering.
+
+Next.js is an application delivery framework.
+
+It must not become the owner of Kablet's permanent domain semantics.
+
+Core domain logic must remain independent of:
+
+- Next.js route handlers.
+- React Components.
+- Server Actions.
+- framework-specific request objects.
+
+This preserves future extraction options.
+
+---
+
+## 02.6 Frontend Architecture
+
+React will implement Kablet's initial visual Experience renderer.
+
+The renderer will consume validated Experience Contracts.
+
+It will not execute arbitrary AI-generated React, JavaScript, or HTML.
+
+Conceptually:
+
+Validated Experience Contract
+        ↓
+React Component Registry
+        ↓
+Component Instances
+        ↓
+Customer-facing Experience
+
+The initial frontend must support dynamic composition without requiring a traditional page-builder architecture.
+
+---
+
+## 02.7 Backend Architecture
+
+The backend will initially execute within the TypeScript application architecture.
+
+Domain logic will be organized into explicit modules.
+
+Route handlers and other transport entry points must remain thin.
+
+Their responsibility is to:
+
+1. Receive requests.
+2. Establish trusted context.
+3. Validate input.
+4. Invoke application services.
+5. Return structured responses.
+
+They must not become the primary location for Business Truth, Decision, Experience, or Action logic.
+
+---
+
+## 02.8 TypeScript Contracts
+
+TypeScript will provide compile-time contracts across application boundaries.
+
+Zod will provide runtime validation for untrusted and externally supplied data.
+
+This includes:
+
+- API input.
+- Intelligence output.
+- Experience payloads.
+- Component payloads.
+- Action input.
+- Integration payloads.
+- Event payloads where applicable.
+
+TypeScript types alone are insufficient for validating runtime data.
+
+The system must distinguish compile-time correctness from runtime validation.
+
+---
+
+## 02.9 PostgreSQL
+
+PostgreSQL will serve as Kablet's initial primary transactional database.
+
+It will store canonical operational records, including:
+
+- Organizations.
+- Businesses.
+- Memberships.
+- Business Truth.
+- Visitors.
+- Sessions.
+- Visitor State.
+- Decisions.
+- Experiences.
+- Actions.
+- Events.
+- Outcomes.
+- Experiment definitions and assignments.
+
+The database will preserve the ownership and historical lineage established by the Foundation.
+
+A separate event database, vector database, or analytical warehouse is not required initially.
+
+---
+
+## 02.10 Drizzle ORM
+
+Drizzle will provide typed database access and schema management.
+
+Raw SQL remains acceptable where necessary for:
+
+- complex constraints.
+- transaction control.
+- tenant isolation.
+- performance-sensitive queries.
+- advanced PostgreSQL capabilities.
+
+The ORM must not replace domain validation or authorization.
+
+Database access should remain behind module-owned persistence interfaces.
+
+---
+
+## 02.11 Authentication
+
+Kablet will use managed authentication rather than implementing a custom credential system from scratch.
+
+The exact provider will be selected in Section 04.
+
+Authentication identity must remain separate from canonical Kablet User identity.
+
+Kablet will preserve its own:
+
+- User.
+- Organization.
+- Business.
+- Membership.
+- authorization relationships.
+
+Replacing the authentication provider must not require redefining those domain concepts.
+
+---
+
+## 02.12 Authorization
+
+Authorization is a Kablet-owned application capability.
+
+It will not be delegated exclusively to:
+
+- frontend visibility.
+- authentication-provider metadata.
+- middleware.
+- AI instructions.
+
+The implementation must enforce contextual access based on ownership, Membership, resource, operation, and applicable capability.
+
+Database-level enforcement will be evaluated in the Data and Authorization Architecture sections.
+
+---
+
+## 02.13 Intelligence Technology
+
+Kablet will initially integrate OpenAI through an infrastructure adapter.
+
+The application will communicate with the Kablet Intelligence Interface rather than invoking provider-specific APIs throughout domain modules.
+
+Conceptually:
+
+Customer Runtime
+        ↓
+Kablet Intelligence Interface
+        ↓
+Context Assembly
+        ↓
+Provider Adapter
+        ↓
+OpenAI
+
+The adapter will translate provider responses into Kablet-owned structured output contracts.
+
+Provider responses must pass Kablet validation before becoming canonical Decisions or Experiences.
+
+No permanent Foundation object will depend on an OpenAI-specific conversation, response, or tool-call representation.
+
+---
+
+## 02.14 Intelligence Model Selection
+
+The exact model and model-routing policy are deferred to Section 05.
+
+The initial architecture should support:
+
+- one default model.
+- configurable model identity.
+- provider-level error handling.
+- structured output.
+- request attribution.
+- cost and latency observation.
+- controlled fallback.
+
+Multi-provider orchestration and complex model routing are not required for the first Runtime.
+
+---
+
+## 02.15 Background Processing
+
+Background processing will use TypeScript and Node.js.
+
+A separate worker process may be introduced when required.
+
+The initial architecture should avoid selecting a complex queue system before concrete asynchronous workloads and reliability requirements are defined.
+
+Candidate workloads include:
+
+- integration synchronization.
+- webhook follow-up.
+- analytics projection.
+- reporting aggregation.
+- retryable external operations.
+- learning analysis.
+
+Background jobs must preserve tenant and domain context.
+
+---
+
+## 02.16 Event Technology
+
+Kablet's canonical Event Spine will initially use PostgreSQL-backed persistence.
+
+This does not mean every internal operation must communicate through asynchronous Events.
+
+The Event domain model remains distinct from its transport and storage implementation.
+
+A distributed event-streaming platform is not required for v0.1.
+
+---
+
+## 02.17 Analytics Technology
+
+Kablet's canonical Event and Outcome data must exist independently of analytics vendors.
+
+A third-party analytics provider may later be used for:
+
+- product analytics.
+- operational funnels.
+- dashboards.
+- debugging.
+- session analysis.
+
+Such a provider will consume permitted projections of canonical Kablet data.
+
+It will not become the authoritative Decision/Outcome system.
+
+---
+
+## 02.18 Caching
+
+Redis or another dedicated caching system is not mandatory for the first implementation.
+
+Caching will be introduced when supported by demonstrated requirements involving:
+
+- latency.
+- request volume.
+- rate limiting.
+- expensive repeated computation.
+- session-related performance.
+- operational reliability.
+
+Canonical Visitor State must not exist exclusively in an ephemeral cache.
+
+---
+
+## 02.19 Vector Infrastructure
+
+A dedicated vector database is not required initially.
+
+If semantic retrieval becomes necessary, the architecture should first evaluate whether PostgreSQL-based capabilities adequately support the requirement.
+
+The addition of embeddings must not alter Business Truth authority or tenant isolation.
+
+---
+
+## 02.20 Repository and Package Management
+
+Kablet will use a TypeScript monorepo managed with pnpm.
+
+The repository must support:
+
+- shared domain contracts.
+- independent module boundaries.
+- application code.
+- infrastructure adapters.
+- tests.
+- database migrations.
+- architecture documentation.
+
+The exact folder structure and workspace configuration will be defined in Repository Architecture.
+
+A monorepo does not imply that every package must become an independently published library.
+
+---
+
+## 02.21 Testing Direction
+
+The stack must support automated testing of:
+
+- domain rules.
+- ownership.
+- authorization.
+- validation.
+- persistence.
+- Intelligence adapters.
+- Experience Contracts.
+- Action execution.
+- Event and Outcome lineage.
+- end-to-end customer journeys.
+
+Exact testing frameworks will be selected in Section 16.
+
+Critical PostgreSQL behavior must eventually be tested against real PostgreSQL rather than relying exclusively on mocks.
+
+---
+
+## 02.22 Provider Selection Principle
+
+Managed infrastructure is preferred where it reduces operational complexity.
+
+However, strategic Kablet concepts must remain Kablet-owned.
+
+Acceptable:
+
+Using an external AI provider to perform reasoning.
+
+Not acceptable:
+
+Making the provider's conversation history Kablet's only Visitor State.
+
+Acceptable:
+
+Using managed PostgreSQL.
+
+Not acceptable:
+
+Allowing hosting-specific abstractions to redefine Business ownership.
+
+Acceptable:
+
+Using third-party analytics.
+
+Not acceptable:
+
+Losing canonical Decision/Outcome history when the analytics vendor is removed.
+
+---
+
+# 02.A Technology Dependency Model
+
+The intended dependency direction is:
+
+Next.js / React
+       |
+       v
+Application Services
+       |
+       v
+Kablet Domain Contracts
+       |
+       v
+Infrastructure Interfaces
+       |
+       v
+Infrastructure Adapters
+       |
+       +-- PostgreSQL / Drizzle
+       +-- AI Provider
+       +-- Authentication Provider
+       +-- External Integrations
+       +-- Storage Provider
+       +-- Analytics Provider
+
+Domain modules must not depend directly on React, Next.js, or provider SDK representations.
+
+---
+
+# 02.B Explicitly Deferred Technologies
+
+The following are not required selections for this section:
+
+- Redis provider.
+- Queue provider.
+- Vector database.
+- Analytical warehouse.
+- Proprietary ML framework.
+- Kubernetes.
+- Kafka.
+- Multi-cloud infrastructure.
+- Multi-region database.
+- Dedicated inference servers.
+- Agent orchestration framework.
+
+They may be introduced through later architecture decisions when justified.
+
+---
+
+# 02.C Architecture Decisions
+
+## ADR-004 — TypeScript-First Application
+
+**Status:** Accepted.
+
+Kablet will use TypeScript across its initial application, Runtime, API, Intelligence orchestration, and domain contracts.
+
+Python may be introduced later for specialized workloads.
+
+Reason: one coherent development environment reduces integration complexity and accelerates initial implementation.
+
+## ADR-005 — React and Next.js
+
+**Status:** Accepted.
+
+React and Next.js will implement the initial Control Plane and customer-facing Runtime.
+
+Core domain semantics remain framework-independent.
+
+## ADR-006 — PostgreSQL as Primary System of Record
+
+**Status:** Accepted.
+
+PostgreSQL will hold canonical operational data, including Decision, Event, and Outcome lineage.
+
+Additional specialized databases require demonstrated need.
+
+## ADR-007 — Drizzle and Zod
+
+**Status:** Accepted.
+
+Drizzle provides typed database access.
+
+Zod provides runtime contract validation.
+
+Neither replaces domain rules or authorization.
+
+## ADR-008 — Provider-Isolated Intelligence
+
+**Status:** Accepted.
+
+The first Intelligence implementation will use an OpenAI adapter behind Kablet's own Intelligence Interface.
+
+Model/provider representations must not become canonical domain objects.
+
+## ADR-009 — Avoid Premature Infrastructure Proliferation
+
+**Status:** Accepted.
+
+Redis, dedicated vector infrastructure, distributed streaming, complex agent frameworks, and proprietary ML infrastructure are deferred until justified by concrete requirements.
+
+---
+
+# 02.D Technology Stack Invariants
+
+1. TypeScript is the primary application language.
+2. Node.js is the initial application runtime.
+3. React implements the initial visual Experience renderer.
+4. Next.js delivers the initial application.
+5. Domain contracts remain independent of Next.js and React.
+6. PostgreSQL is the primary canonical transactional store.
+7. Drizzle does not replace domain validation.
+8. Zod validates untrusted runtime data.
+9. Authentication-provider identity remains separate from Kablet domain identity.
+10. Authorization remains Kablet-owned.
+11. Intelligence providers remain behind adapters.
+12. Provider output requires Kablet validation.
+13. Canonical Visitor State does not reside exclusively in provider memory.
+14. Canonical Events remain independent of analytics vendors.
+15. Background processing preserves tenant context.
+16. Additional infrastructure requires demonstrated need.
+17. Technology selections must preserve Foundation v0.1.
+18. Provider replacement must not redefine Kablet's canonical domain.
+
+---
+
+# 02.E Dependency
+
+Section 01 established:
+
+**A modular monolith with separate logical Control Plane, Customer Runtime, and Learning / Analysis boundaries.**
+
+Section 02 establishes:
+
+**A TypeScript-first implementation using Node.js, Next.js, React, PostgreSQL, Drizzle, Zod, and provider-isolated Intelligence.**
+
+The next section defines how Kablet's canonical domain is persisted and how its historical lineage is preserved.
+
+# 03 — Data Architecture
