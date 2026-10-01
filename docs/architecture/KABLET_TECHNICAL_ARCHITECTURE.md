@@ -9636,3 +9636,973 @@ Section 08 establishes:
 The next section defines how Kablet performs reliable background processing, handles retries, and introduces caching only where operationally justified.
 
 # 09 — Async / Jobs / Caching
+---
+
+# 09. Async / Jobs / Caching
+
+## 09.1 Purpose
+
+This section defines how Kablet v0.1 performs reliable work outside the synchronous customer request lifecycle.
+
+It establishes the architecture for:
+
+- Background execution.
+- Durable jobs.
+- Transactional outbox publication.
+- Retry policies.
+- Idempotent processing.
+- Worker ownership.
+- Tenant-context propagation.
+- External integration follow-up.
+- Delayed Outcome verification.
+- Failed-job recovery.
+- Caching.
+- Performance isolation.
+
+The objective is operational reliability without prematurely introducing distributed infrastructure.
+
+---
+
+# 09.A Fundamental Architecture Decision
+
+## 09.2 PostgreSQL-Backed Background Processing
+
+Kablet v0.1 will use PostgreSQL as the initial durable coordination mechanism for asynchronous work.
+
+The first implementation will not require:
+
+- Redis.
+- Kafka.
+- RabbitMQ.
+- Temporal.
+- A separate distributed workflow engine.
+- A dedicated event-streaming cluster.
+
+These technologies may be introduced later when supported by concrete operational requirements.
+
+---
+
+## 09.3 Dedicated Worker Process
+
+Kablet will support a dedicated Node.js worker process.
+
+The worker will share the same TypeScript codebase and domain contracts as the primary application.
+
+Conceptually:
+
+Kablet Application
+        |
+        v
+PostgreSQL
+        |
+        +-- Canonical Data
+        +-- Canonical Events
+        +-- Transactional Outbox
+        +-- Durable Jobs
+                  |
+                  v
+           Kablet Worker
+                  |
+                  v
+          Registered Job Handler
+
+The worker is a separate execution process, not a separate domain authority.
+
+---
+
+## 09.4 Logical Separation
+
+The architecture distinguishes:
+
+**Customer Runtime**
+
+Handles latency-sensitive customer interactions.
+
+**Background Worker**
+
+Handles operations that may execute after the originating request.
+
+**Canonical Database**
+
+Preserves authoritative operational records.
+
+**Outbox**
+
+Coordinates reliable publication of committed changes.
+
+**Job Dispatcher**
+
+Claims and executes scheduled or queued work.
+
+These responsibilities may share one repository and one primary database.
+
+---
+
+# 09.B Synchronous vs Asynchronous Work
+
+## 09.5 Synchronous Operations
+
+Operations required to complete the immediate customer interaction may execute synchronously.
+
+Examples include:
+
+- Validating an interaction.
+- Resolving Visitor State.
+- Assembling Intelligence context.
+- Accepting a Decision.
+- Returning a validated Experience.
+- Performing a bounded informational lookup.
+
+Synchronous work must respect customer-facing latency requirements.
+
+---
+
+## 09.6 Asynchronous Operations
+
+Operations that do not need to block the immediate response should execute asynchronously.
+
+Candidate workloads include:
+
+- Integration synchronization.
+- External notification delivery.
+- Delayed Action processing.
+- Outcome reconciliation.
+- Reporting aggregation.
+- Analytics projections.
+- Learning analysis.
+- Retryable provider operations.
+- Data cleanup.
+- Scheduled maintenance.
+
+---
+
+## 09.7 Consequential Work Classification
+
+An operation must not be made asynchronous merely because it is slow.
+
+The implementation must consider:
+
+- Whether the Visitor requires an immediate result.
+- Whether the operation is consequential.
+- Whether it can safely be retried.
+- Whether it requires confirmation.
+- Whether the provider supports idempotency.
+- Whether completion may be delayed.
+- Whether failure requires reconciliation.
+
+---
+
+## 09.8 Customer-Facing Pending State
+
+When an Action continues asynchronously, the Runtime must represent its status accurately.
+
+For example:
+
+Booking Requested
+        |
+        v
+Processing
+        |
+        v
+Awaiting Confirmation
+        |
+        v
+Booking Confirmed
+
+A queued job must not automatically be presented as a completed commercial operation.
+
+---
+
+# 09.C Transactional Outbox
+
+## 09.9 Outbox Decision
+
+Kablet will use the transactional outbox pattern for canonical changes that require reliable asynchronous publication.
+
+The outbox protects against the failure mode in which a database transaction commits but the application crashes before publishing its required follow-up work.
+
+---
+
+## 09.10 Atomic Persistence
+
+The intended pattern is:
+
+BEGIN TRANSACTION
+
+    Persist Canonical Change
+
+    Persist Required Event
+
+    Insert Outbox Record
+
+COMMIT
+
+The outbox record becomes available for processing only after the transaction commits.
+
+---
+
+## 09.11 Outbox Record
+
+A conceptual outbox record should contain:
+
+- Outbox identity.
+- Message type.
+- Contract version.
+- Relevant canonical reference.
+- Organization context.
+- Business context.
+- Correlation identity.
+- Creation timestamp.
+- Processing status.
+- Attempt metadata.
+- Scheduling metadata.
+
+The exact physical schema will be defined during implementation.
+
+---
+
+## 09.12 Outbox Is Not the Event Store
+
+The canonical Event store preserves historical occurrences.
+
+The outbox coordinates reliable asynchronous delivery.
+
+These are distinct responsibilities.
+
+An outbox record may reference a canonical Event or another committed domain operation.
+
+---
+
+## 09.13 Delivery Semantics
+
+Kablet will initially design for at-least-once asynchronous delivery.
+
+A message may be processed more than once after crashes, retries, or lease expiration.
+
+Consumers must therefore be idempotent.
+
+Exactly-once end-to-end processing must not be assumed.
+
+---
+
+# 09.D Durable Job Architecture
+
+## 09.14 Job Registry
+
+Kablet will maintain a controlled registry of background job types.
+
+Each registered job must define:
+
+- Job type.
+- Payload contract.
+- Handler.
+- Retry classification.
+- Timeout policy.
+- Relevant ownership context.
+- Idempotency behavior.
+
+Arbitrary executable job payloads are prohibited.
+
+---
+
+## 09.15 Initial Job Categories
+
+Candidate initial job types include:
+
+| Job category | Purpose |
+|---|---|
+| Outbox Dispatch | Deliver committed asynchronous messages |
+| Integration Sync | Synchronize authorized external information |
+| Action Follow-up | Continue pending Action execution |
+| Outcome Reconciliation | Resolve delayed commercial results |
+| Analytics Projection | Update derived reporting data |
+| Intelligence Analysis | Perform non-critical learning analysis |
+| Maintenance | Execute scheduled cleanup and operational tasks |
+
+Only jobs required by the MVP should be implemented initially.
+
+---
+
+## 09.16 Job Envelope
+
+A conceptual durable job should contain:
+
+- Job ID.
+- Job type.
+- Contract version.
+- Validated payload.
+- Organization / Business context.
+- Correlation ID.
+- Idempotency reference.
+- Priority where applicable.
+- Available-at timestamp.
+- Attempt count.
+- Maximum attempts.
+- Execution status.
+- Lease information.
+- Last error classification.
+- Creation and completion timestamps.
+
+---
+
+## 09.17 Job Ownership
+
+Every tenant-sensitive job must resolve to its authorized Organization and Business context.
+
+A job payload must not establish unrestricted authority merely by containing a Business ID.
+
+The worker must validate trusted execution context before performing tenant-sensitive operations.
+
+---
+
+# 09.E Job Claiming and Concurrency
+
+## 09.18 PostgreSQL Job Claiming
+
+The initial dispatcher should use PostgreSQL concurrency primitives to safely claim available jobs.
+
+A suitable implementation may use:
+
+`SELECT ... FOR UPDATE SKIP LOCKED`
+
+or an equivalent transactional claiming mechanism.
+
+This allows multiple workers to claim different jobs without intentionally executing the same available job simultaneously.
+
+---
+
+## 09.19 Job Leases
+
+Claimed jobs should have bounded execution ownership.
+
+A lease or equivalent mechanism must support recovery when a worker crashes before completing its job.
+
+---
+
+## 09.20 Lease Expiration
+
+An expired lease may make unfinished work eligible for another attempt.
+
+However, lease expiration does not prove that an external operation failed.
+
+The handler must account for potentially completed external side effects.
+
+---
+
+## 09.21 Worker Concurrency
+
+Worker concurrency must be configurable.
+
+The initial implementation should use conservative limits rather than maximizing parallel execution.
+
+Concurrency should consider:
+
+- PostgreSQL connection capacity.
+- External provider limits.
+- Job type.
+- Business isolation.
+- Resource consumption.
+- Operational latency.
+
+---
+
+## 09.22 Long-Running Jobs
+
+Long-running operations may require lease renewal or another appropriate execution mechanism.
+
+The implementation must not assume every job finishes within one fixed short interval.
+
+---
+
+# 09.F Idempotency
+
+## 09.23 Idempotent Job Processing
+
+Every retryable consequential job must have an appropriate idempotency strategy.
+
+A repeated job delivery must not automatically create a second:
+
+- Booking.
+- Lead.
+- Purchase.
+- Customer message.
+- Outcome.
+- External operation.
+
+---
+
+## 09.24 Job Identity vs Business Operation Identity
+
+A Job ID identifies a unit of background work.
+
+An Action Invocation ID identifies the underlying commercial operation.
+
+These must remain distinct.
+
+Multiple job attempts may belong to one Action Invocation.
+
+---
+
+## 09.25 Idempotency Enforcement
+
+Idempotency may be enforced through:
+
+- Stable invocation references.
+- Database uniqueness constraints.
+- Processed-message records.
+- Provider idempotency keys.
+- External status reconciliation.
+
+The appropriate mechanism depends on the operation.
+
+---
+
+## 09.26 Unknown External Results
+
+If a worker times out after submitting a consequential external operation, it must not blindly assume the operation failed.
+
+Recovery may require:
+
+- Provider status lookup.
+- Idempotent retry.
+- Webhook confirmation.
+- Reconciliation.
+- Explicit unresolved status.
+
+This requirement preserves the Action Architecture established in Section 07.
+
+---
+
+# 09.G Retry Architecture
+
+## 09.27 Failure Classification
+
+Job failures must be classified.
+
+Initial categories include:
+
+- Transient infrastructure failure.
+- Provider rate limit.
+- Provider timeout.
+- Temporary integration outage.
+- Invalid payload.
+- Authorization failure.
+- Permanent provider rejection.
+- Unknown external result.
+- Canonical persistence failure.
+
+---
+
+## 09.28 Retryable Failures
+
+Transient failures may be retried using bounded backoff.
+
+The retry policy should consider:
+
+- Attempt count.
+- Failure category.
+- Provider guidance.
+- Operation idempotency.
+- Maximum execution age.
+- Business importance.
+
+---
+
+## 09.29 Non-Retryable Failures
+
+Failures caused by invalid input, unsupported contracts, or permanently unauthorized operations should not enter uncontrolled retry loops.
+
+They should be recorded and surfaced for appropriate resolution.
+
+---
+
+## 09.30 Exponential Backoff
+
+The initial retry strategy may use bounded exponential backoff with jitter.
+
+Exact intervals and attempt limits will be defined in the implementation configuration.
+
+---
+
+## 09.31 Retry Isolation
+
+Repeated failure of one provider or Business must not unnecessarily block unrelated work.
+
+The dispatcher should support practical isolation through job categories, concurrency controls, and provider-aware limits.
+
+---
+
+# 09.H Failed-Job Recovery
+
+## 09.32 Terminal Failure State
+
+A job that exhausts its permitted attempts must enter an explicit terminal or intervention-required state.
+
+It must not silently disappear.
+
+---
+
+## 09.33 Dead-Letter Equivalent
+
+The initial PostgreSQL implementation may retain terminally failed jobs in a queryable failed-job state rather than introducing a separate dead-letter queue product.
+
+The system must preserve:
+
+- Job identity.
+- Failure classification.
+- Attempt history.
+- Relevant context.
+- Recovery eligibility.
+
+---
+
+## 09.34 Administrative Recovery
+
+Authorized operators may need to:
+
+- Inspect failed jobs.
+- Retry eligible work.
+- Cancel work.
+- Trigger reconciliation.
+- Investigate provider failures.
+
+Administrative recovery must respect tenant ownership and auditability.
+
+---
+
+## 09.35 Recovery Is Not Blind Replay
+
+Retrying a failed job must not automatically repeat an external commercial operation.
+
+The system must evaluate whether the original operation may already have succeeded.
+
+---
+
+# 09.I Scheduling
+
+## 09.36 Scheduled Jobs
+
+The architecture must support work that becomes eligible at a future time.
+
+Examples include:
+
+- Delayed Outcome verification.
+- Integration reconciliation.
+- Reporting aggregation.
+- Cleanup.
+- Retry after provider rate limiting.
+
+---
+
+## 09.37 Scheduling Source of Truth
+
+Scheduled execution metadata should initially remain in PostgreSQL.
+
+The implementation must not depend exclusively on an in-memory timer that disappears when the application restarts.
+
+---
+
+## 09.38 Scheduling Precision
+
+The MVP does not require a general-purpose high-precision scheduling platform.
+
+Scheduling precision should follow the actual Business requirement.
+
+---
+
+# 09.J Worker Security
+
+## 09.39 Trusted Worker Identity
+
+Workers execute under trusted infrastructure identity.
+
+However, infrastructure access must not be confused with unrestricted domain authorization.
+
+---
+
+## 09.40 Tenant Context Propagation
+
+Tenant-sensitive jobs must preserve or securely resolve:
+
+- Organization.
+- Business.
+- Operation.
+- Relevant resource.
+- Initiating actor or trusted source.
+- Correlation identity.
+
+The worker must establish the correct database and application authorization context.
+
+---
+
+## 09.41 RLS Compatibility
+
+Worker database access must respect the tenant-isolation architecture defined in Section 04.
+
+A high-privilege worker connection must not become an accidental universal bypass for ordinary Business operations.
+
+Privileged maintenance operations require separate explicit boundaries.
+
+---
+
+## 09.42 Secret Handling
+
+Job payloads must not unnecessarily contain raw integration credentials or other secrets.
+
+Workers should resolve permitted credentials through controlled server-side infrastructure.
+
+---
+
+# 09.K Worker Observability
+
+## 09.43 Required Metrics
+
+Background processing should expose operational information including:
+
+- Pending jobs.
+- Running jobs.
+- Completed jobs.
+- Failed jobs.
+- Retry counts.
+- Oldest pending-job age.
+- Outbox backlog.
+- Processing latency.
+- Provider failure categories.
+- Lease expirations.
+
+---
+
+## 09.44 Correlation
+
+Background operations must preserve correlation with the originating domain operation.
+
+For example:
+
+Action Invocation
+        |
+        v
+Outbox Message
+        |
+        v
+Background Job
+        |
+        v
+Integration Attempt
+        |
+        v
+Verified Result
+
+The relationship must remain inspectable.
+
+---
+
+## 09.45 Worker Health
+
+The deployment architecture must support determining whether background processing is operational.
+
+A running web application does not automatically imply that its worker is processing jobs successfully.
+
+---
+
+# 09.L Caching Architecture
+
+## 09.46 Initial Caching Decision
+
+Kablet v0.1 will not require Redis or another dedicated distributed cache.
+
+Caching will be introduced selectively when justified by actual performance requirements.
+
+---
+
+## 09.47 Cache Is Not Canonical State
+
+A cache must never become the only authoritative location for:
+
+- Business Truth.
+- Visitor State.
+- Decisions.
+- Experiences.
+- Actions.
+- Events.
+- Outcomes.
+
+Canonical persistence remains PostgreSQL-backed.
+
+---
+
+## 09.48 Initial Cache Candidates
+
+Potential cache candidates include:
+
+- Public Business configuration.
+- Stable Component definitions.
+- Non-sensitive presentation metadata.
+- Repeated authorized informational lookups.
+- Derived reporting results.
+
+Caching decisions must consider ownership, privacy, freshness, and invalidation.
+
+---
+
+## 09.49 Business Truth Freshness
+
+Caching Business Truth requires explicit invalidation or bounded freshness.
+
+A changed price, service, availability rule, or offer must not remain indefinitely active because of stale cache state.
+
+---
+
+## 09.50 Tenant-Safe Cache Keys
+
+Any tenant-sensitive cache must preserve Organization and Business scope in its keying and access design.
+
+A cache hit must not bypass authorization.
+
+---
+
+## 09.51 Visitor State Caching
+
+Visitor State may eventually benefit from caching.
+
+However, the cache must remain a derived acceleration mechanism.
+
+The canonical State and its relevant historical context remain Kablet-owned durable records.
+
+---
+
+## 09.52 Intelligence Response Caching
+
+Intelligence responses should not be cached indiscriminately.
+
+A response may depend on:
+
+- Visitor State.
+- Business Truth revision.
+- Decision objective.
+- Available Actions.
+- Experiment assignment.
+- Intelligence configuration.
+
+Incorrect reuse could produce commercially invalid Experiences.
+
+Any future Intelligence cache requires explicit compatibility and invalidation rules.
+
+---
+
+# 09.M Performance Isolation
+
+## 09.53 Protect the Customer Runtime
+
+Background work must not unnecessarily compete with latency-sensitive customer interactions.
+
+The architecture should support separate execution and concurrency limits for background processing.
+
+---
+
+## 09.54 Database Pressure
+
+Because the application and worker initially share PostgreSQL, worker load must be monitored.
+
+Heavy reporting or batch processing must not be allowed to degrade customer-facing transactional operations without control.
+
+---
+
+## 09.55 Future Extraction
+
+If operational evidence justifies it, Kablet may later introduce:
+
+- Separate worker deployments.
+- Dedicated queue infrastructure.
+- Redis.
+- Specialized scheduling.
+- Analytical storage.
+- Dedicated learning infrastructure.
+
+These changes must preserve canonical domain contracts and Event/Outcome lineage.
+
+---
+
+# 09.N MVP Technical Boundary
+
+## 09.56 Minimum Background Infrastructure
+
+The first implementation should include only the background capabilities required for the initial conversion flow.
+
+The minimum practical architecture is:
+
+1. PostgreSQL-backed durable jobs.
+2. Transactional outbox where reliable publication is required.
+3. One Node.js worker entry point.
+4. Controlled job registry.
+5. Safe job claiming.
+6. Bounded retry handling.
+7. Idempotency support.
+8. Failed-job visibility.
+9. Trusted tenant-context propagation.
+
+---
+
+## 09.57 No Dedicated Cache Initially
+
+The first engineering milestone should operate correctly without Redis.
+
+Caching may be added after performance measurement identifies a specific bottleneck.
+
+---
+
+## 09.58 Operational Proof
+
+The first implementation must demonstrate that:
+
+- Committed required background work survives application restart.
+- A worker can claim and complete a job.
+- Two workers cannot simultaneously claim the same available job under normal lease conditions.
+- A crashed worker's unfinished job becomes recoverable.
+- Duplicate delivery does not duplicate a consequential commercial result.
+- Terminally failed work remains inspectable.
+- Tenant context is preserved during execution.
+
+---
+
+# 09.O Architecture Decision Records
+
+## ADR-049 — PostgreSQL-Backed Background Processing
+
+**Status:** Accepted.
+
+Kablet v0.1 will use PostgreSQL as its initial durable background coordination mechanism.
+
+Dedicated queue infrastructure is deferred.
+
+---
+
+## ADR-050 — Shared TypeScript Worker
+
+**Status:** Accepted.
+
+The initial worker will use Node.js and share Kablet's TypeScript domain contracts and application modules.
+
+It remains a separate execution process.
+
+---
+
+## ADR-051 — Transactional Outbox
+
+**Status:** Accepted.
+
+Canonical changes requiring reliable asynchronous publication will use a transactional outbox or an equivalent mechanism.
+
+---
+
+## ADR-052 — At-Least-Once Processing
+
+**Status:** Accepted.
+
+The asynchronous architecture assumes repeated delivery is possible.
+
+Consumers and consequential handlers must implement appropriate idempotency.
+
+---
+
+## ADR-053 — PostgreSQL Job Claiming
+
+**Status:** Accepted.
+
+The initial dispatcher will use PostgreSQL-safe concurrent claiming, bounded execution ownership, and recovery for abandoned jobs.
+
+---
+
+## ADR-054 — Explicit Failure and Recovery
+
+**Status:** Accepted.
+
+Exhausted or permanently failed jobs must remain inspectable.
+
+Unknown external commercial results require reconciliation-aware recovery rather than blind replay.
+
+---
+
+## ADR-055 — No Mandatory Distributed Cache
+
+**Status:** Accepted.
+
+Redis or another dedicated distributed cache is not required for v0.1.
+
+Caching will be introduced only when justified by measurable requirements.
+
+---
+
+# 09.P Async / Jobs / Caching Invariants
+
+1. PostgreSQL is the initial durable asynchronous coordination system.
+2. Background execution uses the shared TypeScript architecture.
+3. The worker is a separate execution process.
+4. Canonical Events and outbox messages remain distinct.
+5. Required asynchronous publication must be reliable.
+6. Local canonical changes and required outbox records use appropriate transactions.
+7. At-least-once delivery is assumed.
+8. Consumers tolerate duplicate delivery.
+9. Jobs use controlled, versioned payload contracts.
+10. Tenant-sensitive jobs preserve trusted ownership context.
+11. Job IDs and commercial Action identities remain distinct.
+12. Consequential jobs require appropriate idempotency.
+13. Worker crashes must not permanently lose recoverable work.
+14. Job claiming must be concurrency-safe.
+15. Leases require explicit expiration and recovery behavior.
+16. Lease expiration does not prove external operation failure.
+17. Retries are bounded and failure-aware.
+18. Invalid or permanently unauthorized jobs must not retry indefinitely.
+19. Terminal failures remain inspectable.
+20. Recovery must not blindly repeat consequential external operations.
+21. Scheduled work must survive application restart.
+22. Worker access must respect tenant isolation.
+23. Job payloads must not unnecessarily contain secrets.
+24. Background operations preserve correlation lineage.
+25. Worker health is observable independently of web application health.
+26. Redis is not an initial requirement.
+27. Cache is never the canonical system of record.
+28. Tenant-sensitive caching must preserve isolation.
+29. Business Truth caching requires freshness controls.
+30. Intelligence responses must not be cached without context compatibility.
+31. Background workload must not unnecessarily degrade customer Runtime performance.
+32. Additional infrastructure requires demonstrated operational need.
+
+---
+
+# 09.Q Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact job table schema.
+- Exact outbox table schema.
+- Job ID format.
+- Polling intervals.
+- Lease duration.
+- Worker concurrency.
+- Retry attempt limits.
+- Backoff configuration.
+- Job timeout values.
+- Worker hosting provider.
+- Administrative recovery interface.
+- Exact job-handler registry implementation.
+- Cache provider.
+- Cache TTL values.
+- Cache invalidation implementation.
+- Queue extraction thresholds.
+- Job retention periods.
+
+These will be finalized during implementation contracts and deployment architecture.
+
+---
+
+# 09.R Dependency
+
+Section 08 established Kablet's canonical Event and Outcome Architecture.
+
+Section 09 establishes:
+
+**A PostgreSQL-backed asynchronous execution architecture with a dedicated TypeScript worker, transactional outbox, durable jobs, concurrency-safe claiming, bounded retries, idempotent processing, explicit failure recovery, and caching introduced only when operationally justified.**
+
+The next section defines how Kablet stores and serves media and other non-relational assets without compromising Business ownership or Experience integrity.
+
+# 10 — Storage & Media
