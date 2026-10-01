@@ -6297,3 +6297,1117 @@ Section 05 establishes:
 The next section defines how those validated Experience Plans become actual customer-facing interfaces.
 
 # 06 — Experience Runtime
+---
+
+# 06. Experience Runtime
+
+## 06.1 Purpose
+
+This section defines how Kablet converts accepted Decisions and validated Experience Plans into interactive customer-facing interfaces.
+
+It implements the Experience & Component Contract established in Foundation Specification v0.1.
+
+The Experience Runtime must support:
+
+- One adaptive customer-facing canvas.
+- Declarative Experience composition.
+- Controlled Component rendering.
+- Dynamic interface transitions.
+- Structured customer interactions.
+- Business Truth references.
+- Authorized Actions.
+- Experience lifecycle tracking.
+- Component exposure measurement.
+- Session continuity.
+- Failure recovery.
+- Future multi-surface extension.
+
+The Runtime must remain independent of the external AI provider.
+
+---
+
+# 06.A Fundamental Runtime Model
+
+## 06.2 One Adaptive Canvas
+
+Kablet v0.1 will use a single adaptive customer-facing canvas as its primary web Experience.
+
+The canvas is not a traditional collection of predetermined pages.
+
+It is a controlled interface surface whose content and composition respond to the Visitor's evolving context.
+
+Conceptually:
+
+Visitor
+    |
+    v
+Kablet Canvas
+    |
+    v
+Current Experience
+    |
+    v
+Customer Interaction
+    |
+    v
+New Decision
+    |
+    v
+Experience Transition
+    |
+    v
+Updated Canvas
+
+The canvas persists as the customer interacts.
+
+Its composition may change without requiring conventional page navigation.
+
+---
+
+## 06.3 No Predetermined Journey
+
+Kablet must not require every Visitor to follow the same predefined sequence of pages or funnel steps.
+
+The Runtime should support different Experience compositions for different:
+
+- Intent.
+- Needs.
+- Constraints.
+- Concerns.
+- Preferences.
+- Journey States.
+- Business objectives.
+
+The Intelligence system determines which eligible Experience should be proposed.
+
+The Runtime validates and presents that Experience.
+
+---
+
+## 06.4 No Scrolling Is Not a Foundation Rule
+
+The Runtime should prioritize focused, relevant presentation.
+
+However, it must not impose a universal prohibition on scrolling.
+
+Some Experiences may benefit from:
+
+- Compact single-screen composition.
+- Progressive disclosure.
+- Vertical sequences.
+- Comparisons.
+- Expanded proof.
+- Multiple options.
+
+The governing principle is:
+
+**No predetermined journey—not no scrolling.**
+
+---
+
+## 06.5 Experience Is Not a Webpage
+
+An Experience represents the current customer-facing state produced by a Kablet Decision.
+
+It may contain:
+
+- Messaging.
+- Service information.
+- Pricing.
+- Proof.
+- Recommendations.
+- Comparisons.
+- Questions.
+- Forms.
+- Available Actions.
+- Media.
+- Other supported Components.
+
+An Experience is independent of the particular React implementation used to display it.
+
+---
+
+# 06.B Runtime Architecture
+
+## 06.6 Initial Technology
+
+The initial Experience Runtime will use:
+
+- React.
+- Next.js.
+- TypeScript.
+- Zod.
+- Kablet-owned Experience Contracts.
+
+React is responsible for rendering.
+
+Next.js provides application delivery.
+
+Neither defines the permanent semantic meaning of a Kablet Experience.
+
+---
+
+## 06.7 Runtime Pipeline
+
+The intended pipeline is:
+
+Accepted Decision
+        |
+        v
+Experience Plan
+        |
+        v
+Experience Contract Validation
+        |
+        v
+Canonical Experience
+        |
+        v
+Runtime Delivery
+        |
+        v
+Experience State Manager
+        |
+        v
+Component Registry
+        |
+        v
+React Renderer
+        |
+        v
+Customer Canvas
+
+Customer interactions return through a controlled interaction protocol.
+
+---
+
+## 06.8 Runtime Responsibilities
+
+The Experience Runtime owns:
+
+- Receiving validated Experience representations.
+- Maintaining the current presentation state.
+- Resolving supported Components.
+- Rendering Component instances.
+- Applying Experience transitions.
+- Capturing customer interactions.
+- Reporting lifecycle evidence.
+- Invoking controlled Runtime APIs.
+- Presenting Action status.
+- Handling rendering failures.
+
+The Runtime does not own canonical Business Truth or Intelligence reasoning.
+
+---
+
+## 06.9 Server and Client Responsibilities
+
+The initial architecture distinguishes trusted server-side behavior from browser presentation.
+
+### Server
+
+Responsible for:
+
+- Business resolution.
+- Trusted Session context.
+- Canonical State access.
+- Intelligence orchestration.
+- Decision acceptance.
+- Experience validation.
+- Authorized Action execution.
+- Canonical persistence.
+
+### Client
+
+Responsible for:
+
+- Rendering validated Experiences.
+- Local presentation state.
+- Capturing Visitor interactions.
+- Reporting exposure evidence.
+- Displaying transitions.
+- Communicating with trusted Runtime endpoints.
+
+The browser must not become the authority for canonical Decisions, Business Truth, or Action execution.
+
+---
+
+# 06.C Experience Contract
+
+## 06.10 Declarative Representation
+
+Kablet Experiences will use structured declarative contracts.
+
+The contract describes what should be presented.
+
+It does not contain arbitrary executable frontend code.
+
+---
+
+## 06.11 Experience Envelope
+
+A conceptual Experience representation should include:
+
+- Experience identity.
+- Business context.
+- Session context.
+- Originating Decision.
+- Contract version.
+- Experience revision.
+- Component instances.
+- Composition information.
+- Available interaction references.
+- Relevant lifecycle metadata.
+
+The exact TypeScript and Zod schemas will be defined during implementation.
+
+---
+
+## 06.12 Experience Plan vs Canonical Experience
+
+The Intelligence system proposes an Experience Plan.
+
+Kablet validates that plan.
+
+An accepted Experience becomes a canonical representation suitable for Runtime delivery.
+
+The following must remain distinct:
+
+Proposed Experience Plan
+
+Validated Experience
+
+Delivered Experience
+
+Rendered Experience
+
+Exposed Components
+
+Customer Interaction
+
+---
+
+## 06.13 Experience Identity and Revision
+
+An Experience must have stable identity.
+
+Changes to an Experience must preserve sufficient revision context to identify what the Visitor was intended to see at a particular point.
+
+This supports:
+
+- Historical interpretation.
+- Interaction validation.
+- Debugging.
+- Experimentation.
+- Exposure attribution.
+
+---
+
+# 06.D Component Registry
+
+## 06.14 Controlled Component Registry
+
+The Runtime will use a controlled registry of supported Component types.
+
+Conceptually:
+
+Component Type
+        |
+        v
+Versioned Contract
+        |
+        v
+Payload Validation
+        |
+        v
+React Implementation
+
+Intelligence may select registered Components.
+
+It may not invent arbitrary executable Components.
+
+---
+
+## 06.15 Component Definition vs Component Instance
+
+A Component Definition describes a supported capability.
+
+A Component Instance represents one use of that capability inside a particular Experience.
+
+For example:
+
+ServiceCard
+
+is a Component type.
+
+A ServiceCard displaying a specific Business service inside Experience X is a Component Instance.
+
+These concepts must remain distinguishable.
+
+---
+
+## 06.16 Initial Component Families
+
+The first Runtime should support a small commercially useful set.
+
+Candidate Component families include:
+
+| Family | Purpose |
+|---|---|
+| Message | Customer-facing explanation |
+| Question | Collect clarification |
+| Option Selector | Structured customer choice |
+| Service Card | Present a Business service |
+| Price | Present authoritative pricing |
+| Proof | Present relevant credibility evidence |
+| FAQ | Resolve common concerns |
+| Comparison | Compare supported options |
+| Recommendation | Present a contextual recommendation |
+| Lead Form | Collect authorized lead information |
+| Booking Action | Initiate an available booking |
+| Contact Action | Initiate an available contact method |
+
+This is a candidate capability set, not a requirement to implement every Component in the first engineering slice.
+
+The MVP inventory will be finalized in Section 20.
+
+---
+
+## 06.17 Semantic Meaning vs Appearance
+
+A Component's semantic meaning must remain separate from its visual implementation.
+
+For example:
+
+Service Card
+
+describes a customer-facing commercial capability.
+
+It does not permanently prescribe:
+
+- Card dimensions.
+- Typography.
+- Animation.
+- Color.
+- Layout position.
+
+This allows Kablet to evolve presentation without redefining domain meaning.
+
+---
+
+## 06.18 Component Payload Validation
+
+Every Component Instance must have a payload compatible with its registered contract version.
+
+Validation should establish:
+
+- Recognized Component type.
+- Supported version.
+- Required fields.
+- Valid Business Truth references.
+- Supported Actions.
+- Permitted presentation configuration.
+
+Invalid Components must not be executed or rendered as trusted content.
+
+---
+
+## 06.19 Component Extension
+
+New Components may be introduced through explicit registry extensions.
+
+Extensions must preserve:
+
+- Contract validation.
+- Ownership.
+- Versioning.
+- Action boundaries.
+- Event lineage.
+- Runtime safety.
+
+A new vertical must not require a parallel Experience Runtime.
+
+---
+
+# 06.E Experience Composition
+
+## 06.20 Composition Model
+
+An Experience may contain multiple Component Instances arranged into a coherent presentation.
+
+Composition may describe:
+
+- Component sequence.
+- Grouping.
+- Relative emphasis.
+- Presentation variants.
+- Visibility.
+- Supported interactions.
+
+The initial composition model should remain intentionally constrained.
+
+It must not become an unrestricted page-layout programming language.
+
+---
+
+## 06.21 Composition Authority
+
+The Intelligence system proposes eligible composition.
+
+Kablet validates the proposal.
+
+The React renderer determines the concrete implementation.
+
+Conceptually:
+
+Intelligence controls semantic composition.
+
+Renderer controls executable presentation.
+
+---
+
+## 06.22 Business Branding
+
+The Runtime should apply Business-specific branding through controlled presentation configuration.
+
+Brand configuration may include:
+
+- Logo.
+- Colors.
+- Typography preferences.
+- Approved media.
+- Other supported design tokens.
+
+Brand configuration must not grant arbitrary code-execution authority.
+
+---
+
+## 06.23 Responsive Rendering
+
+The initial web Runtime must support responsive customer Experiences.
+
+The same semantic Experience may be rendered differently across device sizes.
+
+Responsive presentation must not silently change canonical Business Truth or Action meaning.
+
+---
+
+# 06.F Experience Transitions
+
+## 06.24 Persistent Canvas
+
+The customer canvas should remain active as the Visitor interacts.
+
+New Decisions produce Experience transitions rather than necessarily triggering full page navigation.
+
+---
+
+## 06.25 Controlled Transition Operations
+
+The Experience Runtime should support a limited set of declarative transition operations.
+
+The initial vocabulary may include:
+
+- Replace composition.
+- Add Component.
+- Update Component.
+- Remove Component.
+- Change Component order.
+- Update customer-facing message.
+- Present Action status.
+
+The exact operation schema will be defined during implementation.
+
+---
+
+## 06.26 Transition Validation
+
+Every proposed transition must be validated before application.
+
+Validation must confirm:
+
+- Correct Experience identity.
+- Compatible revision.
+- Supported operation.
+- Valid target Component.
+- Valid resulting composition.
+- Permitted Action references.
+
+---
+
+## 06.27 Full Replacement Remains Available
+
+Incremental updates should not be mandatory.
+
+Some Decisions may require a substantially different Experience.
+
+The Runtime must support replacing the current composition when appropriate.
+
+---
+
+## 06.28 Avoid Unnecessary Regeneration
+
+A customer interaction should not automatically require regeneration of every visible Component.
+
+The Runtime should preserve valid existing presentation where appropriate.
+
+This supports:
+
+- Lower latency.
+- Better continuity.
+- Reduced visual disruption.
+- Lower Intelligence cost.
+
+---
+
+# 06.G Runtime State
+
+## 06.29 Canonical vs Local State
+
+The Runtime must distinguish canonical domain state from temporary presentation state.
+
+Canonical state includes:
+
+- Visitor State.
+- Accepted Decisions.
+- Experience identity.
+- Experience revisions.
+- Action results.
+- Canonical Events.
+
+Local presentation state may include:
+
+- Animation progress.
+- Temporary focus.
+- Expanded panels.
+- Input drafts.
+- Loading indicators.
+- Non-authoritative visual transitions.
+
+Local state must not silently redefine canonical commercial reality.
+
+---
+
+## 06.30 Experience State Manager
+
+The client Runtime should maintain the current validated Experience representation.
+
+It should support:
+
+- Initial hydration.
+- Transition application.
+- Revision checks.
+- Rendering status.
+- Interaction references.
+- Recovery from rejected updates.
+
+The exact state-management library is deferred.
+
+A separate global-state framework is not mandatory initially.
+
+---
+
+## 06.31 Stale Experience Protection
+
+Customer interactions must identify the relevant Experience and Component revision where appropriate.
+
+The server must not assume that every incoming interaction refers to the latest canonical Experience.
+
+Stale or incompatible interactions require explicit handling.
+
+---
+
+## 06.32 Session Continuity
+
+The Runtime should preserve customer continuity across supported interactions and reloads.
+
+Canonical Session continuity belongs to Kablet's backend.
+
+Browser-local state may assist presentation but must not become the sole canonical Session record.
+
+---
+
+# 06.H Customer Interaction Protocol
+
+## 06.33 Structured Interaction
+
+The Runtime must capture customer interactions through a controlled protocol.
+
+An interaction should identify, where applicable:
+
+- Business.
+- Visitor Session.
+- Experience.
+- Experience revision.
+- Component Instance.
+- Interaction type.
+- Validated payload.
+- Occurrence time.
+- Correlation identity.
+
+The server must independently resolve and validate trusted ownership context.
+
+---
+
+## 06.34 Interaction Types
+
+Candidate interaction types include:
+
+- Message submitted.
+- Option selected.
+- Question answered.
+- Component activated.
+- Form submitted.
+- Action requested.
+- Comparison selection changed.
+- Recommendation selected.
+
+The final vocabulary will be defined through implementation contracts.
+
+---
+
+## 06.35 Interaction Is Not Automatically a Decision
+
+A customer interaction produces a Signal.
+
+Kablet may interpret that Signal, update Visitor State, and create a new Decision.
+
+The Runtime must not conflate:
+
+Interaction
+
+State Update
+
+Decision
+
+Experience Transition
+
+---
+
+## 06.36 Input Validation
+
+Customer input is untrusted.
+
+All submitted interaction payloads must be validated on trusted server-side boundaries.
+
+The Runtime must not treat client-provided Component IDs, Business IDs, or Action references as sufficient authority.
+
+---
+
+# 06.I Experience Lifecycle and Measurement
+
+## 06.37 Lifecycle States
+
+The architecture must distinguish:
+
+- Planned.
+- Validated.
+- Delivered.
+- Rendered.
+- Exposed.
+- Interacted with.
+- Superseded.
+
+These are conceptual lifecycle distinctions.
+
+The physical implementation may use appropriate records and Events rather than one mutable status field for every occurrence.
+
+---
+
+## 06.38 Rendered Is Not Viewed
+
+Successful server delivery does not prove browser rendering.
+
+Successful rendering does not automatically prove that a Component entered the Visitor's visible area.
+
+Exposure measurement must preserve these distinctions.
+
+---
+
+## 06.39 Component Exposure
+
+The Runtime should support reporting actual Component exposure where measurable.
+
+Exposure evidence may include:
+
+- Experience identity.
+- Component Instance identity.
+- Component version.
+- Relevant timestamp.
+- Applicable Experiment context.
+
+Exposure rules must be consistent enough to support meaningful analysis.
+
+---
+
+## 06.40 Interaction Attribution
+
+Customer interactions must remain attributable to the Component and Experience that generated them.
+
+This is essential for Kablet's future optimization system.
+
+---
+
+## 06.41 Experiment Exposure
+
+Experiment assignment must not automatically be treated as actual exposure.
+
+The Runtime must preserve the distinction between:
+
+Assigned Variant
+
+Delivered Experience
+
+Observed Exposure
+
+Customer Outcome
+
+---
+
+# 06.J Actions Inside Experiences
+
+## 06.42 Components May Offer Actions
+
+A Component may expose one or more supported Actions.
+
+For example:
+
+Service Card
+    |
+    +-- Learn More
+    +-- Request Booking
+
+The Component presents the capability.
+
+The Action system owns consequential execution.
+
+---
+
+## 06.43 Action Invocation
+
+An Action request must reference an available controlled Action.
+
+The server must validate:
+
+- Business context.
+- Session context.
+- Action availability.
+- Input.
+- Authorization.
+- Applicable Visitor confirmation.
+
+---
+
+## 06.44 Action Status
+
+The Runtime should support presenting Action lifecycle information.
+
+Examples:
+
+- Requested.
+- Processing.
+- Completed.
+- Failed.
+- Requires additional input.
+
+A click must not automatically be represented as successful conversion.
+
+---
+
+# 06.K Rendering Safety
+
+## 06.45 No Arbitrary Executable AI Output
+
+The Runtime must not execute AI-generated:
+
+- JavaScript.
+- React source.
+- Unrestricted HTML.
+- Arbitrary browser instructions.
+
+Intelligence output must remain within controlled Kablet contracts.
+
+---
+
+## 06.46 Content Safety
+
+Generated and externally sourced content must be handled according to its trust level.
+
+Rendering must avoid unsafe interpretation of untrusted markup.
+
+Business-provided media and external URLs require appropriate validation.
+
+---
+
+## 06.47 Component Isolation
+
+A failing Component should not unnecessarily destroy the entire Experience.
+
+The Runtime should support appropriate error boundaries and controlled fallback behavior.
+
+---
+
+# 06.L Runtime Failure and Recovery
+
+## 06.48 Invalid Experience
+
+An invalid Experience must not be delivered as trusted executable presentation.
+
+The system may:
+
+- Reject the proposal.
+- Retry Intelligence within bounded limits.
+- Use a deterministic fallback.
+- Preserve the last valid Experience where appropriate.
+
+---
+
+## 06.49 Transition Failure
+
+If a transition cannot be safely applied, the Runtime should recover using an authoritative validated Experience representation.
+
+It must not silently continue with corrupted composition state.
+
+---
+
+## 06.50 Intelligence Unavailable
+
+If Intelligence becomes unavailable, the Runtime should present a controlled fallback where possible.
+
+The fallback must use authoritative Business information and supported Components.
+
+---
+
+## 06.51 Action Failure
+
+Action failure must be represented accurately.
+
+The Runtime must not claim:
+
+- Booking confirmed.
+- Payment completed.
+- Lead delivered.
+- Conversion achieved.
+
+unless the applicable result has been established.
+
+---
+
+# 06.M Performance
+
+## 06.52 Runtime Responsiveness
+
+The customer-facing canvas is conversion-sensitive.
+
+The implementation should minimize unnecessary:
+
+- Full-page navigation.
+- Re-rendering.
+- Intelligence calls.
+- Large payloads.
+- Blocking analytics requests.
+
+---
+
+## 06.53 Progressive Experience Delivery
+
+The architecture should remain compatible with progressive presentation where appropriate.
+
+However, progressive rendering must preserve the distinction between proposed, validated, and accepted canonical Experience state.
+
+Unvalidated model output must not be streamed directly into consequential UI behavior.
+
+---
+
+## 06.54 Rendering Performance
+
+The initial renderer should prioritize:
+
+- Predictable Component behavior.
+- Responsive layout.
+- Controlled transitions.
+- Accessible interaction.
+- Small initial Component inventory.
+
+Performance budgets will be established during implementation and testing.
+
+---
+
+# 06.N Future Surface Extension
+
+## 06.55 Web Is the First Surface
+
+Kablet v0.1 will implement the customer-facing Experience Runtime for the web.
+
+The Experience Contract must remain semantically independent of React.
+
+---
+
+## 06.56 Future Surfaces
+
+Potential future surfaces include:
+
+- Mobile applications.
+- Messaging.
+- Voice.
+- Kiosks.
+- Embedded Experiences.
+- Agent-facing interfaces.
+
+Not every Component will necessarily be supported by every surface.
+
+Surface capability must be explicit.
+
+---
+
+## 06.57 Surface Is Not Experience
+
+The same semantic Decision may be presented through different surface-specific implementations.
+
+Future surfaces should extend Kablet's presentation capabilities without redefining canonical Decisions, Business Truth, or Outcomes.
+
+---
+
+# 06.O Architecture Decision Records
+
+## ADR-028 — Single Adaptive Canvas
+
+**Status:** Accepted.
+
+The initial web Runtime will use one persistent adaptive customer-facing canvas rather than a predetermined collection of customer journeys.
+
+---
+
+## ADR-029 — Declarative Experience Contracts
+
+**Status:** Accepted.
+
+Intelligence produces controlled declarative Experience Plans.
+
+React renders validated Experience Contracts.
+
+Arbitrary AI-generated executable UI is prohibited.
+
+---
+
+## ADR-030 — Controlled Component Registry
+
+**Status:** Accepted.
+
+The Runtime will render supported, versioned Component types through a Kablet-owned registry.
+
+Intelligence may select registered capabilities but may not invent executable Components.
+
+---
+
+## ADR-031 — Controlled Experience Transitions
+
+**Status:** Accepted.
+
+The Runtime will support validated Experience transitions, including incremental composition changes and full replacement where appropriate.
+
+---
+
+## ADR-032 — Separate Canonical and Presentation State
+
+**Status:** Accepted.
+
+Canonical Visitor, Decision, Experience, Action, and Event state remains server-owned.
+
+Temporary visual state may remain client-side.
+
+---
+
+## ADR-033 — Explicit Exposure Measurement
+
+**Status:** Accepted.
+
+Experience delivery, rendering, Component exposure, and customer interaction remain distinguishable occurrences.
+
+Experiment assignment is not automatically treated as exposure.
+
+---
+
+## ADR-034 — Web-First, Surface-Independent Semantics
+
+**Status:** Accepted.
+
+React and Next.js implement the initial web Runtime.
+
+Canonical Experience semantics remain independent of the rendering framework.
+
+---
+
+# 06.P Experience Runtime Invariants
+
+1. The initial customer-facing surface is one adaptive canvas.
+2. The customer journey is not predetermined.
+3. Scrolling is a presentation decision, not a Foundation prohibition.
+4. Experience is distinct from webpage.
+5. The Runtime renders validated declarative contracts.
+6. Intelligence does not execute arbitrary frontend code.
+7. Component types come from a controlled registry.
+8. Component Definitions and Instances remain distinct.
+9. Component payloads require validation.
+10. Component meaning remains separate from appearance.
+11. Business branding uses controlled presentation configuration.
+12. Experience identity and revision are preserved.
+13. Planned Experience is distinct from delivered Experience.
+14. Delivered Experience is distinct from rendered Experience.
+15. Rendered Experience is distinct from Component exposure.
+16. Customer interaction is distinct from Decision.
+17. The Runtime supports controlled Experience transitions.
+18. Full composition replacement remains available.
+19. Existing valid presentation may be preserved when appropriate.
+20. Canonical domain state remains server-owned.
+21. Local presentation state is non-authoritative.
+22. Stale interactions require explicit handling.
+23. Customer input is untrusted.
+24. Actions execute through the Action system.
+25. Action requests are not automatically successful Outcomes.
+26. Component and Experience lineage must remain measurable.
+27. Experiment assignment and exposure remain distinct.
+28. Invalid Experiences must not execute.
+29. Rendering failures require controlled recovery.
+30. AI provider failure must not automatically destroy the entire customer interface.
+31. Web is the first surface, not the permanent semantic boundary.
+32. Future surfaces must preserve Foundation contracts.
+
+---
+
+# 06.Q Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact Experience JSON schema.
+- Exact Component payload schemas.
+- Final MVP Component inventory.
+- Final Experience transition protocol.
+- React folder structure.
+- CSS framework.
+- Animation library.
+- State-management library.
+- Exact exposure thresholds.
+- Exact responsive breakpoints.
+- Final Business branding controls.
+- Streaming implementation.
+- Client transport mechanism.
+- Visitor Session token implementation.
+- Accessibility acceptance thresholds.
+- Component-level performance budgets.
+
+These decisions will be finalized in implementation contracts and the MVP Technical Boundary.
+
+---
+
+# 06.R Dependency
+
+Section 05 established Kablet's Intelligence architecture.
+
+Section 06 establishes:
+
+**A React-based adaptive canvas that consumes validated declarative Experience Contracts, renders controlled Components, applies safe transitions, captures customer interactions, and preserves the evidence connecting Decisions to actual customer exposure.**
+
+The next section defines how customer-facing capabilities produce consequential operations through controlled execution boundaries.
+
+# 07 — Action & Integration Architecture
