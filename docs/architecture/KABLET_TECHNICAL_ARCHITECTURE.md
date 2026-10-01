@@ -10606,3 +10606,1915 @@ Section 09 establishes:
 The next section defines how Kablet stores and serves media and other non-relational assets without compromising Business ownership or Experience integrity.
 
 # 10 — Storage & Media
+---
+
+# 10. Storage & Media
+
+## 10.1 Purpose
+
+This section defines how Kablet v0.1 stores, manages, validates, references, and delivers media and other non-relational assets.
+
+It establishes the architecture for:
+
+- Object storage.
+- Business-owned media.
+- Asset identity and ownership.
+- Upload authorization.
+- Media validation.
+- Asset provenance.
+- Public and private access.
+- Asset revisions.
+- Experience references.
+- Media delivery.
+- Retention and deletion.
+- Storage-provider independence.
+
+The architecture must support dynamic Experience composition without allowing Intelligence providers or customer-facing clients to bypass Business ownership and media-access controls.
+
+---
+
+# 10.A Fundamental Storage Model
+
+## 10.2 Two Storage Responsibilities
+
+Kablet distinguishes between:
+
+**Canonical Asset Metadata**
+
+Stored in PostgreSQL.
+
+**Physical Asset Content**
+
+Stored in managed object storage.
+
+These responsibilities must remain separate.
+
+---
+
+## 10.3 Initial Storage Provider
+
+Kablet v0.1 will use Supabase Storage as its initial managed object-storage provider.
+
+This choice reduces operational complexity during the first implementation.
+
+Supabase Storage must remain an infrastructure adapter rather than a permanent Foundation dependency.
+
+---
+
+## 10.4 PostgreSQL Remains Authoritative
+
+PostgreSQL owns the canonical records describing:
+
+- Asset identity.
+- Organization ownership.
+- Business ownership.
+- Asset type.
+- Storage reference.
+- Metadata.
+- Provenance.
+- Approval status.
+- Revision.
+- Access classification.
+- Lifecycle status.
+
+Object storage does not independently determine Kablet domain authority.
+
+---
+
+## 10.5 Storage Architecture
+
+The intended architecture is:
+
+Business User / Authorized Process
+            |
+            v
+Kablet Asset API
+            |
+            v
+Authentication & Authorization
+            |
+            v
+Asset Validation
+            |
+            +----------------------+
+            |                      |
+            v                      v
+    PostgreSQL Metadata      Supabase Storage
+            |                      |
+            +----------+-----------+
+                       |
+                       v
+              Canonical Asset
+                       |
+                       v
+              Experience Reference
+                       |
+                       v
+              Media Delivery Layer
+                       |
+                       v
+              Customer Runtime
+
+The physical storage provider must not become the source of canonical ownership decisions.
+
+---
+
+# 10.B Asset Domain Model
+
+## 10.6 Asset as a Canonical Resource
+
+An Asset represents a Kablet-managed reference to stored content.
+
+An Asset is distinct from its physical storage object.
+
+A physical object may be replaced, migrated, transformed, or deleted according to its lifecycle without requiring every domain reference to become a provider-specific URL.
+
+---
+
+## 10.7 Asset Identity
+
+Every canonical Asset must have a stable Kablet identity.
+
+The identity must not depend exclusively on:
+
+- Storage bucket name.
+- Provider object path.
+- Public URL.
+- Original filename.
+- CDN URL.
+
+These are implementation or delivery details.
+
+---
+
+## 10.8 Asset Metadata
+
+A conceptual Asset record should include:
+
+| Field | Purpose |
+|---|---|
+| Asset ID | Canonical identity |
+| Organization ID | Tenant ownership |
+| Business ID | Applicable commercial scope |
+| Asset type | Semantic classification |
+| MIME type | Content format |
+| Storage provider | Physical provider |
+| Storage reference | Provider object location |
+| Original filename | Optional source metadata |
+| File size | Storage and validation |
+| Dimensions | Where applicable |
+| Checksum | Integrity and duplicate assistance |
+| Access classification | Public or restricted |
+| Approval status | Business authorization |
+| Revision | Historical interpretation |
+| Lifecycle status | Current asset condition |
+| Created at | Creation timestamp |
+| Updated at | Relevant lifecycle timestamp |
+
+The exact physical schema will be finalized during implementation.
+
+---
+
+## 10.9 Asset Ownership
+
+Every Business-owned Asset must resolve to its authorized Organization and Business context.
+
+An Asset ID alone must not grant access.
+
+The Asset API must enforce the ownership model established in Sections 03 and 04.
+
+---
+
+## 10.10 Asset Type
+
+The initial architecture should support semantic asset categories such as:
+
+- Business logo.
+- Service image.
+- Product image.
+- Testimonial media.
+- Business proof.
+- Promotional image.
+- General Business media.
+- Document.
+
+The initial MVP may implement only the categories required by its first vertical.
+
+---
+
+# 10.C Public and Private Storage
+
+## 10.11 Access Classification
+
+Kablet must distinguish publicly deliverable assets from restricted assets.
+
+Public customer-facing media and private operational files must not share unrestricted access assumptions.
+
+---
+
+## 10.12 Public Media
+
+Approved public media may be delivered to Visitors through controlled public delivery mechanisms.
+
+Examples include:
+
+- Business logos.
+- Approved service images.
+- Public promotional media.
+
+Public availability must be an intentional Asset property.
+
+---
+
+## 10.13 Restricted Media
+
+Restricted assets may include:
+
+- Internal Business documents.
+- Unapproved media.
+- Sensitive customer uploads.
+- Private integration files.
+- Operational exports.
+
+Restricted assets must require appropriate authorization before access.
+
+---
+
+## 10.14 Storage Buckets
+
+The initial implementation should use a small, explicit bucket strategy.
+
+A practical starting point is:
+
+- Public Business media.
+- Restricted Business assets.
+
+Additional buckets should be introduced only when required by materially different security, lifecycle, or delivery needs.
+
+Bucket names and exact policies will be defined during implementation.
+
+---
+
+## 10.15 Public Does Not Mean Unowned
+
+A publicly deliverable Asset still belongs to a canonical Kablet ownership context.
+
+Public delivery does not grant permission to:
+
+- Replace the Asset.
+- Delete the Asset.
+- Change approval.
+- Modify metadata.
+- Access unrelated private files.
+
+---
+
+# 10.D Upload Architecture
+
+## 10.16 Authorized Uploads
+
+Asset uploads must originate through a controlled Kablet workflow.
+
+The server must establish:
+
+1. Actor identity.
+2. Organization context.
+3. Business context.
+4. Applicable capability.
+5. Intended Asset classification.
+6. Upload constraints.
+
+---
+
+## 10.17 Upload Flow
+
+The intended upload lifecycle is:
+
+Authorized Upload Request
+        |
+        v
+Validate Ownership & Capability
+        |
+        v
+Create Pending Asset / Upload Intent
+        |
+        v
+Issue Controlled Upload Permission
+        |
+        v
+Upload to Object Storage
+        |
+        v
+Verify Stored Object
+        |
+        v
+Validate Metadata & Content
+        |
+        v
+Finalize Canonical Asset
+
+An upload should not become an approved customer-facing Asset merely because storage accepted the file bytes.
+
+---
+
+## 10.18 Direct-to-Storage Upload
+
+Kablet may use short-lived, narrowly scoped upload permissions where supported.
+
+This avoids unnecessarily routing large files through the primary application server.
+
+However, upload permission must not grant unrestricted bucket access.
+
+---
+
+## 10.19 Upload Validation
+
+The implementation should validate applicable:
+
+- File size.
+- MIME type.
+- Actual file format.
+- Supported extension.
+- Image dimensions.
+- Storage destination.
+- Ownership.
+- Content constraints.
+
+Client-provided filenames and MIME types must not be trusted without validation.
+
+---
+
+## 10.20 Upload Completion Verification
+
+The server must verify that the expected storage object exists and satisfies the required conditions before finalizing the canonical Asset.
+
+Incomplete uploads must not automatically become available to the Experience Runtime.
+
+---
+
+## 10.21 Abandoned Uploads
+
+The architecture must support cleanup of abandoned or incomplete upload objects.
+
+Such cleanup may execute through the background-processing system defined in Section 09.
+
+---
+
+# 10.E Asset Approval and Provenance
+
+## 10.22 Business-Controlled Media
+
+Business-owned media used in customer-facing Experiences must follow the Business's applicable approval and authority model.
+
+Intelligence may select approved media.
+
+It must not silently approve unverified uploaded content.
+
+---
+
+## 10.23 Provenance
+
+Where relevant, Asset metadata should preserve:
+
+- Uploading actor.
+- Source.
+- Original reference.
+- Creation timestamp.
+- Approval information.
+- Revision history.
+
+Provenance supports Business trust and historical interpretation.
+
+---
+
+## 10.24 External Media
+
+External media must not automatically become authoritative Kablet Business media.
+
+Where Kablet imports an external Asset, it must normalize the relevant ownership, source, permission, and metadata.
+
+---
+
+## 10.25 Generated Media
+
+Future AI-generated media must enter the same controlled Asset lifecycle before becoming approved Business content.
+
+Generating an image does not automatically authorize its publication.
+
+AI media generation is not required for the initial MVP.
+
+---
+
+# 10.F Asset References in Intelligence
+
+## 10.26 Asset References, Not Unrestricted Storage Access
+
+The Intelligence system should receive relevant authorized Asset descriptors.
+
+For example:
+
+- Asset ID.
+- Asset category.
+- Description.
+- Relevant Business relationship.
+- Approved usage context.
+
+It must not receive unrestricted object-storage credentials.
+
+---
+
+## 10.27 Media Selection
+
+Intelligence may propose an approved Asset reference inside an Experience Plan.
+
+Kablet must validate:
+
+- Asset existence.
+- Correct Business ownership.
+- Applicable approval.
+- Compatible Asset type.
+- Permitted public delivery.
+- Supported Component usage.
+
+---
+
+## 10.28 No Invented Media References
+
+An Intelligence provider must not fabricate an arbitrary storage path or external image URL and have it accepted as authoritative Business media.
+
+Customer-facing Business media must resolve through the controlled Asset system.
+
+---
+
+## 10.29 Media and Business Truth
+
+Where media supports a Business claim, the relationship should remain explicit.
+
+For example:
+
+A Service image may reference the corresponding canonical Service.
+
+The media itself does not redefine the Service's authoritative pricing, availability, or description.
+
+---
+
+# 10.G Experience Media Contract
+
+## 10.30 Canonical References
+
+Experience Plans should reference media through canonical Kablet Asset identity.
+
+Conceptually:
+
+Experience Component
+        |
+        v
+Asset Reference
+        |
+        v
+Asset Resolver
+        |
+        v
+Authorized Delivery Location
+
+Permanent Experience history should not depend solely on temporary signed URLs.
+
+---
+
+## 10.31 Asset Revision
+
+Where historical interpretation requires it, an Experience should preserve the applicable Asset revision or immutable content reference.
+
+Replacing a Business image must not silently erase the ability to understand which media was used in a previous Experience.
+
+---
+
+## 10.32 Delivery URL Resolution
+
+The Runtime may resolve an authorized Asset reference into a suitable delivery URL.
+
+That URL is a delivery mechanism, not the canonical Asset identity.
+
+---
+
+## 10.33 Expiring URLs
+
+Restricted delivery may use expiring signed URLs where appropriate.
+
+Expiration must not invalidate the canonical Experience record.
+
+A new authorized delivery URL may be resolved when required.
+
+---
+
+## 10.34 Component Compatibility
+
+The Asset Resolver must verify that a media reference is compatible with the receiving Component.
+
+For example:
+
+An image-only Component must not blindly attempt to render an arbitrary uploaded executable file.
+
+---
+
+# 10.H Media Processing
+
+## 10.35 Initial Media Requirements
+
+The first implementation should prioritize common web media formats required by the MVP.
+
+Advanced media processing should be introduced only when justified.
+
+---
+
+## 10.36 Image Metadata
+
+Where applicable, Kablet should capture:
+
+- Width.
+- Height.
+- Format.
+- File size.
+- Relevant orientation.
+- Integrity metadata.
+
+This supports predictable rendering and validation.
+
+---
+
+## 10.37 Media Transformations
+
+The architecture may support derived media variants for:
+
+- Responsive delivery.
+- Thumbnail generation.
+- Compression.
+- Format optimization.
+
+Derived variants must remain attributable to the original canonical Asset and applicable revision.
+
+---
+
+## 10.38 Original Asset Preservation
+
+Where retention and Business requirements permit, Kablet should preserve the original approved upload separately from derived presentation variants.
+
+The exact retention policy will be finalized later.
+
+---
+
+## 10.39 Processing Jobs
+
+Expensive media processing should not unnecessarily block the customer Runtime.
+
+Applicable processing may execute through the background worker architecture.
+
+---
+
+# 10.I Asset Lifecycle
+
+## 10.40 Lifecycle States
+
+The conceptual Asset lifecycle may distinguish:
+
+- Pending upload.
+- Uploaded.
+- Processing.
+- Ready.
+- Approved.
+- Rejected.
+- Archived.
+- Deleted.
+
+The final physical status model will be defined during implementation.
+
+---
+
+## 10.41 Approval vs Technical Readiness
+
+A technically valid uploaded file is not necessarily approved for customer-facing use.
+
+Technical readiness and Business approval remain separate concepts.
+
+---
+
+## 10.42 Asset Replacement
+
+Replacing an Asset should preserve appropriate revision information.
+
+The system must distinguish:
+
+- Updating metadata.
+- Replacing physical content.
+- Publishing a new approved revision.
+- Archiving an earlier revision.
+
+---
+
+## 10.43 Referenced Asset Deletion
+
+Deleting an Asset referenced by historical Experiences requires deliberate handling.
+
+The system must preserve appropriate historical metadata while respecting applicable deletion and privacy obligations.
+
+Historical interpretability does not justify retaining prohibited or legally required-to-be-deleted content.
+
+---
+
+## 10.44 Orphan Cleanup
+
+The background system should support identifying and cleaning up unreferenced storage objects where safe.
+
+Canonical references and applicable retention requirements must be checked before deletion.
+
+---
+
+# 10.J Storage Security
+
+## 10.45 Tenant Isolation
+
+Storage access must preserve Organization and Business ownership.
+
+An authenticated Business User must not gain access to another Business's private objects by manipulating a path or Asset ID.
+
+---
+
+## 10.46 Server-Side Credentials
+
+High-privilege storage credentials must remain server-side.
+
+They must not appear in:
+
+- Browser bundles.
+- Experience payloads.
+- Intelligence requests.
+- Public Runtime configuration.
+- Ordinary Event payloads.
+
+---
+
+## 10.47 Restricted Download Authorization
+
+Restricted downloads must pass trusted authorization.
+
+Possession of a canonical Asset ID must not automatically grant access to private content.
+
+---
+
+## 10.48 Storage Policy Testing
+
+The implementation must verify that:
+
+- Unauthorized uploads fail.
+- Unauthorized replacement fails.
+- Unauthorized deletion fails.
+- Private cross-tenant access fails.
+- Public delivery follows approved classification.
+- Expired permissions cannot be reused.
+- High-privilege credentials are not exposed.
+
+---
+
+## 10.49 Unsafe File Handling
+
+Uploaded files must be treated as untrusted content.
+
+The implementation must not execute uploaded files as application code.
+
+Applicable scanning, validation, and content restrictions should reflect the supported file types and risk profile.
+
+---
+
+# 10.K Media Delivery Performance
+
+## 10.50 Customer-Facing Performance
+
+Media delivery must support a responsive customer Experience.
+
+The implementation should avoid unnecessarily delivering oversized media files.
+
+---
+
+## 10.51 CDN Compatibility
+
+The architecture should remain compatible with CDN-backed delivery.
+
+The initial managed storage provider may supply suitable delivery capabilities.
+
+A custom CDN architecture is not required for the MVP.
+
+---
+
+## 10.52 Cache Invalidation
+
+Asset revisions must be reflected accurately in customer-facing delivery.
+
+The system must not rely on indefinitely cached mutable URLs when media content has changed.
+
+Revision-aware or content-addressed delivery may be used where appropriate.
+
+---
+
+## 10.53 Media Loading Failure
+
+A failed media request should not unnecessarily destroy the entire Experience.
+
+Components should support appropriate fallback presentation where practical.
+
+---
+
+# 10.L Storage Observability
+
+## 10.54 Operational Visibility
+
+The storage architecture should support visibility into:
+
+- Upload failures.
+- Processing failures.
+- Storage consumption.
+- Delivery failures.
+- Invalid Asset references.
+- Orphaned objects.
+- Unauthorized access attempts.
+
+---
+
+## 10.55 Cost Attribution
+
+Where practical, storage usage should remain attributable to the relevant Organization or Business.
+
+This supports future operational and commercial reporting.
+
+---
+
+## 10.56 Asset Auditability
+
+Meaningful Asset lifecycle changes should preserve appropriate evidence.
+
+Examples include:
+
+- Upload.
+- Approval.
+- Replacement.
+- Access-classification change.
+- Archive.
+- Deletion.
+
+---
+
+# 10.M MVP Storage Boundary
+
+## 10.57 Initial Scope
+
+The first implementation should support:
+
+1. Authorized Business media upload.
+2. Canonical Asset metadata.
+3. Business ownership enforcement.
+4. Public/private classification.
+5. Basic file validation.
+6. Approved Asset references.
+7. Media resolution inside supported Components.
+8. Asset lifecycle handling.
+9. Basic delivery failure recovery.
+
+---
+
+## 10.58 Initial Asset Types
+
+The first vertical should determine the exact required media categories.
+
+A practical starting point is:
+
+- Business logo.
+- Service image.
+- Approved proof image.
+
+Additional media capabilities should follow demonstrated requirements.
+
+---
+
+## 10.59 Explicit MVP Exclusions
+
+The MVP does not require:
+
+- A digital asset management platform.
+- AI image generation.
+- Video transcoding infrastructure.
+- Advanced document processing.
+- A custom CDN.
+- Multi-provider storage replication.
+- A complex media-approval workflow.
+- A full media-editing interface.
+
+The objective is safe, reliable media usage within adaptive Experiences.
+
+---
+
+# 10.N Architecture Decision Records
+
+## ADR-056 — Supabase Storage as Initial Object Storage
+
+**Status:** Accepted for v0.1.
+
+Kablet will initially use Supabase Storage for physical Asset content.
+
+The provider remains behind a Kablet-owned storage boundary.
+
+---
+
+## ADR-057 — PostgreSQL-Owned Asset Metadata
+
+**Status:** Accepted.
+
+Canonical Asset identity, ownership, provenance, approval, and revision metadata remain in PostgreSQL.
+
+Physical storage objects are infrastructure resources.
+
+---
+
+## ADR-058 — Controlled Asset References
+
+**Status:** Accepted.
+
+Intelligence and Experience Plans reference canonical Kablet Assets.
+
+They do not rely on arbitrary external URLs or unrestricted provider storage paths.
+
+---
+
+## ADR-059 — Explicit Public and Restricted Access
+
+**Status:** Accepted.
+
+Public customer-facing media and restricted operational assets must follow distinct access controls.
+
+Public delivery does not eliminate canonical ownership.
+
+---
+
+## ADR-060 — Revision-Aware Media History
+
+**Status:** Accepted.
+
+Kablet will preserve appropriate Asset revision context so historical Experiences remain interpretable without depending solely on temporary delivery URLs.
+
+---
+
+## ADR-061 — Authorized Upload Lifecycle
+
+**Status:** Accepted.
+
+Uploads require trusted ownership and capability validation, technical verification, and applicable approval before becoming available for customer-facing Experience composition.
+
+---
+
+# 10.O Storage & Media Invariants
+
+1. PostgreSQL owns canonical Asset metadata.
+2. Object storage owns physical file content.
+3. Supabase Storage is the initial provider, not a Foundation dependency.
+4. Assets have stable Kablet identity.
+5. Provider URLs are not canonical Asset identities.
+6. Asset ownership is explicit.
+7. Asset IDs do not grant authorization.
+8. Public and restricted media remain distinct.
+9. Public delivery does not imply modification authority.
+10. Uploads require trusted authorization.
+11. Client-provided file metadata remains untrusted.
+12. Storage upload success does not automatically establish Asset approval.
+13. Business media follows applicable authority and provenance rules.
+14. Intelligence receives controlled Asset references.
+15. Intelligence does not receive unrestricted storage credentials.
+16. Intelligence cannot invent authoritative Business media.
+17. Experience Plans reference validated Assets.
+18. Asset resolution preserves Business ownership.
+19. Temporary signed URLs are delivery mechanisms, not permanent historical identity.
+20. Asset revisions preserve appropriate historical interpretation.
+21. Media processing does not unnecessarily block the customer Runtime.
+22. Derived media remains attributable to its source.
+23. Deletion respects both historical integrity and privacy obligations.
+24. Orphan cleanup must respect canonical references.
+25. Uploaded content must not execute as application code.
+26. High-privilege storage credentials remain server-side.
+27. Cross-tenant storage isolation requires actual tests.
+28. Media delivery failures should degrade gracefully.
+29. Storage usage and lifecycle failures should be observable.
+30. The MVP prioritizes safe approved media delivery over advanced asset-management features.
+
+---
+
+# 10.P Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact Supabase bucket names.
+- Exact Asset table schema.
+- Final storage adapter interface.
+- Maximum upload sizes.
+- Supported MIME-type allowlist.
+- Image transformation provider.
+- Malware-scanning implementation.
+- Signed URL lifetime.
+- CDN configuration.
+- Asset retention periods.
+- Physical object naming convention.
+- Checksum algorithm.
+- Media approval UX.
+- Storage quotas.
+- Final MVP Asset categories.
+- Detailed orphan-cleanup schedule.
+
+These will be finalized through implementation contracts and security specifications.
+
+---
+
+# 10.Q Dependency
+
+Section 09 established Kablet's reliable background-processing architecture.
+
+Section 10 establishes:
+
+**A managed object-storage architecture in which PostgreSQL retains canonical Asset ownership and metadata, Supabase Storage holds physical content, Intelligence references approved Assets through controlled contracts, and the Experience Runtime resolves media through secure, revision-aware delivery mechanisms.**
+
+The next section defines how Kablet transforms canonical Events, Decisions, Experiences, and verified Outcomes into trustworthy performance measurement and controlled experimentation.
+
+# 11 — Analytics & Experimentation
+---
+
+# 11. Analytics & Experimentation
+
+## 11.1 Purpose
+
+This section defines how Kablet transforms canonical Decisions, Experiences, Events, Actions, and verified Outcomes into reliable commercial measurement.
+
+It establishes the architecture for:
+
+- Business performance analytics.
+- Conversion measurement.
+- Decision effectiveness.
+- Experience effectiveness.
+- Component performance.
+- Revenue measurement.
+- Experiment assignment.
+- Exposure measurement.
+- Control and treatment comparison.
+- Experiment integrity.
+- Reporting projections.
+- Future Learning Brain evidence.
+
+The primary commercial measurement objective is:
+
+**Determine whether Kablet improves conversion from existing Business traffic.**
+
+The Analytics subsystem must preserve the distinction between observed performance, attribution, and causal evidence.
+
+---
+
+# 11.A Fundamental Measurement Model
+
+## 11.2 Analytics Consumes Canonical Evidence
+
+Kablet Analytics must derive its measurements from authoritative domain records.
+
+The primary inputs include:
+
+- Visitor Sessions.
+- Visitor State.
+- Accepted Decisions.
+- Canonical Experiences.
+- Exposure Events.
+- Interaction Events.
+- Action Invocations.
+- Action Results.
+- Verified Outcomes.
+- Revenue records.
+- Experiment assignments.
+
+Analytics must not manufacture missing occurrences to complete a reporting funnel.
+
+---
+
+## 11.3 Measurement Pipeline
+
+The intended architecture is:
+
+Canonical Events & Domain Records
+              |
+              v
+       Analytics Consumer
+              |
+              v
+     Measurement Validation
+              |
+              v
+       Derived Projections
+              |
+              v
+       Reporting Queries
+              |
+              v
+      Business Dashboard
+
+Experiment analysis consumes the same canonical evidence.
+
+---
+
+## 11.4 Three Measurement Categories
+
+Kablet must distinguish three categories of measurement.
+
+### Descriptive Analytics
+
+What happened?
+
+Examples:
+
+- Sessions.
+- Experience exposures.
+- Interactions.
+- Booking requests.
+- Verified bookings.
+- Revenue.
+
+### Attribution Analytics
+
+Which recorded Decisions, Experiences, Components, and Actions were associated with an Outcome?
+
+### Experimental Analysis
+
+Did an assigned treatment produce a measurable difference relative to a valid comparison condition?
+
+These categories must not be presented as interchangeable.
+
+---
+
+# 11.B North-Star Measurement
+
+## 11.5 Commercial Objective
+
+Kablet's primary commercial proposition is improved conversion from existing traffic.
+
+The measurement architecture must therefore support conversion-rate comparison under clearly defined conditions.
+
+---
+
+## 11.6 Conversion Rate
+
+A conceptual Session-based conversion rate is:
+
+Conversion Rate = Converting Eligible Sessions / Eligible Sessions
+
+The exact unit of analysis and eligibility rules must be defined for each metric or experiment.
+
+Kablet must not silently mix Visitor-based, Session-based, and Action-based conversion rates.
+
+---
+
+## 11.7 Conversion Lift
+
+A conceptual relative conversion-lift calculation is:
+
+Relative Lift = (Treatment Conversion Rate - Control Conversion Rate) / Control Conversion Rate
+
+Absolute lift is:
+
+Absolute Lift = Treatment Conversion Rate - Control Conversion Rate
+
+These calculations describe measured differences.
+
+Their interpretation depends on experiment design, data quality, uncertainty, and the applicable population.
+
+A zero control conversion rate requires explicit handling rather than an undefined relative-lift calculation.
+
+---
+
+## 11.8 Conversion Quality
+
+Conversion volume alone may be insufficient.
+
+Where Business evidence permits, Kablet should support additional quality measures such as:
+
+- Confirmed bookings.
+- Qualified leads.
+- Appointment attendance.
+- Completed purchases.
+- Realized Revenue.
+- Cancellations.
+- Refunds.
+
+The MVP should prioritize one clearly defined primary conversion Outcome.
+
+---
+
+# 11.C Metric Definitions
+
+## 11.9 Controlled Metric Registry
+
+Kablet should maintain controlled definitions for commercially meaningful metrics.
+
+A metric definition should establish:
+
+- Metric identity.
+- Business meaning.
+- Numerator.
+- Denominator.
+- Eligibility.
+- Measurement unit.
+- Relevant time basis.
+- Required evidence.
+- Applicable exclusions.
+- Definition version.
+
+---
+
+## 11.10 Metric Consistency
+
+A metric must retain consistent meaning across:
+
+- Business dashboards.
+- Experiment reports.
+- Historical comparisons.
+- Learning inputs.
+
+A change in metric definition must be versioned or otherwise made historically interpretable.
+
+---
+
+## 11.11 Denominator Integrity
+
+The denominator is as important as the numerator.
+
+For example:
+
+Bookings / Booking-button clicks
+
+is not equivalent to:
+
+Bookings / Eligible Sessions.
+
+The first measures a later funnel stage.
+
+The second measures conversion across the defined eligible Session population.
+
+---
+
+## 11.12 Time Dimensions
+
+Reporting must distinguish relevant time dimensions, including:
+
+- Session start time.
+- Decision time.
+- Exposure time.
+- Action time.
+- Outcome occurrence time.
+- Outcome verification time.
+
+Different reporting questions may require different time bases.
+
+---
+
+# 11.D Business Analytics
+
+## 11.13 Initial Business Dashboard
+
+The initial Control Plane should eventually expose a compact performance dashboard.
+
+Candidate metrics include:
+
+| Metric | Meaning |
+|---|---|
+| Eligible Sessions | Traffic included in the defined measurement population |
+| Decisions | Accepted Kablet Decisions |
+| Experiences Delivered | Canonical delivery occurrences |
+| Experiences Exposed | Observed Experience exposure |
+| Interactions | Validated customer interactions |
+| Action Requests | Customer-requested operations |
+| Completed Actions | Successfully completed applicable operations |
+| Verified Conversions | Confirmed primary commercial Outcomes |
+| Conversion Rate | Conversions divided by the defined eligible population |
+| Revenue | Verified commercial value where available |
+
+The MVP dashboard inventory will be finalized in Section 20.
+
+---
+
+## 11.14 Reporting Dimensions
+
+Where relevant and permitted, reports may support grouping by:
+
+- Business.
+- Property or Location.
+- Time period.
+- Experience.
+- Component.
+- Decision strategy.
+- Experiment.
+- Traffic source.
+- Outcome category.
+
+The initial implementation should not attempt to support every possible analytical dimension.
+
+---
+
+## 11.15 Reporting Freshness
+
+Kablet must distinguish canonical operational records from asynchronously refreshed reporting projections.
+
+A dashboard should not silently imply real-time completeness when background aggregation is delayed.
+
+---
+
+# 11.E Decision Analytics
+
+## 11.16 Decision Effectiveness
+
+Kablet must preserve the relationship between accepted Decisions and subsequent customer behavior.
+
+Candidate analytical questions include:
+
+- Which Decision strategies were used?
+- Which Experiences followed those Decisions?
+- Which Experiences received exposure?
+- Which interactions followed?
+- Which Actions were requested?
+- Which Outcomes were verified?
+
+---
+
+## 11.17 Decision Context
+
+Historical analysis must preserve relevant Decision context.
+
+Examples include:
+
+- Visitor State revision.
+- Business Truth revision.
+- Decision strategy.
+- Intelligence configuration.
+- Available Actions.
+- Experiment assignment.
+
+A Decision must not be analyzed as though it was made using Business information that became available only later.
+
+---
+
+## 11.18 Decision Attribution
+
+Where direct lineage exists, an Outcome may be attributed to a relevant Decision.
+
+However, a Visitor may encounter multiple Decisions before converting.
+
+The Analytics subsystem must preserve that complexity rather than inventing a universal one-Decision attribution rule.
+
+---
+
+# 11.F Component Analytics
+
+## 11.19 Component Measurement
+
+Kablet should support analysis of controlled Component types and instances.
+
+Candidate measurements include:
+
+- Delivery count.
+- Exposure count.
+- Interaction count.
+- Interaction rate.
+- Action request count.
+- Associated verified Outcomes.
+
+---
+
+## 11.20 Component Exposure Denominator
+
+Component interaction rate should use a clearly defined denominator.
+
+For example:
+
+Component Interaction Rate = Eligible Interacted Exposures / Eligible Component Exposures
+
+Repeated interactions and repeated exposures require an explicit counting policy.
+
+---
+
+## 11.21 Component Performance Is Contextual
+
+A Component's observed performance may depend on:
+
+- Visitor intent.
+- Business.
+- Experience composition.
+- Position.
+- Offer.
+- Traffic population.
+- Decision strategy.
+
+Kablet must not assume that a Component with a high observed interaction rate is universally superior.
+
+---
+
+# 11.G Experimentation Architecture
+
+## 11.22 Controlled Experiment Engine
+
+Kablet will support controlled experiments as a permanent architectural capability.
+
+The initial implementation may be small, but the underlying contracts must preserve experiment integrity.
+
+---
+
+## 11.23 Experiment Definition
+
+A conceptual Experiment should include:
+
+- Experiment ID.
+- Owning Business.
+- Objective.
+- Hypothesis.
+- Eligibility rules.
+- Assignment unit.
+- Variants.
+- Allocation configuration.
+- Primary metric.
+- Secondary metrics.
+- Start and end conditions.
+- Experiment status.
+- Definition version.
+
+---
+
+## 11.24 Control and Treatment
+
+An Experiment may compare:
+
+**Control**
+
+An established baseline Experience or Decision policy.
+
+**Treatment**
+
+An alternative Experience, Decision policy, or eligible strategy.
+
+The exact baseline depends on the experiment objective.
+
+A control condition must be sufficiently defined to make the comparison interpretable.
+
+---
+
+## 11.25 Experiment Unit
+
+The assignment unit must be explicit.
+
+Candidate units include:
+
+- Visitor.
+- Session.
+- Another justified stable unit.
+
+The system must not switch units during an Experiment without an explicit versioned design change.
+
+---
+
+## 11.26 Sticky Assignment
+
+Where required by the experiment design, assignment should remain stable for the relevant unit.
+
+For example:
+
+A Visitor assigned to Variant A should not unintentionally alternate between A and B because the page reloads.
+
+---
+
+## 11.27 Assignment Before Treatment
+
+Assignment must occur before the applicable treatment is delivered.
+
+The system must not retrospectively assign successful Sessions to a preferred variant.
+
+---
+
+## 11.28 Assignment Evidence
+
+Canonical assignment evidence should preserve:
+
+- Experiment identity.
+- Variant.
+- Assignment unit.
+- Assignment time.
+- Experiment definition version.
+- Relevant Business context.
+
+---
+
+# 11.H Experiment Exposure
+
+## 11.29 Assignment Is Not Exposure
+
+An assigned Visitor may leave before seeing the treatment.
+
+Therefore:
+
+Experiment Assignment
+
+is distinct from:
+
+Experiment Exposure.
+
+---
+
+## 11.30 Exposure Evidence
+
+Where applicable, exposure must reference:
+
+- Experiment.
+- Variant.
+- Visitor or Session.
+- Experience.
+- Relevant Component.
+- Exposure occurrence.
+
+Exposure rules must be consistent within the experiment.
+
+---
+
+## 11.31 Assignment-Based Analysis
+
+The architecture must preserve the full assigned population for assignment-based analysis, including eligible units that did not ultimately expose the treatment.
+
+Exposure-only analysis must not silently replace the assigned population.
+
+---
+
+## 11.32 Exposure-Based Diagnostics
+
+Exposure-based measurements may help diagnose delivery and engagement.
+
+However, restricting a comparison to exposed Visitors can introduce selection effects.
+
+The analysis method must be explicitly identified.
+
+---
+
+# 11.I Experiment Integrity
+
+## 11.33 Stable Experiment Definition
+
+A running Experiment must preserve the relevant configuration required for historical interpretation.
+
+Changes to:
+
+- Eligibility.
+- Allocation.
+- Variants.
+- Primary metric.
+- Assignment unit.
+
+must follow explicit versioning or restart rules.
+
+---
+
+## 11.34 Concurrent Experiments
+
+The architecture must remain capable of identifying when a Visitor or Session participates in multiple Experiments.
+
+The initial MVP may limit concurrent experiments.
+
+Interaction between treatments must not be ignored when interpreting results.
+
+---
+
+## 11.35 Sample Ratio Monitoring
+
+Kablet should eventually support checking whether observed assignment counts materially deviate from the intended allocation.
+
+Such deviations may indicate assignment, eligibility, or instrumentation problems.
+
+---
+
+## 11.36 Missing Evidence
+
+An Experiment report must account for missing or delayed measurement evidence.
+
+For example:
+
+- Assigned but not delivered.
+- Delivered but not exposed.
+- Action pending.
+- Outcome awaiting verification.
+
+Missing evidence must not automatically be treated as successful conversion.
+
+---
+
+## 11.37 Delayed Outcomes
+
+Experiment measurement must support an appropriate Outcome observation window.
+
+A booking confirmed after Session completion may still be relevant to the originating Experiment.
+
+---
+
+# 11.J Experiment Analysis
+
+## 11.38 Primary Metric
+
+Every conversion-focused Experiment must have a clearly defined primary metric.
+
+Secondary metrics may provide additional context.
+
+The primary metric should be defined before evaluating results.
+
+---
+
+## 11.39 Uncertainty
+
+Experiment reports must distinguish an observed difference from a sufficiently supported conclusion.
+
+The analysis should communicate relevant statistical uncertainty using a predefined method.
+
+Exact statistical methodology will be finalized in the experimentation implementation contract.
+
+---
+
+## 11.40 No Automatic Winner From Raw Counts
+
+Kablet must not declare an Experiment successful merely because one variant has more total conversions.
+
+Different exposure or assignment populations may produce different raw totals.
+
+Analysis must use the appropriate denominator and experimental design.
+
+---
+
+## 11.41 Sequential Monitoring
+
+Repeatedly inspecting an Experiment and stopping when a favorable difference appears can distort statistical interpretation.
+
+The eventual experiment-analysis policy must explicitly address monitoring and stopping rules.
+
+---
+
+## 11.42 Guardrail Metrics
+
+Experiments may include guardrails relevant to Business and customer outcomes.
+
+Examples include:
+
+- Action failure rate.
+- Cancellation rate.
+- Customer abandonment.
+- Experience latency.
+- Revenue quality.
+
+Improvement in one interaction metric must not automatically justify deterioration in consequential commercial or customer outcomes.
+
+---
+
+# 11.K Analytics Data Architecture
+
+## 11.43 PostgreSQL as Initial Analytics Source
+
+The initial Analytics subsystem will use PostgreSQL canonical records as its source.
+
+A separate analytical warehouse is not required for v0.1.
+
+---
+
+## 11.44 Derived Projections
+
+Kablet may maintain derived reporting tables or materialized summaries.
+
+Examples include:
+
+- Daily Business performance.
+- Session conversion summaries.
+- Component exposure summaries.
+- Experiment assignment totals.
+- Verified Outcome totals.
+
+These projections are not independent sources of commercial truth.
+
+---
+
+## 11.45 Projection Processing
+
+Reporting projections may be updated asynchronously through the worker architecture defined in Section 09.
+
+Projection consumers must tolerate repeated Event delivery.
+
+---
+
+## 11.46 Reconciliation
+
+Where feasible, derived totals should be reconcilable against authoritative canonical records.
+
+A projection failure must not permanently alter the underlying commercial history.
+
+---
+
+## 11.47 Historical Recalculation
+
+The architecture should support recalculating derived analytics when:
+
+- A projection is corrected.
+- An Outcome is verified late.
+- An Outcome is reversed.
+- A metric definition changes.
+- A processing defect is repaired.
+
+Historical recalculation must preserve relevant metric-definition versions.
+
+---
+
+# 11.L Learning Brain Interface
+
+## 11.48 Analytics Feeds Learning
+
+The future Learning Brain must consume structured evidence rather than unrestricted raw analytics claims.
+
+Candidate inputs include:
+
+- Decision context.
+- Decision strategy.
+- Experience composition.
+- Exposure.
+- Interaction.
+- Action result.
+- Verified Outcome.
+- Experiment context.
+- Measurement quality.
+
+---
+
+## 11.49 Learning Evidence Quality
+
+The Learning Brain must distinguish:
+
+- Observed association.
+- Historical attribution.
+- Experimentally supported effect.
+- Incomplete evidence.
+- Unverified Outcome.
+
+These distinctions are necessary to avoid reinforcing misleading patterns.
+
+---
+
+## 11.50 Learning Outputs
+
+Future Learning may produce controlled proposals for:
+
+- Decision policy adjustments.
+- Experience strategy.
+- Component selection.
+- Experiment hypotheses.
+- Business-specific optimization.
+
+Learning outputs must pass Kablet's applicable validation and governance boundaries.
+
+They must not silently rewrite Business Truth.
+
+---
+
+## 11.51 Cross-Business Learning
+
+Cross-Business and network-level learning remain future capabilities.
+
+They must follow the tenant-isolation and privacy principles established in the Foundation.
+
+The initial MVP prioritizes Business-level measurement.
+
+---
+
+# 11.M Analytics Privacy and Access
+
+## 11.52 Business-Scoped Reporting
+
+Analytics queries must preserve Organization and Business authorization.
+
+A Business User must not access another Business's performance records by modifying query parameters.
+
+---
+
+## 11.53 Data Minimization
+
+Analytics projections should avoid duplicating unnecessary personal information.
+
+Commercial measurement should use stable references and appropriately minimized data wherever practical.
+
+---
+
+## 11.54 Cross-Tenant Aggregation
+
+Any future cross-tenant benchmarking must use explicitly governed aggregation and privacy controls.
+
+Tenant isolation must not be bypassed merely because the resulting information is presented as analytics.
+
+---
+
+# 11.N MVP Analytics Boundary
+
+## 11.55 First Measurement Goal
+
+The first implementation must reliably answer:
+
+**How many eligible Sessions produced the defined verified conversion Outcome?**
+
+It must also preserve the relevant Decision, Experience, Interaction, and Action lineage.
+
+---
+
+## 11.56 Initial Dashboard
+
+The first dashboard should remain compact.
+
+Suggested MVP measurements:
+
+1. Eligible Sessions.
+2. Accepted Decisions.
+3. Experience exposures.
+4. Action requests.
+5. Verified conversions.
+6. Conversion rate.
+7. Relevant execution failures.
+
+Revenue reporting should be included when authoritative Revenue evidence is available.
+
+---
+
+## 11.57 Initial Experiment Capability
+
+The architecture should support one controlled experiment comparing two defined conditions.
+
+The first implementation should demonstrate:
+
+- Experiment definition.
+- Eligibility.
+- Stable assignment.
+- Assignment persistence.
+- Variant delivery.
+- Exposure evidence.
+- Outcome linkage.
+- Basic comparison reporting.
+
+Advanced statistical analysis may follow after the complete measurement pipeline is operational.
+
+---
+
+## 11.58 Explicit MVP Exclusions
+
+The MVP does not require:
+
+- A standalone data warehouse.
+- A proprietary attribution engine.
+- Automated experiment optimization.
+- Multi-armed bandits.
+- Real-time ML feature serving.
+- Cross-tenant benchmarking.
+- Automated causal discovery.
+- Complex multi-touch attribution.
+- A general-purpose business intelligence builder.
+
+The initial objective is trustworthy measurement.
+
+---
+
+# 11.O Architecture Decision Records
+
+## ADR-062 — Canonical Evidence as Analytics Source
+
+**Status:** Accepted.
+
+Kablet Analytics will derive measurements from canonical domain records and Events.
+
+Third-party analytics platforms will not become the source of commercial truth.
+
+---
+
+## ADR-063 — PostgreSQL-First Analytics
+
+**Status:** Accepted.
+
+The initial implementation will use PostgreSQL with derived reporting projections.
+
+A dedicated analytical warehouse is deferred.
+
+---
+
+## ADR-064 — Controlled Metric Definitions
+
+**Status:** Accepted.
+
+Commercial metrics will have explicit definitions, denominators, eligibility rules, time bases, and appropriate versioning.
+
+---
+
+## ADR-065 — First-Class Experiment Assignment
+
+**Status:** Accepted.
+
+Experiment assignment will be canonical, stable for the defined assignment unit, and recorded before treatment delivery.
+
+---
+
+## ADR-066 — Assignment and Exposure Separation
+
+**Status:** Accepted.
+
+Experiment assignment, Experience delivery, actual exposure, and commercial Outcome remain separate evidence.
+
+---
+
+## ADR-067 — Attribution and Causal Evidence Separation
+
+**Status:** Accepted.
+
+Kablet will distinguish observed performance and historical attribution from experimentally supported incremental effects.
+
+---
+
+## ADR-068 — Learning Consumes Qualified Evidence
+
+**Status:** Accepted.
+
+Future Learning systems will consume structured evidence with explicit quality and verification context rather than treating every attributed conversion as proof of strategy effectiveness.
+
+---
+
+# 11.P Analytics & Experimentation Invariants
+
+1. Canonical domain evidence is the source of analytics truth.
+2. Third-party analytics is optional and non-authoritative.
+3. Descriptive measurement, attribution, and experimentation remain distinct.
+4. Conversion metrics require explicit definitions.
+5. Numerators and denominators must use compatible populations.
+6. Session-based and Visitor-based rates must not be silently mixed.
+7. Conversion is distinct from Revenue.
+8. Verified commercial Outcomes take precedence over interface activity when measuring actual conversion.
+9. Reporting time bases must be explicit.
+10. Metric definitions require historical interpretability.
+11. Decision analytics preserves relevant historical context.
+12. Component measurement distinguishes delivery, exposure, and interaction.
+13. Component performance is contextual.
+14. Experiments have explicit eligibility and assignment units.
+15. Assignment occurs before treatment.
+16. Sticky assignment is preserved where required.
+17. Assignment is distinct from exposure.
+18. Assignment-based analysis retains the assigned population.
+19. Exposure-only analysis must be identified separately.
+20. Experiment configuration changes require explicit handling.
+21. Delayed Outcomes remain attributable where supported.
+22. Raw conversion totals do not independently establish lift.
+23. Experiment conclusions require an appropriate analysis method.
+24. Repeated monitoring and stopping rules must be addressed.
+25. Guardrail metrics may constrain optimization.
+26. PostgreSQL is the initial analytics source.
+27. Reporting projections remain derived.
+28. Projection consumers must tolerate duplicate delivery.
+29. Derived metrics should be reconcilable where feasible.
+30. Late verification and reversals must be handled.
+31. Learning distinguishes correlation, attribution, and experimental evidence.
+32. Learning must not silently mutate Business Truth.
+33. Analytics access preserves tenant isolation.
+34. Cross-tenant learning and benchmarking require explicit governance.
+35. The MVP prioritizes trustworthy conversion measurement over advanced analytical breadth.
+
+---
+
+# 11.Q Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact analytics table schemas.
+- Final metric registry.
+- Experiment assignment algorithm.
+- Randomization implementation.
+- Exact exposure thresholds.
+- Statistical testing method.
+- Confidence or uncertainty reporting format.
+- Minimum sample-size policy.
+- Experiment stopping rules.
+- Attribution windows.
+- Final primary conversion definition.
+- Dashboard visualization library.
+- Reporting refresh intervals.
+- Warehouse extraction thresholds.
+- Advanced Learning algorithms.
+- Cross-Business benchmarking policy.
+
+These decisions will be finalized through implementation contracts and the MVP Technical Boundary.
+
+---
+
+# 11.R Dependency
+
+Section 10 established Kablet's managed Storage and Media architecture.
+
+Section 11 establishes:
+
+**A PostgreSQL-first measurement and experimentation architecture that converts canonical commercial evidence into Business reporting, preserves controlled experiment assignment and exposure, measures verified conversion performance, and provides qualified evidence for Kablet's future Learning Brain.**
+
+The next section defines how engineers and operators observe Kablet's behavior across the entire runtime, including Intelligence calls, Decisions, Experience rendering, Actions, background processing, and integration failures.
+
+# 12 — Observability
