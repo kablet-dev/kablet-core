@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kablet
+      POSTGRES_PASSWORD: kablet
+      POSTGRES_DB: kablet_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - kablet-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kablet -d kablet_dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kablet
+      POSTGRES_PASSWORD: kablet
+      POSTGRES_DB: kablet_test
+    ports:
+      - "55433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+volumes:
+  kablet-postgres:

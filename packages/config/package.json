@@ -1,0 +1,1 @@
+{"name":"@kablet/config","private":true,"type":"module","exports":"./src/index.ts","scripts":{"typecheck":"tsc -p tsconfig.json","lint":"tsc -p tsconfig.json --noEmit"},"dependencies":{"zod":"^3.25.76"},"devDependencies":{"typescript":"^5.9.2","@types/node":"^22.18.6"}}

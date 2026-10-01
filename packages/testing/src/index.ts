@@ -1,0 +1,1 @@
+export const TEST_DATABASE_ENV = 'TEST_DATABASE_URL';

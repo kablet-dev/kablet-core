@@ -1,0 +1,1 @@
+{"name":"@kablet/worker","private":true,"type":"module","scripts":{"start":"tsx src/index.ts","typecheck":"tsc -p tsconfig.json","lint":"tsc -p tsconfig.json --noEmit"},"dependencies":{"@kablet/config":"workspace:*","@kablet/db":"workspace:*"},"devDependencies":{"tsx":"^4.19.4","typescript":"^5.9.2","@types/node":"^22.18.6"}}
