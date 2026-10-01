@@ -20212,3 +20212,627 @@ Section 20 establishes:
 The next section consolidates the Technical Architecture's major decisions into a traceable Architecture Decision Record register and defines how future changes must be proposed, accepted, superseded, and documented.
 
 # 21 — Architecture Decisions / ADRs
+---
+
+# 21. Architecture Decisions / ADRs
+
+## 21.1 Purpose
+
+This section establishes the Architecture Decision Record (ADR) governance model for Kablet and consolidates the accepted decisions defined throughout Technical Architecture v0.1.
+
+Its objectives are to:
+
+- Preserve the reasoning behind consequential architectural choices.
+- Prevent accidental changes to permanent Foundation boundaries.
+- Make implementation decisions traceable.
+- Distinguish accepted decisions from deferred implementation details.
+- Support deliberate architectural evolution.
+- Establish a stable baseline for Codex-assisted engineering.
+- Define the conditions under which Technical Architecture v0.1 is ready for implementation.
+
+An ADR records a decision and its context.
+
+It is not a substitute for an implementation specification, migration plan, or executable test.
+
+---
+
+# 21.A Decision Hierarchy
+
+## 21.2 Authority Order
+
+Kablet's engineering decisions follow this hierarchy:
+
+1. Kablet Foundation Specification.
+2. Accepted Technical Architecture decisions.
+3. Domain contracts and implementation specifications.
+4. Repository implementation.
+5. Provider-specific configuration.
+
+A lower-level implementation decision must not silently override a higher-level architectural contract.
+
+---
+
+## 21.3 Foundation Dependency
+
+Technical Architecture v0.1 depends on:
+
+`foundation-v0.1`
+
+The Foundation defines the permanent conceptual and domain boundaries.
+
+The Technical Architecture defines the initial implementation strategy for those boundaries.
+
+---
+
+## 21.4 Foundation Changes
+
+A proposed change that contradicts the Foundation requires an explicit Foundation revision.
+
+It must not be introduced indirectly through a database migration, API endpoint, Intelligence prompt, Component implementation, or integration adapter.
+
+---
+
+# 21.B ADR Lifecycle
+
+## 21.5 Decision Statuses
+
+Kablet ADRs may use the following statuses:
+
+| Status | Meaning |
+|---|---|
+| Proposed | Under consideration |
+| Accepted | Approved architectural direction |
+| Implemented | Accepted and reflected in the relevant implementation |
+| Superseded | Replaced by a later explicit decision |
+| Rejected | Considered but not adopted |
+| Deprecated | Still present but scheduled for retirement |
+
+Accepted and Implemented are distinct states.
+
+A documented decision does not prove that its implementation exists.
+
+---
+
+## 21.6 Decision Identification
+
+Each ADR receives a stable identifier.
+
+Example:
+
+`ADR-001`
+
+Identifiers must not be recycled.
+
+---
+
+## 21.7 Decision Revision
+
+When an accepted decision changes materially, Kablet should create a new ADR or explicitly record the superseding decision.
+
+Historical reasoning should remain accessible.
+
+---
+
+## 21.8 ADR Structure
+
+Future standalone ADRs should use the following structure:
+
+### ADR-XXX — Decision Title
+
+**Status:** Proposed / Accepted / Implemented / Superseded / Rejected / Deprecated
+
+**Date:** YYYY-MM-DD
+
+**Context:**
+
+The problem, constraint, or architectural requirement.
+
+**Decision:**
+
+The selected approach.
+
+**Alternatives Considered:**
+
+Relevant alternatives and why they were not selected.
+
+**Consequences:**
+
+Expected benefits, trade-offs, and operational implications.
+
+**Foundation Impact:**
+
+Whether the decision preserves, extends, or requires a revision to existing Foundation contracts.
+
+**Implementation Impact:**
+
+Affected modules, migrations, tests, infrastructure, or documentation.
+
+**Supersedes:**
+
+Previous ADR identifier, if applicable.
+
+---
+
+# 21.C Consolidated ADR Register
+
+The following register indexes the accepted architectural decisions defined in Sections 01–20.
+
+The original section remains authoritative for each decision's full context and constraints.
+
+## 21.9 System Architecture
+
+| ADR | Decision |
+|---|---|
+| ADR-001 | Modular monolith with explicit domain boundaries |
+| ADR-002 | Logical separation of Control Plane and Customer Runtime |
+| ADR-003 | Learning and Analysis separated from the synchronous Runtime path |
+
+---
+
+## 21.10 Technology Stack
+
+| ADR | Decision |
+|---|---|
+| ADR-004 | TypeScript with Node.js LTS |
+| ADR-005 | React and Next.js for the initial web implementation |
+| ADR-006 | PostgreSQL as the canonical database |
+| ADR-007 | Drizzle ORM and Zod |
+| ADR-008 | OpenAI initially, behind a Kablet-owned adapter |
+| ADR-009 | No premature distributed infrastructure |
+
+---
+
+## 21.11 Data Architecture
+
+| ADR | Decision |
+|---|---|
+| ADR-010 | PostgreSQL canonical persistence |
+| ADR-011 | Relational core with validated JSONB where appropriate |
+| ADR-012 | Historical Decision context preservation |
+| ADR-013 | PostgreSQL-backed canonical Event Spine |
+| ADR-014 | Transactional outbox or equivalent durable publication mechanism |
+| ADR-015 | Defense-in-depth tenant isolation |
+
+---
+
+## 21.12 Authentication and Authorization
+
+| ADR | Decision |
+|---|---|
+| ADR-016 | Supabase Auth for initial Business User authentication |
+| ADR-017 | Kablet-owned domain authorization |
+| ADR-018 | PostgreSQL RLS for applicable tenant-sensitive records |
+| ADR-019 | Distinct Business User, Visitor, System, and Integration actors |
+| ADR-020 | Trusted server-side authorization and tenant context |
+
+---
+
+## 21.13 Intelligence Architecture
+
+| ADR | Decision |
+|---|---|
+| ADR-021 | Kablet-owned Intelligence Interface |
+| ADR-022 | OpenAI as the initial external provider |
+| ADR-023 | Structured Intelligence output contracts |
+| ADR-024 | Separation of proposal, validation, and acceptance |
+| ADR-025 | Controlled Context Assembly |
+| ADR-026 | Runtime Brain and Learning Brain as distinct responsibilities |
+| ADR-027 | Controlled Intelligence fallback |
+
+---
+
+## 21.14 Experience Runtime
+
+| ADR | Decision |
+|---|---|
+| ADR-028 | Persistent adaptive Experience canvas |
+| ADR-029 | Declarative Experience contracts |
+| ADR-030 | Controlled Component Registry |
+| ADR-031 | Validated Experience transitions |
+| ADR-032 | Canonical Runtime state distinct from browser presentation state |
+| ADR-033 | Explicit Experience exposure evidence |
+| ADR-034 | Web-first implementation with surface-independent domain semantics |
+
+---
+
+## 21.15 Action and Integration Architecture
+
+| ADR | Decision |
+|---|---|
+| ADR-035 | Controlled Action Registry |
+| ADR-036 | Distinct Action proposal, Invocation, Attempt, Result, and Outcome |
+| ADR-037 | Independent Action authorization and applicable confirmation |
+| ADR-038 | Provider-specific Integration Adapter boundary |
+| ADR-039 | Idempotent consequential execution |
+| ADR-040 | External result verification |
+| ADR-041 | One complete MVP conversion Action |
+
+---
+
+## 21.16 Event and Outcome Architecture
+
+| ADR | Decision |
+|---|---|
+| ADR-042 | PostgreSQL canonical Event Spine |
+| ADR-043 | No universal event-sourcing requirement |
+| ADR-044 | Versioned canonical Event contracts |
+| ADR-045 | Distinct delivery, rendering, exposure, and interaction evidence |
+| ADR-046 | Verified commercial Outcome semantics |
+| ADR-047 | Durable and idempotent Event processing |
+| ADR-048 | Attribution preserved without inventing causation |
+
+---
+
+## 21.17 Async, Jobs, and Caching
+
+| ADR | Decision |
+|---|---|
+| ADR-049 | PostgreSQL-backed durable jobs |
+| ADR-050 | Shared TypeScript Worker |
+| ADR-051 | Transactional outbox |
+| ADR-052 | At-least-once processing semantics |
+| ADR-053 | PostgreSQL concurrency-safe job claiming |
+| ADR-054 | Explicit job failure and recovery |
+| ADR-055 | No mandatory distributed cache for the MVP |
+
+---
+
+## 21.18 Storage and Media
+
+| ADR | Decision |
+|---|---|
+| ADR-056 | Supabase Storage initially |
+| ADR-057 | PostgreSQL-owned Asset metadata |
+| ADR-058 | Controlled canonical Asset references |
+| ADR-059 | Public and restricted Asset access separation |
+| ADR-060 | Revision-aware media identity |
+| ADR-061 | Authorized and validated upload lifecycle |
+
+---
+
+## 21.19 Analytics and Experimentation
+
+| ADR | Decision |
+|---|---|
+| ADR-062 | Analytics derived from canonical evidence |
+| ADR-063 | PostgreSQL-first analytical implementation |
+| ADR-064 | Explicit metric definitions |
+| ADR-065 | First-class Experiment assignment |
+| ADR-066 | Assignment and exposure remain distinct |
+| ADR-067 | Attribution and causation remain distinct |
+| ADR-068 | Learning consumes qualified evidence |
+
+---
+
+## 21.20 Observability
+
+| ADR | Decision |
+|---|---|
+| ADR-069 | OpenTelemetry-compatible instrumentation |
+| ADR-070 | Structured operational logging |
+| ADR-071 | Canonical commercial Events distinct from telemetry |
+| ADR-072 | End-to-end correlation identity |
+| ADR-073 | Intelligence latency, usage, and cost visibility |
+| ADR-074 | Managed monitoring initially |
+
+---
+
+## 21.21 Security and Secrets
+
+| ADR | Decision |
+|---|---|
+| ADR-075 | Defense-in-depth security |
+| ADR-076 | Default-deny authorization |
+| ADR-077 | Managed server-side secrets |
+| ADR-078 | External Intelligence output treated as untrusted |
+| ADR-079 | Verified external ingestion |
+| ADR-080 | Executable tenant-isolation tests |
+
+---
+
+## 21.22 Custom Domains and Routing
+
+| ADR | Decision |
+|---|---|
+| ADR-081 | Canonical Domain Registry |
+| ADR-082 | Managed TLS and domain infrastructure |
+| ADR-083 | Trusted hostname-to-Business resolution |
+| ADR-084 | Verified domain activation |
+| ADR-085 | Preview and Production separation |
+| ADR-086 | Commercial Business identity independent of domain identity |
+
+---
+
+## 21.23 Environments
+
+| ADR | Decision |
+|---|---|
+| ADR-087 | Local, Test, Staging, and Production as logical environments |
+| ADR-088 | Disposable PostgreSQL for automated database testing |
+| ADR-089 | Typed and validated environment configuration |
+| ADR-090 | Production isolation |
+| ADR-091 | Version-controlled migration lifecycle |
+| ADR-092 | Deterministic external test adapters |
+
+---
+
+## 21.24 Testing Strategy
+
+| ADR | Decision |
+|---|---|
+| ADR-093 | Vitest as the initial TypeScript testing framework |
+| ADR-094 | Playwright for browser verification |
+| ADR-095 | Real disposable PostgreSQL for database correctness |
+| ADR-096 | Deterministic external adapters |
+| ADR-097 | Foundation invariants as executable tests |
+| ADR-098 | Complete Visitor-to-Outcome acceptance gate |
+
+---
+
+## 21.25 CI/CD and Deployment
+
+| ADR | Decision |
+|---|---|
+| ADR-099 | GitHub Actions for CI/CD |
+| ADR-100 | Immutable release identity |
+| ADR-101 | Separate Web and Worker execution roles |
+| ADR-102 | Migration-gated deployment |
+| ADR-103 | Compatibility-aware rollback |
+| ADR-104 | Health-verified releases |
+
+---
+
+## 21.26 Failure and Recovery
+
+| ADR | Decision |
+|---|---|
+| ADR-105 | Explicit failure classification |
+| ADR-106 | Unknown consequential result state |
+| ADR-107 | Canonical transaction integrity |
+| ADR-108 | Durable at-least-once recovery |
+| ADR-109 | Reconciliation before unsafe replay |
+| ADR-110 | Controlled Runtime degradation |
+| ADR-111 | Compatibility-aware restoration |
+
+---
+
+## 21.27 Scaling Path
+
+| ADR | Decision |
+|---|---|
+| ADR-112 | Evidence-driven scaling |
+| ADR-113 | Scale execution before dividing domain ownership |
+| ADR-114 | PostgreSQL remains canonical |
+| ADR-115 | Independent Web and Worker capacity |
+| ADR-116 | Optional infrastructure introduced only when justified |
+| ADR-117 | Tenant-aware workload scaling |
+
+---
+
+## 21.28 MVP Technical Boundary
+
+| ADR | Decision |
+|---|---|
+| ADR-118 | One complete commercial vertical slice |
+| ADR-119 | One Business and one vertical initially |
+| ADR-120 | Controlled initial Component Registry |
+| ADR-121 | Booking as the preferred first conversion |
+| ADR-122 | Canonical evidence before advanced Learning |
+| ADR-123 | Thin implementation against permanent boundaries |
+
+---
+
+# 21.D Architectural Change Governance
+
+## 21.29 Changes Requiring an ADR
+
+A new or revised ADR is required when a proposal materially changes:
+
+- Canonical domain ownership.
+- Database authority.
+- Tenant isolation.
+- Intelligence authority.
+- Experience contracts.
+- Action execution authority.
+- Event or Outcome semantics.
+- Public contract compatibility.
+- Core infrastructure selection.
+- Recovery guarantees.
+- Physical domain separation.
+
+---
+
+## 21.30 Changes Not Automatically Requiring an ADR
+
+Ordinary implementation details may be resolved within the relevant engineering slice.
+
+Examples include:
+
+- Internal function names.
+- Local module organization.
+- Non-breaking UI styling.
+- Routine query optimization.
+- Test fixture implementation.
+- Non-contractual refactoring.
+
+Such changes must still respect accepted architectural decisions.
+
+---
+
+## 21.31 Contradiction Handling
+
+When implementation work reveals a contradiction or an impractical accepted decision:
+
+1. Identify the affected Foundation or Architecture contract.
+2. Document the implementation constraint.
+3. Evaluate relevant alternatives.
+4. Propose an explicit amendment.
+5. Obtain approval before implementing the conflicting change.
+6. Update affected specifications and tests.
+
+Codex must not silently reinterpret an accepted architectural boundary to make implementation easier.
+
+---
+
+# 21.E Architecture Versioning
+
+## 21.32 Architecture v0.1
+
+This document establishes the first implementation baseline.
+
+Its accepted decisions describe the intended initial technical direction, not a claim that the complete system has already been built.
+
+---
+
+## 21.33 Future Revisions
+
+Future revisions may introduce:
+
+- New ADRs.
+- Superseded ADRs.
+- Revised implementation boundaries.
+- Additional domain contracts.
+- New infrastructure decisions.
+- Changes justified by operational evidence.
+
+---
+
+## 21.34 Historical Preservation
+
+Superseded architectural decisions should remain traceable.
+
+Future documentation must make clear which decisions are currently authoritative.
+
+---
+
+# 21.F Implementation Handoff
+
+## 21.35 Architecture to Engineering
+
+Once Technical Architecture v0.1 is accepted, implementation should proceed through the vertical slices established in Section 20.
+
+Each slice must identify:
+
+- Objective.
+- Foundation dependency.
+- Relevant ADRs.
+- Domain contracts.
+- Files or modules affected.
+- Database changes.
+- Required tests.
+- Acceptance criteria.
+- Explicit exclusions.
+
+---
+
+## 21.36 Small Engineering Slices
+
+Codex should receive bounded implementation tasks.
+
+A task should not simultaneously introduce unrelated domain modules, infrastructure, migrations, and UI behavior without a clear dependency.
+
+---
+
+## 21.37 Contract-First Implementation
+
+Permanent domain distinctions must be reflected in implementation contracts before broad feature expansion.
+
+Examples include:
+
+- Business vs Organization.
+- Visitor vs User.
+- Truth vs Intelligence proposal.
+- Decision vs Experience.
+- Action Invocation vs Attempt.
+- Event vs Outcome.
+- Assignment vs Exposure.
+
+---
+
+## 21.38 Executable Evidence
+
+An implementation slice is complete only when its applicable acceptance criteria and required tests pass.
+
+Code generation alone does not establish completion.
+
+---
+
+# 21.G Architecture v0.1 Acceptance Criteria
+
+## 21.39 Documentation Gate
+
+Technical Architecture v0.1 is ready for implementation when:
+
+1. All sections 00–21 are present.
+2. The document references `foundation-v0.1`.
+3. Accepted ADR identifiers are consistent.
+4. Permanent Foundation boundaries are preserved.
+5. Canonical ownership is unambiguous.
+6. The MVP boundary is explicit.
+7. Deferred infrastructure is clearly identified.
+8. The first engineering acceptance milestone is defined.
+9. Remaining implementation decisions are documented rather than silently assumed.
+
+---
+
+## 21.40 Implementation Readiness Is Not Production Readiness
+
+Accepting Technical Architecture v0.1 authorizes engineering work against the documented baseline.
+
+It does not mean Kablet is production-ready.
+
+Production readiness requires successful implementation, testing, security validation, operational configuration, and release acceptance.
+
+---
+
+# 21.H Final Architecture Invariants
+
+1. The Foundation remains the highest architectural authority.
+2. Kablet owns canonical domain State and Decisions.
+3. Business Truth remains authoritative.
+4. External Intelligence is a reasoning processor, not the domain authority.
+5. Intelligence proposes; Kablet validates.
+6. Experience composition uses controlled declarative contracts.
+7. Consequential Actions require independent authorization.
+8. Commercial Outcomes require appropriate evidence.
+9. Tenant isolation applies across every execution and storage boundary.
+10. Historical lineage remains interpretable.
+11. Learning consumes evidence rather than silently rewriting Truth.
+12. The modular monolith is the initial deployment architecture.
+13. PostgreSQL is the initial canonical database.
+14. Physical infrastructure evolves through demonstrated requirements.
+15. The MVP prioritizes one complete commercial journey.
+16. Architectural changes require explicit governance.
+17. Implementation must preserve the accepted Foundation and ADR contracts.
+
+---
+
+# 21.I Final Dependency Statement
+
+Kablet Technical Architecture v0.1 depends on:
+
+**Kablet Foundation Specification — `foundation-v0.1`**
+
+Together, these documents establish:
+
+- The permanent domain model.
+- Canonical ownership.
+- The initial technology stack.
+- The Customer Runtime architecture.
+- Intelligence and Experience boundaries.
+- Action execution and integration contracts.
+- Event and Outcome integrity.
+- Security and tenant isolation.
+- Operational infrastructure.
+- Testing and deployment requirements.
+- Failure and recovery behavior.
+- The scaling path.
+- The first MVP implementation boundary.
+
+The next phase is not additional broad architecture design.
+
+It is controlled engineering execution against this baseline.
+
+---
+
+# END — KABLET TECHNICAL ARCHITECTURE v0.1
