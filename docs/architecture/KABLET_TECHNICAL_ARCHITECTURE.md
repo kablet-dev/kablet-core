@@ -15247,3 +15247,708 @@ Section 14 establishes:
 The next section defines Kablet's development, testing, staging, and production environments, including how infrastructure configuration and data remain isolated across deployments.
 
 # 15 — Environments
+---
+
+# 15. Environments
+
+## 15.1 Purpose
+
+This section defines how Kablet separates local development, automated testing, pre-production validation, and live customer operations.
+
+It establishes the architecture for:
+
+- Environment classification.
+- Configuration management.
+- Database separation.
+- Secret isolation.
+- Deployment consistency.
+- Local development.
+- Disposable integration testing.
+- Staging validation.
+- Production protection.
+- Environment-specific external integrations.
+- Migration safety.
+- Data handling.
+- Release readiness.
+
+The objective is to make development fast while preventing experimental code, test data, and incomplete migrations from affecting real Businesses or Visitors.
+
+---
+
+# 15.A Environment Model
+
+## 15.2 Four Logical Environments
+
+Kablet will define four logical environments.
+
+| Environment | Primary purpose |
+|---|---|
+| Local | Developer implementation and debugging |
+| Test | Automated verification using controlled infrastructure |
+| Staging | Production-like release validation |
+| Production | Live Business and Visitor operations |
+
+These are logical operating boundaries.
+
+They do not necessarily require four permanently running infrastructure deployments.
+
+---
+
+## 15.3 Environment Isolation
+
+Each environment must establish its own applicable:
+
+- Configuration.
+- Database.
+- Authentication configuration.
+- Storage resources.
+- Credentials.
+- External integration behavior.
+- Runtime addresses.
+- Telemetry classification.
+
+Production must remain isolated from development and automated tests.
+
+---
+
+## 15.4 Environment Identity
+
+Every running Kablet process must know its declared environment.
+
+The environment identity must be available to:
+
+- Application configuration.
+- Worker configuration.
+- Logging.
+- Tracing.
+- Error monitoring.
+- Integration adapters.
+- Operational diagnostics.
+
+The application must not infer its production status solely from a hostname.
+
+---
+
+# 15.B Local Development
+
+## 15.5 Local Environment Objective
+
+Local development should allow an engineer to implement and test Kablet without depending on live production services.
+
+The local setup should remain reproducible and reasonably lightweight.
+
+---
+
+## 15.6 Local Architecture
+
+The initial local environment should support:
+
+- Next.js application.
+- Shared TypeScript domain packages.
+- PostgreSQL.
+- Background worker.
+- Environment configuration.
+- Relevant development adapters.
+
+The implementation may use Docker Compose or equivalent tooling for disposable dependencies.
+
+---
+
+## 15.7 Local PostgreSQL
+
+Local development must use a non-production PostgreSQL database.
+
+Developers must be able to:
+
+- Apply migrations.
+- Reset disposable data.
+- Seed representative Business records.
+- Test canonical domain behavior.
+- Inspect database state.
+
+---
+
+## 15.8 Local Seed Data
+
+The repository should eventually provide deterministic development seed data.
+
+Initial seed data may include:
+
+- One Organization.
+- One Business.
+- One authorized Business User.
+- Approved Business Truth.
+- A small Component configuration.
+- One conversion Action.
+- Representative Visitor Sessions.
+
+Seed data must not require copying real production customer information.
+
+---
+
+## 15.9 Local Intelligence Adapter
+
+Local development should support both:
+
+1. The configured external Intelligence provider.
+2. A deterministic development or test adapter.
+
+The deterministic adapter allows engineers to test Decision and Experience contracts without requiring a paid provider invocation for every test.
+
+It must not silently replace the actual provider during production execution.
+
+---
+
+## 15.10 Local Integration Adapters
+
+External integration testing should support controlled test credentials or simulated adapters.
+
+Local testing must not accidentally create real bookings, send production messages, or trigger commercial transactions.
+
+---
+
+# 15.C Automated Test Environment
+
+## 15.11 Disposable Test Infrastructure
+
+Automated integration tests should use disposable PostgreSQL infrastructure.
+
+The test environment must not reuse the production database.
+
+---
+
+## 15.12 Database Test Requirements
+
+Tests must execute against the actual database behavior where correctness depends on:
+
+- SQL constraints.
+- Transactions.
+- RLS.
+- Concurrency.
+- Locking.
+- Idempotency.
+- Outbox processing.
+- Job claiming.
+- Migration behavior.
+
+Mocks alone are insufficient for these requirements.
+
+---
+
+## 15.13 Test Isolation
+
+Automated tests must prevent state leakage between independent test cases.
+
+Applicable strategies may include:
+
+- Isolated databases.
+- Controlled schemas.
+- Transactional cleanup.
+- Deterministic resets.
+
+The exact approach will be selected during Testing Strategy implementation.
+
+---
+
+## 15.14 Test Configuration
+
+Automated tests must explicitly identify themselves as test execution.
+
+Missing test configuration must not cause a fallback to staging or production credentials.
+
+---
+
+## 15.15 External Side Effects
+
+Automated tests must use controlled adapters or dedicated provider sandbox environments for consequential external operations.
+
+Tests must not accidentally execute real customer-facing Actions.
+
+---
+
+# 15.D Staging Environment
+
+## 15.16 Staging Purpose
+
+Staging provides a production-like environment for validating releases before they reach live customer traffic.
+
+It should reproduce the important architectural behavior of Production without sharing its canonical data.
+
+---
+
+## 15.17 Staging Infrastructure
+
+Staging should use separate:
+
+- PostgreSQL database.
+- Authentication configuration.
+- Storage resources.
+- Secrets.
+- Integration configuration.
+- Runtime addresses.
+
+It may use smaller infrastructure capacity than Production.
+
+---
+
+## 15.18 Staging Data
+
+Staging should use synthetic, seeded, or appropriately sanitized data.
+
+Copying production customer data into Staging must not be the default workflow.
+
+---
+
+## 15.19 Staging Validation
+
+Staging should support verification of:
+
+- Application startup.
+- Database migrations.
+- Authentication.
+- Tenant isolation.
+- Customer Runtime.
+- Intelligence integration.
+- Experience rendering.
+- Action execution.
+- Worker processing.
+- Storage access.
+- Domain routing.
+- Operational telemetry.
+
+---
+
+## 15.20 Staging Integrations
+
+Where available, staging integrations should use provider sandbox credentials.
+
+When a provider lacks a suitable sandbox, the implementation must explicitly control the risk of consequential external operations.
+
+---
+
+## 15.21 Staging Access
+
+Staging must not be treated as an unrestricted public production environment.
+
+Access and indexing behavior should reflect its pre-production purpose.
+
+---
+
+# 15.E Production Environment
+
+## 15.22 Production Purpose
+
+Production hosts live Businesses, Visitors, canonical commercial evidence, and authorized integrations.
+
+It requires stronger operational controls than Local and Test.
+
+---
+
+## 15.23 Production Isolation
+
+Production must use dedicated credentials and canonical storage resources.
+
+Ordinary development workflows must not possess unrestricted production modification authority.
+
+---
+
+## 15.24 Production Database
+
+Production PostgreSQL is the authoritative live database.
+
+Destructive resets, disposable test fixtures, and experimental migrations must not run against it.
+
+---
+
+## 15.25 Production Worker
+
+The Production worker must operate against the correct Production database, outbox, and integration configuration.
+
+Worker environment mismatches must fail safely.
+
+---
+
+## 15.26 Production Observability
+
+Production telemetry must remain distinguishable from lower environments.
+
+Relevant operational alerts should be enabled before meaningful live customer traffic begins.
+
+---
+
+# 15.F Configuration Architecture
+
+## 15.27 Typed Configuration
+
+Kablet should use a centralized, typed configuration boundary.
+
+Configuration must be validated during application startup.
+
+The implementation may use Zod, consistent with Section 02.
+
+---
+
+## 15.28 Configuration Categories
+
+Configuration should distinguish:
+
+- Application settings.
+- Database connectivity.
+- Authentication.
+- Storage.
+- Intelligence provider.
+- Integration credentials.
+- Domain routing.
+- Worker configuration.
+- Observability.
+- Feature controls.
+
+---
+
+## 15.29 Required Configuration
+
+Missing required configuration must produce an explicit startup or capability failure.
+
+Production must not silently fall back to development defaults.
+
+---
+
+## 15.30 Configuration Ownership
+
+Infrastructure configuration must remain separate from canonical Business configuration.
+
+For example:
+
+An Intelligence provider API key is infrastructure configuration.
+
+A Business's approved service price is canonical Business Truth.
+
+---
+
+## 15.31 Example Configuration
+
+The repository may provide a safe `.env.example` containing variable names and non-sensitive examples.
+
+It must not contain live credentials.
+
+---
+
+# 15.G Database Migrations
+
+## 15.32 Version-Controlled Migrations
+
+Database migrations must be committed to the repository.
+
+The migration history must remain traceable to application releases.
+
+---
+
+## 15.33 Migration Validation
+
+Migrations should be tested against disposable PostgreSQL before Production execution.
+
+Staging should validate the applicable release migration path.
+
+---
+
+## 15.34 Production Migration Safety
+
+Production migrations must follow controlled deployment procedures.
+
+Potentially destructive changes require explicit review and an appropriate recovery strategy.
+
+---
+
+## 15.35 Application Compatibility
+
+Where a deployment requires multiple processes or gradual rollout, schema changes should account for compatibility between relevant application and worker versions.
+
+---
+
+## 15.36 Migration Failure
+
+A failed migration must not be silently ignored.
+
+The deployment process must stop or enter an explicitly controlled recovery path.
+
+---
+
+# 15.H Environment-Specific External Services
+
+## 15.37 Authentication
+
+Authentication configuration must preserve environment boundaries.
+
+Production authentication identities must not automatically grant access to disposable test infrastructure.
+
+---
+
+## 15.38 Storage
+
+Each applicable environment should use appropriately separated storage resources.
+
+Automated cleanup must never target Production Assets because of a configuration fallback.
+
+---
+
+## 15.39 Intelligence
+
+Intelligence provider credentials and usage controls should be environment-aware.
+
+Development and Test must not consume unrestricted production budgets.
+
+---
+
+## 15.40 Integrations
+
+Consequential integration capabilities must be explicitly configured per environment.
+
+An adapter must not assume that an endpoint is safe merely because the application is running outside Production.
+
+---
+
+## 15.41 Domain Routing
+
+Production Business domains must not resolve to Staging or Local because of an accidental environment configuration.
+
+Preview and Staging addresses must remain clearly distinguishable from live customer domains.
+
+---
+
+# 15.I Feature Controls
+
+## 15.42 Controlled Feature Activation
+
+Kablet may use simple feature controls to enable or disable incomplete capabilities.
+
+These controls should be typed, explicit, and environment-aware.
+
+---
+
+## 15.43 Feature Flags Are Not Authorization
+
+A feature flag does not establish permission to access a protected resource.
+
+Authentication, Membership authorization, and tenant isolation remain mandatory.
+
+---
+
+## 15.44 Initial Feature Scope
+
+A complex third-party feature-management platform is not required for the MVP.
+
+Simple controlled configuration is sufficient until operational needs justify expansion.
+
+---
+
+# 15.J Environment Safety
+
+## 15.45 Production Protection
+
+Development commands capable of resetting or destroying data must require explicit environment safeguards.
+
+They must not operate against Production through an accidental connection-string change.
+
+---
+
+## 15.46 Credential Validation
+
+Startup configuration should reject obvious environment mismatches where they can be reliably detected.
+
+Examples include a Test process configured with a known Production resource identifier.
+
+---
+
+## 15.47 Data Export
+
+Production data exports must follow appropriate authorization, security, and retention requirements.
+
+They must not become ordinary development fixtures.
+
+---
+
+## 15.48 Operational Access
+
+Access to Production infrastructure must be limited to authorized operators.
+
+Development convenience must not override Production security boundaries.
+
+---
+
+# 15.K Environment Observability
+
+## 15.49 Environment Labels
+
+Logs, traces, errors, and metrics must include a reliable environment designation.
+
+---
+
+## 15.50 Deployment Identity
+
+Operational telemetry should identify the applicable application version or deployment revision.
+
+This supports investigation of regressions introduced by specific releases.
+
+---
+
+## 15.51 Release Comparison
+
+Where practical, operators should be able to distinguish failures introduced by a new deployment from failures that existed before it.
+
+---
+
+# 15.L MVP Environment Boundary
+
+## 15.52 Initial Requirements
+
+The first engineering milestone should provide:
+
+1. Reproducible local setup.
+2. Disposable PostgreSQL for integration tests.
+3. Typed environment configuration.
+4. Safe `.env.example`.
+5. Separate Production credentials.
+6. Version-controlled migrations.
+7. Deterministic seed data.
+8. Controlled external-service adapters.
+9. Environment-aware telemetry.
+10. Production reset safeguards.
+
+---
+
+## 15.53 Staging Rollout
+
+A separate Staging deployment must be established before consequential production release validation.
+
+It does not need to be permanently provisioned during the earliest domain-model implementation slices.
+
+---
+
+## 15.54 Explicit MVP Exclusions
+
+The initial implementation does not require:
+
+- Multiple production regions.
+- Full infrastructure replication across all environments.
+- Enterprise environment-management software.
+- Permanently running preview deployments for every branch.
+- A custom secrets platform.
+- Production-data cloning into Staging.
+- Complex feature-flag infrastructure.
+
+The objective is reproducibility and isolation without unnecessary operational overhead.
+
+---
+
+# 15.M Architecture Decision Records
+
+## ADR-087 — Four Logical Environments
+
+**Status:** Accepted.
+
+Kablet will distinguish Local, Test, Staging, and Production.
+
+These environments do not all require permanently running infrastructure.
+
+---
+
+## ADR-088 — Disposable PostgreSQL Testing
+
+**Status:** Accepted.
+
+Database-dependent integration tests will use disposable PostgreSQL infrastructure rather than production or shared customer databases.
+
+---
+
+## ADR-089 — Typed Environment Configuration
+
+**Status:** Accepted.
+
+Application and worker configuration will use a centralized typed validation boundary.
+
+Missing required Production configuration must fail safely.
+
+---
+
+## ADR-090 — Production Resource Isolation
+
+**Status:** Accepted.
+
+Production database, storage, credentials, and consequential integrations must remain isolated from development and automated testing.
+
+---
+
+## ADR-091 — Version-Controlled Database Migrations
+
+**Status:** Accepted.
+
+Database schema changes will use committed migrations validated before Production execution.
+
+---
+
+## ADR-092 — Deterministic Development Adapters
+
+**Status:** Accepted.
+
+Local and automated testing may use deterministic Intelligence and integration adapters to validate domain behavior without unnecessary live external side effects.
+
+---
+
+# 15.N Environment Invariants
+
+1. Local, Test, Staging, and Production have distinct purposes.
+2. Logical separation does not require four permanently running infrastructure stacks.
+3. Production data is never the default testing environment.
+4. Automated database tests use disposable PostgreSQL.
+5. Database-dependent correctness must be tested against real PostgreSQL behavior.
+6. Local development must be reproducible.
+7. Seed data must not require real customer information.
+8. Environment configuration must be typed and validated.
+9. Production must not silently use development defaults.
+10. Production credentials remain separate.
+11. Test configuration must not fall back to Production.
+12. External side effects must be explicitly controlled outside Production.
+13. Staging uses separate canonical data resources.
+14. Production migrations require controlled execution.
+15. Migration failures must not be silently ignored.
+16. Application and worker configuration must match the intended environment.
+17. Feature flags do not replace authorization.
+18. Destructive development commands must protect Production.
+19. Telemetry identifies environment and deployment revision.
+20. The MVP prioritizes safe reproducibility over infrastructure duplication.
+
+---
+
+# 15.O Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Hosting provider.
+- Exact local container configuration.
+- CI test-database provisioning method.
+- Staging infrastructure size.
+- Production infrastructure size.
+- Final environment-variable names.
+- Secrets-management provider.
+- Seed-data implementation.
+- Feature-control mechanism.
+- Deployment revision format.
+- Migration execution command.
+- Staging deployment cadence.
+- Exact production access policy.
+
+These decisions will be finalized during implementation and CI/CD planning.
+
+---
+
+# 15.P Dependency
+
+Section 14 established Kablet's Custom Domains and Traffic Routing architecture.
+
+Section 15 establishes:
+
+**Four clearly defined operating environments, reproducible local development, disposable PostgreSQL integration testing, typed configuration, production resource isolation, controlled external-service behavior, and version-controlled migration safety.**
+
+The next section defines Kablet's testing strategy, including how its permanent Foundation contracts will be verified through automated tests and how the first complete Visitor-to-Outcome flow will be proven.
+
+# 16 — Testing Strategy
