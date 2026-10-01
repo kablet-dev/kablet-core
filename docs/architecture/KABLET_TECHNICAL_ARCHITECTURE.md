@@ -17616,3 +17616,890 @@ Section 17 establishes:
 The next section defines how Kablet behaves when infrastructure, Intelligence providers, external integrations, background workers, or canonical persistence fail.
 
 # 18 — Failure & Recovery Architecture
+---
+
+# 18. Failure & Recovery Architecture
+
+## 18.1 Purpose
+
+This section defines how Kablet detects, classifies, contains, and recovers from failures across its customer-facing and operational systems.
+
+It establishes the architecture for:
+
+- Failure classification.
+- Partial failure handling.
+- Customer Runtime degradation.
+- Intelligence fallback.
+- Database transaction recovery.
+- Action execution safety.
+- External integration uncertainty.
+- Durable job recovery.
+- Outbox recovery.
+- Outcome reconciliation.
+- Deployment failure.
+- Backup and restoration.
+- Operational intervention.
+
+The objective is to preserve canonical correctness and commercial integrity even when individual technical operations fail.
+
+---
+
+# 18.A Fundamental Recovery Principles
+
+## 18.2 Failure Is an Expected Operating Condition
+
+Kablet must assume that external dependencies, network requests, workers, browser Sessions, and infrastructure can fail independently.
+
+The architecture must not depend on uninterrupted execution across the entire Visitor journey.
+
+---
+
+## 18.3 Preserve Canonical Truth
+
+Recovery must not fabricate canonical State, Decisions, Actions, Events, or Outcomes to make a failed operation appear complete.
+
+A technically incomplete operation must retain an accurate status.
+
+---
+
+## 18.4 Uncertainty Is a Valid State
+
+Kablet must explicitly represent cases where an operation's external result cannot yet be established.
+
+For example:
+
+A booking provider receives a request but Kablet times out before receiving the response.
+
+The correct interpretation may be:
+
+**External result unknown.**
+
+It is not automatically:
+
+- Booking failed.
+- Booking confirmed.
+- Safe to submit again.
+
+---
+
+## 18.5 Recovery Must Respect Authority
+
+Recovery operations remain subject to applicable:
+
+- Business ownership.
+- Actor authority.
+- Action permissions.
+- Integration scope.
+- Idempotency.
+- Tenant isolation.
+
+A recovery worker must not gain unrestricted commercial authority merely because an earlier operation failed.
+
+---
+
+# 18.B Failure Classification
+
+## 18.6 Controlled Failure Categories
+
+Kablet should distinguish at least the following conceptual categories:
+
+| Category | Example |
+|---|---|
+| Validation failure | Invalid Action input |
+| Authorization failure | Wrong Business context |
+| Dependency failure | Intelligence provider unavailable |
+| Timeout | External booking response exceeds limit |
+| Transient infrastructure failure | Temporary database connection loss |
+| Persistent configuration failure | Invalid integration credentials |
+| Concurrency conflict | Stale Experience revision |
+| Partial completion | Provider succeeds before local persistence |
+| Unknown external result | Request outcome cannot be established |
+| Data integrity failure | Canonical constraint violation |
+| Operational failure | Worker stops processing jobs |
+
+These categories must inform recovery behavior.
+
+---
+
+## 18.7 Retryability Is Explicit
+
+Failures must not automatically be retried merely because an exception occurred.
+
+The relevant operation must establish whether retry is:
+
+- Safe.
+- Conditionally safe.
+- Unsafe.
+- Unnecessary.
+- Dependent on reconciliation.
+
+---
+
+## 18.8 Customer-Facing Error Semantics
+
+The Customer Runtime must distinguish between:
+
+- A recoverable temporary problem.
+- Invalid customer input.
+- An unavailable capability.
+- An operation awaiting confirmation.
+- A verified failed operation.
+
+The interface must not claim commercial success without appropriate evidence.
+
+---
+
+# 18.C Failure Containment
+
+## 18.9 Domain Boundaries
+
+A failure in one module should not unnecessarily corrupt unrelated canonical records.
+
+The modular monolith must preserve explicit transaction and execution boundaries.
+
+---
+
+## 18.10 External Dependency Isolation
+
+An unavailable Intelligence or integration provider should not automatically make every unrelated Kablet capability unavailable.
+
+Fallback behavior depends on the affected operation.
+
+---
+
+## 18.11 Resource Limits
+
+External calls and potentially expensive operations require appropriate:
+
+- Timeouts.
+- Concurrency limits.
+- Request limits.
+- Payload limits.
+- Retry budgets.
+
+The exact thresholds will be established using implementation requirements and operational measurements.
+
+---
+
+## 18.12 Failure Propagation
+
+Failures must propagate through controlled domain results.
+
+Unexpected exceptions should be captured by the relevant application boundary and recorded through operational telemetry.
+
+---
+
+# 18.D Customer Runtime Recovery
+
+## 18.13 Runtime Availability
+
+Kablet should preserve a usable customer-facing Experience when a non-critical dependency temporarily fails.
+
+A failure to generate a new adaptive transition does not necessarily require discarding the currently valid Experience.
+
+---
+
+## 18.14 Existing Experience Preservation
+
+Where appropriate, the Runtime should retain the last valid canonical Experience until a valid replacement or transition is available.
+
+Invalid Intelligence output must not replace a valid Experience.
+
+---
+
+## 18.15 Transition Failure
+
+If an Experience transition fails validation or persistence:
+
+1. Do not activate the invalid transition.
+2. Preserve the last committed canonical revision.
+3. Record the applicable failure.
+4. Return a controlled Runtime response.
+5. Permit appropriate recovery or retry.
+
+---
+
+## 18.16 Stale Client State
+
+The server must reject or safely reconcile interactions based on incompatible stale Experience revisions.
+
+The browser must not become the authority for resolving canonical revision conflicts.
+
+---
+
+## 18.17 Browser Disconnection
+
+A temporary browser disconnection must not automatically erase the Visitor's canonical Session or previously committed domain records.
+
+The Runtime should support appropriate Session resumption where permitted.
+
+---
+
+# 18.E Intelligence Failure Recovery
+
+## 18.18 Intelligence Failure Modes
+
+The Intelligence subsystem must handle:
+
+- Provider timeout.
+- Provider unavailability.
+- Rate limiting.
+- Malformed output.
+- Invalid structured output.
+- Unsupported Component proposals.
+- Unsupported Action proposals.
+- Business Truth violations.
+- Persistence failure.
+
+---
+
+## 18.19 Controlled Fallback
+
+When Intelligence cannot produce an acceptable proposal, Kablet may use a deterministic fallback.
+
+Fallback must follow approved Business Truth, supported Components, and authorized Actions.
+
+---
+
+## 18.20 No Unvalidated Recovery Output
+
+A fallback must not bypass the same security and domain validation boundaries required of ordinary Intelligence proposals.
+
+---
+
+## 18.21 Retry Budget
+
+Intelligence retries should be bounded.
+
+Repeated provider calls must not indefinitely delay the customer-facing Runtime or create uncontrolled cost.
+
+---
+
+## 18.22 Provider Portability
+
+The Intelligence Interface must preserve the ability to replace or configure providers without changing canonical Decision and Experience contracts.
+
+Automatic multi-provider failover is not required for the MVP.
+
+---
+
+# 18.F Database Recovery
+
+## 18.23 PostgreSQL as Canonical Authority
+
+PostgreSQL remains the source of canonical Business, Visitor, Decision, Experience, Action, Event, and Outcome records.
+
+Recovery must prioritize preservation of committed database truth.
+
+---
+
+## 18.24 Transaction Boundaries
+
+Related canonical changes that require atomic persistence must execute within an appropriate PostgreSQL transaction.
+
+For example:
+
+Domain Change
+      +
+Required Canonical Event
+      +
+Applicable Outbox Record
+
+must commit together where the architecture requires atomicity.
+
+---
+
+## 18.25 Failed Transactions
+
+A failed database transaction must not leave its uncommitted changes partially accepted as canonical truth.
+
+---
+
+## 18.26 Commit Uncertainty
+
+If an application loses its database connection during commit, it may not immediately know whether the transaction succeeded.
+
+Recovery must use stable operation identity and canonical lookup rather than blindly recreating the operation.
+
+---
+
+## 18.27 Database Unavailability
+
+When canonical persistence is unavailable, Kablet must not pretend that new consequential operations have been durably accepted.
+
+The Runtime should return an appropriate temporary-unavailability response.
+
+---
+
+# 18.G Action Execution Recovery
+
+## 18.28 Consequential Action Safety
+
+Consequential Actions require stronger recovery controls than ordinary informational operations.
+
+Examples include:
+
+- Booking creation.
+- Lead submission.
+- Payment initiation.
+- Customer messaging.
+- Order creation.
+
+---
+
+## 18.29 Stable Action Identity
+
+A technical retry must preserve the originating commercial Action Invocation identity.
+
+A retry is an additional execution attempt, not automatically a new customer request.
+
+---
+
+## 18.30 Idempotency
+
+Where supported, Kablet must propagate stable idempotency information to external providers.
+
+Local idempotency must also prevent duplicate canonical Action acceptance.
+
+---
+
+## 18.31 External Timeout
+
+When a provider request times out after transmission, Kablet must consider the possibility that the provider completed the operation.
+
+The Action may enter an unknown or reconciliation-required status.
+
+---
+
+## 18.32 Unsafe Retry Prevention
+
+An unknown external result must not be blindly retried when doing so could duplicate a consequential operation.
+
+---
+
+## 18.33 Reconciliation
+
+The Integration Adapter should support an appropriate verification mechanism where available.
+
+Examples include:
+
+- Lookup by provider request reference.
+- Lookup by external operation ID.
+- Idempotency-key lookup.
+- Verified provider webhook.
+- Controlled manual investigation.
+
+---
+
+## 18.34 Provider Without Reconciliation
+
+If an external provider offers neither reliable idempotency nor a suitable status-lookup mechanism, Kablet must explicitly constrain automated retry behavior.
+
+Such limitations must be considered when approving an integration for consequential production Actions.
+
+---
+
+# 18.H Partial Failure Scenarios
+
+## 18.35 Provider Success, Local Persistence Failure
+
+A consequential external operation may succeed before Kablet successfully persists its final result.
+
+The architecture must preserve sufficient prior invocation and attempt identity to support recovery.
+
+---
+
+## 18.36 Local Persistence Success, Response Failure
+
+Kablet may successfully commit an Action result while the browser never receives the response.
+
+A subsequent client retry must resolve the existing operation rather than automatically creating a new one.
+
+---
+
+## 18.37 Webhook Before Expected Response
+
+A provider webhook may arrive before the original synchronous execution path finishes.
+
+Canonical result processing must tolerate this ordering.
+
+---
+
+## 18.38 Duplicate Webhook
+
+Repeated webhook delivery must not create duplicate commercial Outcomes.
+
+---
+
+## 18.39 Conflicting Evidence
+
+If provider responses, webhooks, or reconciliation results conflict, Kablet must preserve the relevant evidence and apply controlled source-authority and status-transition rules.
+
+The system must not silently choose whichever response arrived last.
+
+---
+
+# 18.I Background Job Recovery
+
+## 18.40 Durable Job Persistence
+
+The PostgreSQL-backed job architecture established in Section 09 provides durable execution intent.
+
+A worker process stopping must not erase committed pending work.
+
+---
+
+## 18.41 Lease Recovery
+
+Jobs claimed by a failed worker must become recoverable after the applicable lease expires.
+
+---
+
+## 18.42 At-Least-Once Execution
+
+The worker architecture assumes at-least-once execution.
+
+Job handlers must tolerate repeated delivery according to the operation's idempotency requirements.
+
+---
+
+## 18.43 Retry Classification
+
+Job handlers should distinguish:
+
+- Transient retryable failure.
+- Permanent failure.
+- Unknown consequential result.
+- Invalid job payload.
+- Missing or revoked authorization.
+- Dependency unavailable.
+
+---
+
+## 18.44 Terminal Failure
+
+A job that exhausts its permitted attempts must remain inspectable.
+
+It must not disappear from operational visibility.
+
+---
+
+## 18.45 Manual Recovery
+
+Authorized operators may require controlled capabilities to:
+
+- Inspect failed jobs.
+- Retry safe operations.
+- Trigger reconciliation.
+- Mark an operation for investigation.
+- Disable a problematic integration.
+
+Manual recovery must preserve auditability and domain authorization.
+
+---
+
+# 18.J Outbox Recovery
+
+## 18.46 Committed Outbox Records
+
+Committed outbox records must remain available for processing after application or worker interruption.
+
+---
+
+## 18.47 Duplicate Dispatch
+
+Outbox consumers must tolerate repeated delivery.
+
+A dispatched record must not automatically imply that every downstream consumer completed its work.
+
+---
+
+## 18.48 Backlog Monitoring
+
+The operational system must monitor:
+
+- Pending outbox count.
+- Oldest pending record.
+- Processing failures.
+- Repeated dispatch attempts.
+
+---
+
+## 18.49 Recovery After Outage
+
+After an outage, the worker should resume eligible durable work according to its claiming, retry, and dependency rules.
+
+Recovery must not indiscriminately replay unsafe consequential operations.
+
+---
+
+# 18.K Outcome Reconciliation
+
+## 18.50 Delayed Outcomes
+
+Commercial Outcomes may become verifiable after the originating Visitor Session ends.
+
+Examples include:
+
+- Booking confirmation.
+- Appointment attendance.
+- Payment settlement.
+- Refund.
+- Cancellation.
+
+---
+
+## 18.51 Outcome Status Integrity
+
+Outcome status changes must follow controlled domain transitions.
+
+An unverified report must not automatically become verified Revenue.
+
+---
+
+## 18.52 Reversal Handling
+
+A reversal should preserve appropriate historical evidence rather than silently deleting the earlier commercial occurrence.
+
+---
+
+## 18.53 Reconciliation Jobs
+
+Where necessary, background jobs may periodically verify unresolved external operations.
+
+The reconciliation frequency must reflect provider capabilities and commercial risk.
+
+---
+
+# 18.L Storage Recovery
+
+## 18.54 Database and Object Storage
+
+PostgreSQL and object storage do not share a universal atomic transaction.
+
+Asset workflows must therefore tolerate partial completion.
+
+---
+
+## 18.55 Incomplete Uploads
+
+An uploaded object without finalized canonical metadata must remain recoverable or eligible for controlled cleanup.
+
+---
+
+## 18.56 Missing Objects
+
+If canonical Asset metadata references unavailable physical content, the system should:
+
+1. Preserve canonical metadata.
+2. Report the storage inconsistency.
+3. Avoid exposing invalid private storage paths.
+4. Use an appropriate Runtime fallback.
+5. Trigger applicable investigation or recovery.
+
+---
+
+## 18.57 Cleanup Safety
+
+Cleanup must verify ownership, reference status, and retention requirements before deleting physical content.
+
+---
+
+# 18.M Deployment Failure Recovery
+
+## 18.58 Release Failure
+
+A failed release must preserve its identifiable source revision and deployment state.
+
+---
+
+## 18.59 Application Rollback
+
+Where compatible, Kablet should support returning to a previously known application revision.
+
+---
+
+## 18.60 Migration Compatibility
+
+Database migration rollback must not be assumed safe or automatic.
+
+Recovery must account for the actual committed schema and data state.
+
+---
+
+## 18.61 Worker Compatibility
+
+Pending jobs and outbox records may have been created by a newer application version.
+
+Rollback must consider supported contract versions.
+
+---
+
+# 18.N Backup and Restoration
+
+## 18.62 Production Backup
+
+Production PostgreSQL requires a documented backup strategy.
+
+The selected managed provider should support appropriate backup and restoration capabilities.
+
+---
+
+## 18.63 Restoration Testing
+
+Backup existence alone does not establish recoverability.
+
+The restoration process must be tested periodically using an appropriately isolated environment.
+
+---
+
+## 18.64 Recovery Objectives
+
+Production planning must define:
+
+- Recovery Point Objective (RPO).
+- Recovery Time Objective (RTO).
+
+Exact targets will be selected according to Business requirements and infrastructure capabilities.
+
+---
+
+## 18.65 Storage Recovery
+
+Object-storage recovery and retention must be considered separately from PostgreSQL backup.
+
+Restoring database metadata without its corresponding required Assets may leave the application commercially incomplete.
+
+---
+
+# 18.O Observability and Incident Response
+
+## 18.66 Recovery Telemetry
+
+Recovery operations must preserve applicable:
+
+- Correlation ID.
+- Business reference.
+- Operation identity.
+- Failure classification.
+- Attempt history.
+- Recovery status.
+
+---
+
+## 18.67 Recovery Alerts
+
+Important conditions should be observable, including:
+
+- Sustained database unavailability.
+- Worker processing failure.
+- Increasing outbox backlog.
+- Repeated Intelligence failures.
+- Integration authentication failure.
+- Unknown consequential Action results.
+- Reconciliation backlog.
+- Storage inconsistencies.
+
+---
+
+## 18.68 Incident Investigation
+
+An authorized operator should be able to determine:
+
+1. What was requested?
+2. What was durably accepted?
+3. What was sent externally?
+4. What result was observed?
+5. What remains uncertain?
+6. Which recovery actions are safe?
+
+---
+
+# 18.P MVP Recovery Boundary
+
+## 18.69 Initial Required Capabilities
+
+The first production-capable implementation must support:
+
+1. Controlled Intelligence fallback.
+2. Explicit timeout handling.
+3. PostgreSQL transactional integrity.
+4. Durable outbox processing.
+5. Durable background jobs.
+6. Lease-based worker recovery.
+7. Bounded retries.
+8. Consequential Action idempotency.
+9. Unknown external result handling.
+10. Basic integration reconciliation.
+11. Inspectable terminal failures.
+12. Operational recovery visibility.
+
+---
+
+## 18.70 First Recovery Acceptance Tests
+
+The MVP should verify at least these scenarios:
+
+| Scenario | Required behavior |
+|---|---|
+| Intelligence unavailable | Controlled fallback |
+| Invalid Intelligence output | Proposal rejected |
+| Database transaction fails | No partial canonical commit |
+| Worker stops mid-job | Durable recovery |
+| Duplicate job delivery | No duplicate commercial operation |
+| Booking provider times out | Unknown-result handling |
+| Duplicate webhook arrives | Idempotent canonical processing |
+| Browser retries completed Action | Existing Invocation resolved |
+| Experience transition fails | Last valid revision preserved |
+| Outbox worker unavailable | Committed records remain pending |
+
+---
+
+## 18.71 Explicit MVP Exclusions
+
+The initial implementation does not require:
+
+- Multi-region active-active infrastructure.
+- Distributed transactions.
+- A proprietary workflow engine.
+- Automated disaster recovery across cloud providers.
+- Universal external compensation.
+- Complex circuit-breaker infrastructure.
+- Fully automated resolution of every unknown commercial result.
+
+The objective is safe failure behavior and recoverable canonical state.
+
+---
+
+# 18.Q Architecture Decision Records
+
+## ADR-105 — Explicit Failure Classification
+
+**Status:** Accepted.
+
+Kablet will classify failures according to their domain and technical recovery implications.
+
+Retryability must not be inferred solely from exception occurrence.
+
+---
+
+## ADR-106 — Unknown Consequential Result State
+
+**Status:** Accepted.
+
+Consequential external operations may enter an explicit unknown-result state when completion cannot be established.
+
+Such operations must not be blindly retried.
+
+---
+
+## ADR-107 — Canonical Transaction Integrity
+
+**Status:** Accepted.
+
+Required related canonical changes, Events, and outbox records must use appropriate PostgreSQL transactional boundaries.
+
+---
+
+## ADR-108 — Durable At-Least-Once Recovery
+
+**Status:** Accepted.
+
+Kablet will use its PostgreSQL-backed worker and outbox architecture for durable recovery, with idempotent processing where required.
+
+---
+
+## ADR-109 — Reconciliation Before Unsafe Replay
+
+**Status:** Accepted.
+
+When an external consequential result is uncertain, Kablet will prioritize applicable verification and reconciliation before considering another execution attempt.
+
+---
+
+## ADR-110 — Controlled Runtime Degradation
+
+**Status:** Accepted.
+
+The Customer Runtime may preserve the last valid Experience or use an approved fallback when a new adaptive operation fails.
+
+Invalid output must not become canonical.
+
+---
+
+## ADR-111 — Compatibility-Aware Restoration
+
+**Status:** Accepted.
+
+Recovery planning must consider database schema, durable job contracts, physical Assets, and external commercial side effects rather than assuming application rollback alone restores the system.
+
+---
+
+# 18.R Failure & Recovery Invariants
+
+1. Failure is an expected operating condition.
+2. Canonical records must not fabricate success.
+3. Uncertainty is a valid explicit state.
+4. Technical timeout does not automatically establish commercial failure.
+5. Retryability must be classified.
+6. Recovery remains subject to authorization and tenant isolation.
+7. Invalid Intelligence output cannot become canonical.
+8. The last valid Experience should be preserved where appropriate.
+9. Canonical persistence requires suitable transaction boundaries.
+10. Commit uncertainty requires identity-based reconciliation.
+11. Consequential Actions retain stable Invocation identity.
+12. Technical retries do not automatically create new commercial requests.
+13. Unknown external results must not be blindly replayed.
+14. External reconciliation uses verified evidence where available.
+15. Duplicate webhooks must not duplicate Outcomes.
+16. Conflicting provider evidence requires controlled handling.
+17. Durable jobs survive worker interruption.
+18. Lease expiration supports worker recovery.
+19. Job handlers tolerate applicable repeated delivery.
+20. Terminal failures remain inspectable.
+21. Outbox records survive dispatcher failure.
+22. Reconciliation may continue after a Visitor Session ends.
+23. Outcome reversals preserve appropriate historical evidence.
+24. Object storage and PostgreSQL partial failures require explicit handling.
+25. Deployment rollback must respect migration and job compatibility.
+26. Backup existence does not replace restoration testing.
+27. Recovery operations must remain observable.
+28. The MVP prioritizes commercial correctness over automatic recovery breadth.
+
+---
+
+# 18.S Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Timeout values.
+- Retry limits.
+- Backoff parameters.
+- Circuit-breaker thresholds.
+- Reconciliation intervals.
+- Manual recovery interface.
+- Provider-specific status lookup.
+- Backup provider.
+- Backup frequency.
+- RPO and RTO targets.
+- Restoration procedures.
+- Incident escalation policy.
+- Detailed failure-code registry.
+- Storage recovery retention.
+- Worker shutdown timeout.
+
+These decisions will be finalized through implementation contracts, provider selection, and operational testing.
+
+---
+
+# 18.T Dependency
+
+Section 17 established Kablet's CI/CD and Deployment architecture.
+
+Section 18 establishes:
+
+**A failure-aware recovery architecture that preserves canonical truth, supports controlled Runtime degradation, classifies retry safety, uses durable PostgreSQL jobs and transactional outbox processing, explicitly represents unknown consequential results, and prioritizes verified reconciliation over unsafe commercial replay.**
+
+The next section defines how Kablet evolves from its initial modular monolith into a larger operating system without prematurely introducing distributed infrastructure.
+
+# 19 — Scaling Path
