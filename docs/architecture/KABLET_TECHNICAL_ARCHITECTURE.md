@@ -8523,3 +8523,1116 @@ Section 07 establishes:
 The next section defines how Kablet records these occurrences and connects them into a durable, queryable Event and Outcome history.
 
 # 08 — Event & Outcome Architecture
+---
+
+# 08. Event & Outcome Architecture
+
+## 08.1 Purpose
+
+This section defines how Kablet records meaningful occurrences, establishes commercial Outcomes, and preserves the historical evidence connecting Intelligence Decisions to customer behavior and Business results.
+
+It implements the Event & Outcome Spine established in Foundation Specification v0.1.
+
+The architecture must support:
+
+- Canonical Events.
+- Versioned Event contracts.
+- Reliable Event persistence.
+- Tenant-safe Event ownership.
+- Decision-to-Outcome lineage.
+- Actual Experience exposure.
+- Structured customer interaction.
+- Action execution evidence.
+- Verified commercial Outcomes.
+- Delayed Outcome updates.
+- Revenue attribution.
+- Idempotent ingestion.
+- Experiment measurement.
+- Future Learning Brain consumption.
+
+The Event Spine must remain independent of third-party analytics platforms.
+
+---
+
+# 08.A Fundamental Event Model
+
+## 08.2 Canonical Event
+
+A canonical Event represents a meaningful occurrence within Kablet's domain.
+
+Examples include:
+
+- Visitor Session started.
+- Visitor Signal received.
+- Visitor State updated.
+- Decision accepted.
+- Experience delivered.
+- Experience rendered.
+- Component exposed.
+- Component interacted with.
+- Action requested.
+- Action completed.
+- Booking confirmed.
+- Outcome verified.
+
+Events must represent occurrences with defined semantics.
+
+They must not become an unrestricted dumping ground for application logs.
+
+---
+
+## 08.3 Event Is Not Current State
+
+An Event describes something that occurred.
+
+Current State represents the presently accepted domain condition.
+
+For example:
+
+`visitor_state.updated`
+
+may describe an occurrence.
+
+The canonical Visitor State record represents the current accepted State.
+
+Kablet will preserve both concepts without requiring full event sourcing for every domain object.
+
+---
+
+## 08.4 Canonical Event Store
+
+PostgreSQL will serve as the initial canonical Event store.
+
+This is consistent with Sections 02 and 03.
+
+A separate distributed streaming platform is not required for v0.1.
+
+---
+
+## 08.5 Event Spine
+
+The Event Spine connects occurrences across the customer lifecycle.
+
+Conceptually:
+
+Visitor Signal
+       |
+       v
+State Update
+       |
+       v
+Decision Accepted
+       |
+       v
+Experience Delivered
+       |
+       v
+Component Exposed
+       |
+       v
+Customer Interaction
+       |
+       v
+Action Requested
+       |
+       v
+Action Result
+       |
+       v
+Outcome Established
+
+Not every Session will contain every stage.
+
+Missing stages must remain distinguishable from confirmed occurrences.
+
+---
+
+# 08.B Canonical Event Contract
+
+## 08.6 Event Envelope
+
+Every canonical Event must use a controlled, versioned envelope.
+
+The conceptual envelope includes:
+
+| Field | Purpose |
+|---|---|
+| Event ID | Stable canonical identity |
+| Event type | Defined occurrence semantics |
+| Schema version | Payload interpretation |
+| Organization ID | Tenant ownership |
+| Business ID | Commercial context |
+| Property / Location ID | Optional location context |
+| Visitor ID | Optional Visitor linkage |
+| Session ID | Optional Session linkage |
+| Decision ID | Optional Decision linkage |
+| Experience ID | Optional Experience linkage |
+| Component Instance ID | Optional Component linkage |
+| Action Invocation ID | Optional Action linkage |
+| Experiment ID | Optional Experiment linkage |
+| Actor / source | Origin of occurrence |
+| Occurred at | When the occurrence happened |
+| Recorded at | When Kablet persisted it |
+| Correlation ID | Related operation chain |
+| Causation reference | Relevant originating occurrence |
+| Payload | Validated event-specific data |
+
+Not every Event requires every optional reference.
+
+---
+
+## 08.7 Event Identity
+
+Every accepted canonical Event must have stable identity.
+
+Event identity supports:
+
+- Deduplication.
+- Historical reference.
+- Reconciliation.
+- Downstream processing.
+- Auditability.
+
+Event identity must not depend exclusively on an external analytics provider.
+
+---
+
+## 08.8 Event Type Registry
+
+Kablet will maintain a controlled vocabulary of canonical Event types.
+
+Each type must define:
+
+- Semantic meaning.
+- Applicable payload schema.
+- Contract version.
+- Required contextual references.
+- Valid producer.
+- Relevant lifecycle relationship.
+
+New Event types must be introduced deliberately.
+
+---
+
+## 08.9 Event Versioning
+
+Event contracts must be versioned.
+
+Historical Events must remain interpretable after the application evolves.
+
+A new payload shape must not silently redefine the meaning of an existing historical Event.
+
+---
+
+## 08.10 Occurred Time vs Recorded Time
+
+Kablet must distinguish:
+
+**Occurred at:** When the underlying occurrence happened.
+
+**Recorded at:** When Kablet persisted the Event.
+
+These timestamps may differ because of:
+
+- Network latency.
+- Background processing.
+- Delayed webhooks.
+- Offline activity.
+- External system synchronization.
+
+---
+
+## 08.11 Source Provenance
+
+Events must preserve their relevant source.
+
+Possible sources include:
+
+- Customer Runtime.
+- Control Plane.
+- Action Executor.
+- Integration Adapter.
+- Verified webhook.
+- Background worker.
+- Authorized Business User.
+- Internal system operation.
+
+Source provenance supports verification and historical interpretation.
+
+---
+
+# 08.C Event Production
+
+## 08.12 Domain-Owned Event Production
+
+Canonical Events should originate from the module responsible for the relevant domain occurrence.
+
+For example:
+
+- Decision module produces Decision acceptance evidence.
+- Experience Runtime produces delivery and exposure evidence.
+- Action module produces execution evidence.
+- Outcome module produces verification evidence.
+
+Other modules should not fabricate occurrences merely to satisfy reporting requirements.
+
+---
+
+## 08.13 Client Events Are Untrusted Inputs
+
+The browser may report:
+
+- Rendering.
+- Component visibility.
+- Customer interaction.
+- Other measurable presentation occurrences.
+
+These reports must pass server-side validation before canonical acceptance.
+
+Client-supplied Business, Session, Experience, or Component identifiers are not sufficient proof of ownership.
+
+---
+
+## 08.14 Server Events
+
+Server-side domain operations may produce canonical Events directly through trusted application services.
+
+Where an Event must accompany a canonical state change, persistence should use an appropriate shared transaction.
+
+---
+
+## 08.15 External Events
+
+External provider notifications must pass:
+
+1. Sender verification where supported.
+2. Integration Connection resolution.
+3. Business ownership validation.
+4. Payload validation.
+5. Duplicate detection.
+6. Domain normalization.
+7. Canonical persistence.
+
+An external webhook is evidence submitted to Kablet, not automatically a canonical Kablet Event.
+
+---
+
+# 08.D Event Durability
+
+## 08.16 Persistence Requirements
+
+Commercially meaningful Events must not depend exclusively on browser analytics delivery.
+
+Critical Events should be durably recorded through trusted server-side operations.
+
+---
+
+## 08.17 Transactional Event Recording
+
+Where a canonical state change requires corresponding Event evidence, both should be committed atomically when they share the same PostgreSQL transaction boundary.
+
+Example:
+
+Decision Accepted
+       |
+       +-- Canonical Decision Record
+       |
+       +-- Decision Accepted Event
+
+The system must avoid committing one while silently losing the other when atomicity is required.
+
+---
+
+## 08.18 Transactional Outbox
+
+When committed Events must trigger asynchronous processing, Kablet should use a transactional outbox or an equivalent mechanism.
+
+Conceptually:
+
+PostgreSQL Transaction
+        |
+        +-- Canonical Domain Change
+        |
+        +-- Canonical Event
+        |
+        +-- Outbox Record
+                  |
+                  v
+             Background Worker
+                  |
+                  v
+          Downstream Processing
+
+The outbox is a delivery mechanism.
+
+It does not replace the canonical Event model.
+
+---
+
+## 08.19 Delivery Guarantees
+
+The initial asynchronous architecture should assume that downstream delivery may occur more than once.
+
+Consumers must therefore support idempotent processing.
+
+Kablet must not claim exactly-once end-to-end delivery merely because a database transaction succeeded.
+
+---
+
+## 08.20 Critical vs Diagnostic Data
+
+Not every browser diagnostic requires the same durability as a verified commercial Outcome.
+
+The architecture should distinguish:
+
+- Canonical commercial evidence.
+- Operational diagnostics.
+- Performance telemetry.
+- Third-party analytics.
+
+Durability requirements should follow the importance of the occurrence.
+
+---
+
+# 08.E Event Idempotency
+
+## 08.21 Duplicate Protection
+
+Event ingestion must protect against duplicate records caused by:
+
+- Network retries.
+- Repeated webhook delivery.
+- Browser resubmission.
+- Worker retries.
+- Integration synchronization.
+
+---
+
+## 08.22 Idempotency Identity
+
+Duplicate-sensitive Event producers should supply or derive a stable idempotency identity.
+
+The implementation must scope deduplication appropriately.
+
+For example, an external provider Event ID may only be unique within a particular provider or Integration Connection.
+
+---
+
+## 08.23 Technical Retry vs New Occurrence
+
+A technical retry must not automatically be recorded as a new real-world occurrence.
+
+However, two genuinely separate customer interactions must remain distinguishable.
+
+Deduplication must preserve actual behavior rather than artificially suppressing valid activity.
+
+---
+
+# 08.F Experience Measurement
+
+## 08.24 Experience Lifecycle Evidence
+
+The Event system must preserve the distinction between:
+
+- Experience planned.
+- Experience validated.
+- Experience delivered.
+- Experience rendered.
+- Component exposed.
+- Customer interacted.
+
+These stages represent different evidence.
+
+---
+
+## 08.25 Delivered Is Not Rendered
+
+A successful server response establishes delivery evidence.
+
+It does not prove the browser rendered the Experience.
+
+---
+
+## 08.26 Rendered Is Not Viewed
+
+A successfully mounted React Component may never enter the Visitor's visible area.
+
+Component exposure must therefore remain a separate measurable occurrence.
+
+---
+
+## 08.27 Exposure Definition
+
+Kablet must establish consistent exposure rules.
+
+A future implementation may consider:
+
+- Component visibility.
+- Visibility duration.
+- Viewport intersection.
+- Experience revision.
+- Relevant presentation state.
+
+Exact thresholds will be finalized in the measurement contract.
+
+---
+
+## 08.28 Interaction Evidence
+
+A customer interaction must remain attributable to the actual Experience and Component Instance that generated it.
+
+This relationship is essential for future Component and Decision effectiveness analysis.
+
+---
+
+# 08.G Outcome Architecture
+
+## 08.29 Outcome Definition
+
+An Outcome represents a meaningful Business result.
+
+It is distinct from:
+
+- Customer intent.
+- Interface interaction.
+- Action request.
+- Technical execution attempt.
+- Unverified external notification.
+
+---
+
+## 08.30 Initial Outcome Categories
+
+The initial architecture should support categories such as:
+
+| Category | Example |
+|---|---|
+| Lead | Lead successfully created |
+| Booking | Appointment confirmed |
+| Commerce | Purchase completed |
+| Qualification | Lead qualified |
+| Attendance | Appointment attended |
+| Revenue | Revenue realized |
+| Reversal | Cancellation or refund |
+
+The exact MVP vocabulary will be defined in the Outcome implementation contract.
+
+---
+
+## 08.31 Outcome Identity
+
+A canonical Outcome must have stable identity.
+
+It should preserve:
+
+- Business ownership.
+- Outcome type.
+- Relevant source.
+- Verification status.
+- Occurrence time.
+- Related Action where applicable.
+- Relevant commercial value.
+- Attribution references.
+
+---
+
+## 08.32 Outcome Is Not Merely an Event Name
+
+The Outcome domain may maintain canonical records representing commercial result state and its evolution.
+
+Events record occurrences related to those Outcomes.
+
+For example:
+
+Booking Confirmed Event
+        |
+        v
+Canonical Booking Outcome
+
+A later cancellation may produce another Event and update the Outcome's accepted commercial state.
+
+The original confirmation Event remains historically meaningful.
+
+---
+
+# 08.H Outcome Verification
+
+## 08.33 Evidence Requirements
+
+An Outcome must be established using evidence appropriate to its type.
+
+Possible evidence includes:
+
+- Successful Kablet-controlled persistence.
+- Verified integration response.
+- Authenticated provider webhook.
+- Authorized Business confirmation.
+- Reconciled external status.
+
+---
+
+## 08.34 Verification Status
+
+The architecture should distinguish:
+
+- Reported.
+- Pending verification.
+- Verified.
+- Rejected.
+- Reversed.
+- Unknown / reconciliation required.
+
+The exact physical status vocabulary will be finalized during implementation.
+
+---
+
+## 08.35 Source Authority
+
+Not every source has equal authority to establish every Outcome.
+
+For example:
+
+A browser click may establish that a checkout link was activated.
+
+It cannot independently prove that payment was completed.
+
+Outcome verification rules must identify which sources are authoritative for each commercial result.
+
+---
+
+## 08.36 Delayed Verification
+
+Some Outcomes may become verifiable minutes, days, or weeks after the originating Session.
+
+The system must support delayed Outcome updates while preserving the original interaction and Action lineage.
+
+---
+
+# 08.I Conversion and Revenue
+
+## 08.37 Conversion Definition
+
+Conversion must be defined according to the relevant Business objective and verified Outcome type.
+
+Kablet must not assume every Action completion represents the same commercial value.
+
+---
+
+## 08.38 Conversion vs Revenue
+
+The architecture must distinguish:
+
+- Conversion occurrence.
+- Estimated commercial value.
+- Confirmed transaction value.
+- Realized Revenue.
+- Refund.
+- Cancellation.
+- Net commercial result.
+
+These concepts may become available at different times.
+
+---
+
+## 08.39 Currency and Monetary Representation
+
+Monetary values must use an appropriate precise representation.
+
+Floating-point arithmetic must not be the authoritative mechanism for financial amounts.
+
+The implementation must preserve currency context.
+
+Exact database types and conversion policies will be finalized in physical schema design.
+
+---
+
+## 08.40 Revenue Revisions
+
+Revenue-related information may change after initial conversion.
+
+For example:
+
+Purchase Completed
+        |
+        v
+Payment Confirmed
+        |
+        v
+Refund Issued
+
+Kablet must preserve historical occurrences while updating the accepted commercial result appropriately.
+
+---
+
+# 08.J Attribution and Lineage
+
+## 08.41 Decision-to-Outcome Lineage
+
+Kablet must preserve sufficient relationships to reconstruct:
+
+Business
+    |
+    v
+Visitor
+    |
+    v
+Session
+    |
+    v
+State Revision
+    |
+    v
+Decision
+    |
+    v
+Experience
+    |
+    v
+Component Exposure
+    |
+    v
+Interaction
+    |
+    v
+Action Invocation
+    |
+    v
+Action Result
+    |
+    v
+Outcome
+    |
+    v
+Revenue
+
+Not every Outcome requires every stage to be present.
+
+Missing relationships must remain explicit.
+
+---
+
+## 08.42 Direct Attribution
+
+Where a direct relationship exists, Kablet should preserve it.
+
+For example:
+
+A Visitor submits a booking through a Component associated with Decision X.
+
+The resulting Action and verified booking should retain the applicable lineage.
+
+---
+
+## 08.43 Delayed Attribution
+
+A verified Outcome may occur after the originating Session.
+
+Kablet must retain sufficient correlation references to connect the delayed result to the originating Action and relevant customer journey.
+
+---
+
+## 08.44 Multiple Decision Exposure
+
+A Visitor may encounter several Decisions before converting.
+
+The Event architecture must preserve those occurrences without forcing every Outcome to have exactly one causal Decision.
+
+Attribution methodology belongs to the Analytics Architecture.
+
+---
+
+## 08.45 Attribution Is Not Causation
+
+Observed relationships between Decisions and Outcomes do not independently establish incremental lift.
+
+Kablet must distinguish:
+
+Historical attribution.
+
+Observed correlation.
+
+Experimental causal evidence.
+
+The Learning Brain must consume these distinctions rather than treating every attributed conversion as proof of strategy effectiveness.
+
+---
+
+# 08.K Experiment Evidence
+
+## 08.46 Assignment
+
+Experiment assignment records which variant was allocated to an eligible Visitor or Session.
+
+Assignment alone does not establish that the Visitor experienced the variant.
+
+---
+
+## 08.47 Exposure
+
+Experiment exposure must be recorded separately where applicable.
+
+Exposure should link to the relevant:
+
+- Experiment.
+- Variant.
+- Visitor / Session.
+- Experience.
+- Component or treatment.
+- Occurrence time.
+
+---
+
+## 08.48 Outcome Measurement
+
+Verified Outcomes must remain linkable to relevant experiment context.
+
+The system must preserve sufficient information to support later experiment analysis without rewriting historical assignments.
+
+---
+
+# 08.L Event Consumption
+
+## 08.49 Canonical Producers and Consumers
+
+Event producers record accepted occurrences.
+
+Consumers may build derived representations for:
+
+- Reporting.
+- Operational dashboards.
+- Analytics.
+- Integration follow-up.
+- Experimentation.
+- Learning.
+
+Consumers must not silently redefine canonical Event semantics.
+
+---
+
+## 08.50 Idempotent Consumers
+
+Asynchronous consumers must tolerate repeated delivery.
+
+A repeated Event notification must not automatically double-count an Outcome or execute a consequential Action again.
+
+---
+
+## 08.51 Derived Projections
+
+Derived data may include:
+
+- Daily conversion totals.
+- Booking counts.
+- Decision effectiveness summaries.
+- Component interaction rates.
+- Revenue reports.
+- Experiment aggregates.
+
+These projections must remain reconstructable or reconcilable from authoritative records where feasible.
+
+---
+
+## 08.52 Third-Party Analytics
+
+Third-party analytics may receive permitted Event projections.
+
+It must not become Kablet's canonical Event or Outcome store.
+
+Loss of an analytics provider must not erase Kablet's historical commercial evidence.
+
+---
+
+# 08.M Event and Outcome Privacy
+
+## 08.53 Data Minimization
+
+Event payloads should contain the information necessary for their defined purpose.
+
+They should not indiscriminately duplicate:
+
+- Customer contact details.
+- Full conversations.
+- Integration credentials.
+- Sensitive Business information.
+- Raw provider context.
+
+---
+
+## 08.54 Tenant Isolation
+
+Every tenant-owned Event and Outcome must resolve to the correct Organization and Business context.
+
+Event ingestion, storage, projections, background jobs, and analytics exports must preserve tenant isolation.
+
+---
+
+## 08.55 Retention and Deletion
+
+Append-oriented history does not imply permanent, undeletable retention.
+
+Kablet must support applicable:
+
+- Retention policies.
+- Data deletion.
+- Privacy requests.
+- Controlled anonymization.
+- Access restrictions.
+
+The exact retention policy will be defined in the Security and Privacy implementation specifications.
+
+---
+
+# 08.N Observability and Reconciliation
+
+## 08.56 Event Processing Observability
+
+The system should monitor:
+
+- Event acceptance failures.
+- Validation failures.
+- Duplicate detection.
+- Processing delays.
+- Outbox backlog.
+- Consumer failures.
+- Outcome verification delays.
+
+---
+
+## 08.57 Reconciliation
+
+Kablet should support reconciliation when external commercial results and internal canonical records disagree.
+
+For example:
+
+An external booking exists, but Kablet has not received confirmation.
+
+The system should be able to investigate and resolve the discrepancy without inventing historical occurrences.
+
+---
+
+## 08.58 Historical Corrections
+
+Corrections must preserve appropriate provenance.
+
+A correction must not silently make an earlier false interpretation appear to have been the original observation.
+
+---
+
+# 08.O MVP Event Spine
+
+## 08.59 First Engineering Milestone
+
+The initial implementation must demonstrate one complete trace:
+
+Visitor Signal
+        |
+        v
+State Updated
+        |
+        v
+Decision Accepted
+        |
+        v
+Experience Delivered
+        |
+        v
+Experience Rendered
+        |
+        v
+Component Interaction
+        |
+        v
+Action Requested
+        |
+        v
+Action Completed
+        |
+        v
+Outcome Verified
+
+Actual exposure should also be recorded where measurable.
+
+---
+
+## 08.60 MVP Reporting Questions
+
+The initial Event and Outcome implementation should be able to answer:
+
+1. Which Visitor Session produced this Outcome?
+2. Which Decision generated the relevant Experience?
+3. What was presented?
+4. Which Component received interaction?
+5. Which Action was requested?
+6. Did execution complete?
+7. Was a commercial Outcome verified?
+8. What evidence supports that Outcome?
+
+These questions matter more initially than implementing a large analytics dashboard.
+
+---
+
+## 08.61 Avoid Premature Event Infrastructure
+
+The MVP does not require:
+
+- Kafka.
+- Distributed event streaming.
+- A dedicated analytical warehouse.
+- A real-time feature store.
+- Complex multi-touch attribution.
+- Automated causal inference.
+- Proprietary learning models.
+
+It requires trustworthy canonical evidence.
+
+---
+
+# 08.P Architecture Decision Records
+
+## ADR-042 — PostgreSQL Canonical Event Spine
+
+**Status:** Accepted.
+
+Kablet v0.1 will persist canonical Events in PostgreSQL.
+
+A separate distributed streaming platform is not required initially.
+
+---
+
+## ADR-043 — Event Spine Without Universal Event Sourcing
+
+**Status:** Accepted.
+
+Kablet will preserve canonical operational state together with meaningful historical Events.
+
+It will not require every domain object to be reconstructed exclusively from Events.
+
+---
+
+## ADR-044 — Versioned Event Contracts
+
+**Status:** Accepted.
+
+Canonical Events use controlled, versioned envelopes and type-specific payload contracts.
+
+Historical Event semantics must remain interpretable.
+
+---
+
+## ADR-045 — Distinct Experience Evidence
+
+**Status:** Accepted.
+
+Experience planning, delivery, rendering, exposure, and interaction remain separate measurable concepts.
+
+Experiment assignment does not automatically establish exposure.
+
+---
+
+## ADR-046 — Verified Commercial Outcomes
+
+**Status:** Accepted.
+
+Commercial Outcomes require appropriate evidence.
+
+Interface activity and transport-level success must not automatically be treated as verified conversion or Revenue.
+
+---
+
+## ADR-047 — Durable and Idempotent Processing
+
+**Status:** Accepted.
+
+Critical Event persistence must be reliable.
+
+Asynchronous publication and consumption must tolerate retries and duplicate delivery.
+
+---
+
+## ADR-048 — Preserve Attribution Without Inventing Causation
+
+**Status:** Accepted.
+
+Kablet will preserve historical Decision-to-Outcome relationships without automatically interpreting them as proof of incremental commercial lift.
+
+---
+
+# 08.Q Event & Outcome Invariants
+
+1. Canonical Events represent defined occurrences.
+2. Events are distinct from current domain State.
+3. PostgreSQL is the initial canonical Event store.
+4. Full event sourcing is not required.
+5. Events use stable identity.
+6. Event contracts are versioned.
+7. Event ownership is tenant-safe.
+8. Occurred time and recorded time remain distinct.
+9. Event source provenance is preserved.
+10. Client Event submissions remain untrusted until validated.
+11. External notifications require appropriate verification.
+12. Critical canonical changes and required Event evidence use appropriate transactional persistence.
+13. Asynchronous delivery may occur more than once.
+14. Consumers must tolerate duplicate delivery.
+15. Technical retries are not automatically new real-world occurrences.
+16. Delivered Experience is not automatically rendered Experience.
+17. Rendered Experience is not automatically Component exposure.
+18. Exposure is distinct from interaction.
+19. Experiment assignment is distinct from exposure.
+20. Outcome is distinct from Event.
+21. Outcome verification follows source-specific evidence rules.
+22. A click is not automatically a conversion.
+23. Transport success is not automatically commercial success.
+24. Conversion is distinct from Revenue.
+25. Monetary values require precise representation.
+26. Delayed Outcomes preserve originating lineage where available.
+27. Multiple Decisions may precede one Outcome.
+28. Attribution does not establish causation.
+29. Derived projections do not replace canonical records.
+30. Third-party analytics is not the system of record.
+31. Event payloads follow data-minimization principles.
+32. Tenant isolation extends through ingestion, storage, processing, and export.
+33. Historical retention remains subject to privacy requirements.
+34. Corrections must preserve appropriate provenance.
+35. The MVP prioritizes one trustworthy Decision-to-Outcome trace over advanced analytics breadth.
+
+---
+
+# 08.R Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact Event table schema.
+- Final Event type names.
+- Event ID format.
+- Event payload JSON schemas.
+- Outbox table structure.
+- Outbox polling strategy.
+- Queue provider.
+- Event retention periods.
+- Exposure thresholds.
+- Exact Outcome verification contracts.
+- Revenue recognition policy.
+- Currency conversion policy.
+- Attribution windows.
+- Multi-touch attribution methodology.
+- Experiment statistical methods.
+- Analytics provider.
+- Event partitioning.
+- Warehouse infrastructure.
+- Learning feature extraction.
+
+These will be finalized through implementation contracts and the relevant later architecture sections.
+
+---
+
+# 08.S Dependency
+
+Section 07 established Kablet's controlled Action and Integration architecture.
+
+Section 08 establishes:
+
+**A PostgreSQL-backed canonical Event and Outcome system that preserves meaningful occurrences, verifies commercial results, distinguishes actual customer exposure from interface delivery, and maintains the historical lineage required for experimentation and future learning.**
+
+The next section defines how Kablet performs reliable background processing, handles retries, and introduces caching only where operationally justified.
+
+# 09 — Async / Jobs / Caching
