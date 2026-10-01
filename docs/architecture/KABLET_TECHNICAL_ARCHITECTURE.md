@@ -18503,3 +18503,900 @@ Section 18 establishes:
 The next section defines how Kablet evolves from its initial modular monolith into a larger operating system without prematurely introducing distributed infrastructure.
 
 # 19 — Scaling Path
+---
+
+# 19. Scaling Path
+
+## 19.1 Purpose
+
+This section defines how Kablet evolves from its initial production-capable architecture into a system supporting more Businesses, Visitors, Decisions, Experiences, Actions, integrations, and commercial evidence.
+
+It establishes:
+
+- Scaling principles.
+- Initial capacity assumptions.
+- Horizontal Runtime scaling.
+- Worker scaling.
+- PostgreSQL scaling.
+- Intelligence throughput.
+- Caching evolution.
+- Event and analytics growth.
+- Storage and media delivery.
+- Tenant workload isolation.
+- Infrastructure introduction criteria.
+- Architectural extraction criteria.
+- Cost and performance measurement.
+
+The objective is to preserve Kablet's permanent domain architecture while allowing its physical infrastructure to evolve in response to demonstrated requirements.
+
+---
+
+# 19.A Scaling Principles
+
+## 19.2 Scale Measured Bottlenecks
+
+Kablet must not introduce infrastructure solely because it may eventually become useful.
+
+Scaling decisions should be supported by operational evidence.
+
+Relevant signals include:
+
+- Customer Runtime latency.
+- Concurrent Visitor Sessions.
+- Intelligence invocation latency.
+- Provider rate limits.
+- PostgreSQL resource utilization.
+- Query performance.
+- Worker backlog.
+- Job processing latency.
+- Event ingestion volume.
+- Analytics query cost.
+- Infrastructure cost per commercial Outcome.
+
+---
+
+## 19.3 Logical Boundaries Before Physical Separation
+
+The modular monolith must preserve explicit domain boundaries from the beginning.
+
+Physical separation may follow when operational requirements justify it.
+
+A domain module does not need to become a separately deployed service merely because it has distinct ownership.
+
+---
+
+## 19.4 Scale Execution Before Ownership
+
+Where practical, Kablet should first scale existing execution roles:
+
+- Additional Web instances.
+- Additional Worker instances.
+- Increased database capacity.
+- Controlled Intelligence concurrency.
+- Improved query efficiency.
+
+Splitting canonical domain ownership across independent services is a later architectural decision.
+
+---
+
+## 19.5 Preserve Canonical Authority
+
+Scaling must not create competing sources of truth.
+
+PostgreSQL remains authoritative for the canonical domain records established in Section 03 unless a future explicit architecture decision changes that ownership.
+
+---
+
+## 19.6 Tenant Isolation Is Non-Negotiable
+
+Increasing capacity must not weaken Organization or Business isolation.
+
+Caching, asynchronous processing, analytics, and Intelligence context must preserve the same ownership boundaries as the initial implementation.
+
+---
+
+# 19.B Initial Deployment
+
+## 19.7 MVP Physical Architecture
+
+The initial production architecture is:
+
+Public Traffic
+      |
+      v
+Managed Ingress / TLS
+      |
+      v
+Next.js Web Application
+      |
+      +------------------+
+      |                  |
+      v                  v
+PostgreSQL          Intelligence Adapter
+      |
+      +------------------+
+      |                  |
+      v                  v
+Durable Jobs         Transactional Outbox
+      |                  |
+      +---------+--------+
+                |
+                v
+          TypeScript Worker
+                |
+                v
+        External Integrations
+
+Supabase Storage handles approved media delivery.
+
+---
+
+## 19.8 Initial Deployment Characteristics
+
+The MVP should begin with:
+
+- One modular monolith repository.
+- One canonical PostgreSQL database.
+- One logical Web deployment.
+- One logical Worker deployment.
+- Managed authentication.
+- Managed object storage.
+- One initial Intelligence provider.
+- PostgreSQL-backed jobs and outbox.
+- Basic operational monitoring.
+
+The hosting platform may manage multiple underlying instances without changing these logical boundaries.
+
+---
+
+## 19.9 Capacity Assumptions
+
+The architecture must not invent fixed production capacity guarantees before measurement.
+
+Initial capacity planning should use realistic load tests and observed traffic.
+
+---
+
+# 19.C Web Runtime Scaling
+
+## 19.10 Stateless Execution Where Practical
+
+Web execution should avoid depending on process-local memory for canonical Visitor State, Session ownership, Decision history, or Experience identity.
+
+Canonical state remains in the appropriate persistence layer.
+
+---
+
+## 19.11 Horizontal Scaling
+
+When required, additional Web instances may serve Customer Runtime and Control Plane traffic.
+
+The application must not assume that consecutive requests from one Visitor reach the same process.
+
+---
+
+## 19.12 Session Continuity
+
+Visitor Session continuity must depend on trusted Session identity and canonical state rather than a specific application instance.
+
+---
+
+## 19.13 Runtime Latency
+
+The Runtime should measure important latency segments independently:
+
+- Request routing.
+- Business resolution.
+- Session lookup.
+- State processing.
+- Context assembly.
+- Intelligence invocation.
+- Proposal validation.
+- Canonical persistence.
+- Experience delivery.
+
+This prevents unnecessary infrastructure changes when the actual bottleneck is a single operation.
+
+---
+
+## 19.14 Runtime Concurrency
+
+Expensive Intelligence and integration operations should have controlled concurrency.
+
+A sudden traffic increase must not automatically create unlimited provider invocations or database connections.
+
+---
+
+# 19.D Intelligence Scaling
+
+## 19.15 Intelligence as a Measured Cost Center
+
+Intelligence execution has distinct latency, throughput, and cost characteristics.
+
+Kablet must track these separately from ordinary application processing.
+
+---
+
+## 19.16 Invocation Efficiency
+
+Before introducing additional Intelligence infrastructure, Kablet should evaluate:
+
+- Context size.
+- Prompt construction.
+- Output contract complexity.
+- Unnecessary repeat invocations.
+- Provider latency.
+- Model selection.
+- Fallback frequency.
+- Validation rejection rate.
+
+---
+
+## 19.17 Concurrency Control
+
+Intelligence invocation concurrency should be configurable.
+
+The system must account for provider rate limits and applicable Business or platform usage controls.
+
+---
+
+## 19.18 Provider Portability
+
+The Kablet-owned Intelligence Interface allows future provider changes without redefining canonical Decision and Experience contracts.
+
+Adding multiple providers must not create multiple independent sources of domain authority.
+
+---
+
+## 19.19 Specialized Intelligence Execution
+
+If justified by measured workload, Intelligence orchestration may eventually receive a separate execution pool.
+
+This does not automatically require extracting the entire Intelligence domain into an independent microservice.
+
+---
+
+## 19.20 Learning Workloads
+
+Learning and analytical Intelligence must remain outside the synchronous customer-facing critical path unless a specific capability requires otherwise.
+
+Long-running learning operations belong in controlled asynchronous execution.
+
+---
+
+# 19.E PostgreSQL Scaling
+
+## 19.21 Optimize Before Replacing
+
+PostgreSQL remains the initial canonical database.
+
+Before introducing another database technology, Kablet should investigate:
+
+- Query plans.
+- Indexes.
+- Connection usage.
+- Transaction duration.
+- Lock contention.
+- Table growth.
+- Query patterns.
+- Retention requirements.
+- Analytical workload interference.
+
+---
+
+## 19.22 Connection Management
+
+Horizontal Web and Worker scaling must account for aggregate PostgreSQL connection usage.
+
+Connection pooling or an equivalent managed mechanism should be introduced as required by deployment characteristics.
+
+---
+
+## 19.23 Index Strategy
+
+Indexes should follow actual access patterns.
+
+Priority query dimensions may include:
+
+- Organization ID.
+- Business ID.
+- Visitor ID.
+- Session ID.
+- Decision ID.
+- Experience ID.
+- Action Invocation ID.
+- Event timestamps.
+- Job status and availability.
+
+Exact indexes belong to physical schema implementation.
+
+---
+
+## 19.24 Event Table Growth
+
+Canonical Event volume may grow faster than ordinary Business configuration data.
+
+Kablet should monitor Event ingestion, retention, query performance, and index growth independently.
+
+---
+
+## 19.25 Partitioning
+
+PostgreSQL partitioning may be introduced when measured Event or other table growth justifies its operational complexity.
+
+Partitioning is not mandatory for the MVP.
+
+---
+
+## 19.26 Read Replicas
+
+Read replicas may eventually support suitable read-heavy workloads.
+
+They must not be treated as authoritative for operations requiring immediate canonical consistency.
+
+---
+
+## 19.27 Database Sharding
+
+Tenant-based database sharding is not an initial architectural requirement.
+
+It introduces additional migration, operational, reporting, and cross-tenant governance complexity.
+
+Such a decision requires demonstrated capacity or isolation needs.
+
+---
+
+# 19.F Worker Scaling
+
+## 19.28 Independent Worker Capacity
+
+The Worker deployment may scale independently from the Web Runtime.
+
+This allows background processing capacity to increase without unnecessarily scaling customer-facing application instances.
+
+---
+
+## 19.29 Concurrent Job Claiming
+
+The PostgreSQL job architecture must support multiple workers safely claiming eligible work through the mechanism defined in Section 09.
+
+---
+
+## 19.30 Workload Classification
+
+As workload grows, jobs may be classified by operational characteristics.
+
+Examples include:
+
+- Consequential integration execution.
+- Outcome reconciliation.
+- Event projections.
+- Media maintenance.
+- Learning operations.
+- Scheduled maintenance.
+
+---
+
+## 19.31 Workload Isolation
+
+If one job category begins starving critical work, Kablet may introduce separate worker pools or queue-selection policies.
+
+The first response should not automatically be a new message broker.
+
+---
+
+## 19.32 Backlog Signals
+
+Worker scaling should consider:
+
+- Pending job count.
+- Oldest pending job age.
+- Processing duration.
+- Retry rate.
+- Failed-job count.
+- Lease recovery frequency.
+- Database contention.
+
+---
+
+## 19.33 At-Least-Once Preservation
+
+Increasing worker concurrency must preserve idempotency and commercial Action identity.
+
+Additional execution capacity cannot weaken consequential retry safety.
+
+---
+
+# 19.G Event and Analytics Scaling
+
+## 19.34 Canonical Events Remain in PostgreSQL
+
+The initial Event Spine remains PostgreSQL-backed.
+
+A separate streaming platform is not required merely because Events exist.
+
+---
+
+## 19.35 Analytical Projections
+
+As reporting requirements increase, Kablet may introduce additional derived projections or optimized reporting structures.
+
+These must remain traceable to canonical evidence.
+
+---
+
+## 19.36 Reporting Workload Separation
+
+If analytical queries interfere with Customer Runtime performance, Kablet should consider:
+
+1. Query optimization.
+2. Incremental projections.
+3. Appropriate indexing.
+4. Read-oriented database capacity.
+5. A dedicated analytical store if justified.
+
+---
+
+## 19.37 Data Warehouse Introduction
+
+A dedicated warehouse becomes relevant when reporting volume, historical analysis, or analytical concurrency exceeds the practical operating envelope of the PostgreSQL-first architecture.
+
+It is not an MVP dependency.
+
+---
+
+## 19.38 Learning Evidence
+
+Future Business, Vertical, and Network learning must preserve the privacy and evidence-governance requirements established in the Foundation.
+
+Scaling analytical infrastructure does not grant unrestricted cross-tenant data access.
+
+---
+
+# 19.H Caching Evolution
+
+## 19.39 Canonical vs Cached State
+
+A cache must never silently replace PostgreSQL as the source of canonical Business Truth, Visitor State, Decision, Action, or Outcome records.
+
+---
+
+## 19.40 Cache Introduction
+
+Caching should follow demonstrated performance requirements.
+
+Candidate areas include:
+
+- Approved Business configuration.
+- Component definitions.
+- Public Asset metadata.
+- Verified Domain resolution.
+- Suitable derived read models.
+
+---
+
+## 19.41 Tenant-Safe Keys
+
+Cache identity must include the applicable ownership and version dimensions.
+
+Cross-tenant collisions must be prevented.
+
+---
+
+## 19.42 Invalidation
+
+A caching strategy must define how relevant canonical changes invalidate or supersede cached representations.
+
+---
+
+## 19.43 Redis
+
+Redis or an equivalent dedicated caching system may be introduced when process-local or managed infrastructure caching becomes insufficient.
+
+Redis is not required merely to operate the initial Runtime or durable job system.
+
+---
+
+# 19.I Storage and Media Scaling
+
+## 19.44 Managed Object Storage
+
+Supabase Storage remains the initial managed object-storage solution.
+
+---
+
+## 19.45 Media Delivery
+
+Approved public Assets should use suitable managed delivery capabilities.
+
+Kablet should avoid proxying every media byte through application processes without a specific requirement.
+
+---
+
+## 19.46 Media Optimization
+
+As traffic grows, Kablet may introduce appropriate:
+
+- Image transformations.
+- Responsive media variants.
+- Delivery caching.
+- CDN configuration.
+- Asset lifecycle automation.
+
+---
+
+## 19.47 Asset Identity
+
+Scaling physical media delivery must not change canonical Asset ownership or revision semantics.
+
+---
+
+# 19.J Tenant Workload Isolation
+
+## 19.48 Noisy Neighbor Risk
+
+A high-traffic Business must not be allowed to consume unlimited shared resources at the expense of unrelated Businesses.
+
+---
+
+## 19.49 Usage Measurement
+
+Kablet should eventually measure relevant consumption by Business, including:
+
+- Runtime requests.
+- Intelligence invocations.
+- Provider token usage.
+- Action executions.
+- Storage consumption.
+- Background processing.
+- Applicable integration activity.
+
+---
+
+## 19.50 Fairness Controls
+
+When justified, Kablet may introduce:
+
+- Business-scoped rate limits.
+- Concurrency budgets.
+- Usage quotas.
+- Priority classes.
+- Controlled degradation.
+
+---
+
+## 19.51 Commercial Policy vs Infrastructure Enforcement
+
+Usage limits may reflect commercial plans, operational safety, or both.
+
+The infrastructure must enforce applicable limits independently of client presentation.
+
+---
+
+# 19.K Scaling Decision Framework
+
+## 19.52 Evidence Before Infrastructure
+
+A proposed infrastructure change should identify:
+
+1. The measured problem.
+2. The affected workload.
+3. The current operational limit.
+4. The attempted simpler optimizations.
+5. The proposed infrastructure change.
+6. Its correctness and security implications.
+7. Its operational cost.
+8. The expected measurable improvement.
+
+---
+
+## 19.53 Candidate Scaling Triggers
+
+| Observed condition | Candidate response |
+|---|---|
+| Web CPU or concurrency saturation | Increase Web capacity |
+| Intelligence latency dominates | Optimize invocation and provider configuration |
+| Worker backlog grows persistently | Increase or isolate Worker capacity |
+| PostgreSQL queries degrade | Optimize queries, indexes, and capacity |
+| Analytics impacts Runtime | Improve projections or isolate analytical reads |
+| Repeated suitable reads dominate | Introduce controlled caching |
+| Event table growth affects maintenance | Evaluate retention and partitioning |
+| One Business dominates shared capacity | Introduce tenant-scoped workload controls |
+
+These are diagnostic directions, not automatic infrastructure decisions.
+
+---
+
+# 19.L Architectural Extraction
+
+## 19.54 Physical Separation Criteria
+
+A domain module should be considered for separate deployment only when a concrete requirement justifies the added complexity.
+
+Potential reasons include:
+
+- Independent scaling requirements.
+- Material fault-isolation requirements.
+- Distinct operational ownership.
+- Specialized infrastructure.
+- Security isolation.
+- Deployment-frequency differences.
+
+---
+
+## 19.55 Ownership Preservation
+
+Physical extraction must preserve clear ownership of canonical records and domain contracts.
+
+A distributed deployment must not create uncontrolled shared-write access across multiple services.
+
+---
+
+## 19.56 Integration Contracts
+
+Any extracted service must communicate through explicit versioned contracts.
+
+Domain invariants must remain enforceable across the new boundary.
+
+---
+
+## 19.57 No Premature Microservices
+
+Kablet will not adopt microservices as an architectural objective.
+
+Physical separation is an operational response, not a measure of product maturity.
+
+---
+
+# 19.M Cost-Aware Scaling
+
+## 19.58 Infrastructure Cost
+
+Kablet should measure relevant operating costs alongside technical performance.
+
+---
+
+## 19.59 Intelligence Economics
+
+Intelligence cost should be evaluated in relation to:
+
+- Sessions served.
+- Decisions accepted.
+- Experiences delivered.
+- Verified conversions.
+- Applicable revenue evidence.
+
+---
+
+## 19.60 Cost per Outcome
+
+As evidence becomes available, Kablet should evaluate the cost of operating its adaptive Runtime relative to verified commercial Outcomes.
+
+A faster or more sophisticated system is not automatically economically superior.
+
+---
+
+## 19.61 Scaling Efficiency
+
+Capacity increases should be evaluated against measurable throughput, reliability, latency, or commercial benefit.
+
+---
+
+# 19.N Scaling Stages
+
+## 19.62 Stage 1 — Initial Production
+
+Characteristics:
+
+- Modular monolith.
+- One canonical PostgreSQL database.
+- Managed Web deployment.
+- Dedicated logical Worker.
+- PostgreSQL jobs and outbox.
+- Managed Auth and Storage.
+- One Intelligence provider.
+
+Primary objective:
+
+Prove one complete, reliable Visitor-to-Outcome flow.
+
+---
+
+## 19.63 Stage 2 — Operational Growth
+
+Potential changes:
+
+- Additional Web instances.
+- Additional Worker capacity.
+- Database query optimization.
+- Connection pooling.
+- Better analytical projections.
+- Intelligence concurrency controls.
+- Tenant usage measurement.
+
+Primary objective:
+
+Support increasing real traffic without changing canonical ownership.
+
+---
+
+## 19.64 Stage 3 — Workload Specialization
+
+Potential changes:
+
+- Specialized Worker pools.
+- Dedicated analytical reads.
+- Controlled distributed caching.
+- More advanced media delivery.
+- Intelligence execution isolation.
+- Stronger tenant workload controls.
+
+Primary objective:
+
+Prevent materially different workloads from interfering with one another.
+
+---
+
+## 19.65 Stage 4 — Evidence-Driven Extraction
+
+Potential changes:
+
+- Dedicated analytical infrastructure.
+- Specialized domain execution services.
+- More advanced Event distribution.
+- Regional infrastructure.
+- Selective data partitioning.
+
+Primary objective:
+
+Address demonstrated operational constraints while preserving Kablet's permanent domain contracts.
+
+Stage 4 is not a predefined requirement or delivery commitment.
+
+---
+
+# 19.O MVP Scaling Boundary
+
+## 19.66 Initial Requirements
+
+The MVP must establish:
+
+1. Canonical PostgreSQL ownership.
+2. Stateless Web execution where practical.
+3. Separate logical Web and Worker roles.
+4. Durable asynchronous processing.
+5. Configurable external-call limits.
+6. Operational latency measurement.
+7. Tenant-safe data access.
+8. Versioned domain contracts.
+9. Basic infrastructure cost visibility.
+10. A path for horizontal execution scaling.
+
+---
+
+## 19.67 Explicit MVP Exclusions
+
+The MVP does not require:
+
+- Kubernetes.
+- Kafka.
+- Redis as mandatory infrastructure.
+- Database sharding.
+- A dedicated data warehouse.
+- Multi-region active-active deployment.
+- A service mesh.
+- Multiple Intelligence orchestration services.
+- A universal distributed workflow platform.
+- Premature domain extraction.
+
+---
+
+# 19.P Architecture Decision Records
+
+## ADR-112 — Evidence-Driven Scaling
+
+**Status:** Accepted.
+
+Kablet will introduce additional infrastructure in response to measured workload and operational requirements.
+
+---
+
+## ADR-113 — Scale Execution Before Domain Ownership
+
+**Status:** Accepted.
+
+Kablet will prioritize horizontal Web and Worker scaling, database optimization, and workload controls before dividing canonical domain ownership across independent services.
+
+---
+
+## ADR-114 — PostgreSQL Remains Canonical
+
+**Status:** Accepted.
+
+PostgreSQL remains the initial canonical system of record as infrastructure capacity evolves.
+
+Derived caches, projections, and analytical stores must not silently become competing authorities.
+
+---
+
+## ADR-115 — Independent Web and Worker Capacity
+
+**Status:** Accepted.
+
+Web and Worker execution capacity may scale independently while preserving the modular monolith and shared domain contracts.
+
+---
+
+## ADR-116 — Optional Infrastructure Introduction
+
+**Status:** Accepted.
+
+Redis, dedicated analytics infrastructure, advanced messaging, and physical service extraction are deferred until justified by operational evidence.
+
+---
+
+## ADR-117 — Tenant-Aware Workload Scaling
+
+**Status:** Accepted.
+
+Scaling mechanisms must preserve tenant isolation and support appropriate workload fairness as Business traffic grows.
+
+---
+
+# 19.Q Scaling Invariants
+
+1. Scaling follows measured requirements.
+2. Logical domain boundaries precede physical separation.
+3. Execution capacity should scale before canonical ownership is divided.
+4. PostgreSQL remains the initial canonical authority.
+5. Web processes must not depend on process-local canonical Visitor State.
+6. Worker capacity may scale independently.
+7. Additional Worker concurrency preserves Action idempotency.
+8. Intelligence throughput requires explicit cost and concurrency controls.
+9. Learning workloads must not unnecessarily block the customer-facing Runtime.
+10. Database optimization precedes unnecessary database replacement.
+11. Caches remain derived and non-authoritative.
+12. Cache keys preserve applicable tenant and version identity.
+13. Analytics projections remain traceable to canonical evidence.
+14. Domain extraction requires a documented operational justification.
+15. Scaling cannot weaken tenant isolation.
+16. High-volume Businesses may require workload fairness controls.
+17. Infrastructure cost must be evaluated alongside performance.
+18. The MVP does not require premature distributed infrastructure.
+
+---
+
+# 19.R Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Production capacity targets.
+- Autoscaling thresholds.
+- Database instance size.
+- Connection-pool configuration.
+- Worker concurrency limits.
+- Intelligence rate-limit budgets.
+- Cache provider.
+- Cache expiration policies.
+- Event partitioning strategy.
+- Analytics warehouse provider.
+- Tenant quota model.
+- Regional deployment requirements.
+- Domain extraction roadmap.
+- Infrastructure cost targets.
+
+These decisions will follow real usage, load testing, and operational measurements.
+
+---
+
+# 19.S Dependency
+
+Section 18 established Kablet's Failure and Recovery architecture.
+
+Section 19 establishes:
+
+**An evidence-driven scaling path that preserves the modular monolith and PostgreSQL canonical authority, scales Web and Worker execution independently, introduces caching and specialized infrastructure only when justified, and protects tenant isolation and commercial correctness as traffic grows.**
+
+The next section defines the exact technical boundary of the first Kablet MVP, distinguishing what must be implemented immediately from capabilities that belong to the permanent architecture but should remain deferred.
+
+# 20 — MVP Technical Boundary
