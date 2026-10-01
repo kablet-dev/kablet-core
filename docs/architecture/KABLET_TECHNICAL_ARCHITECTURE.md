@@ -16866,3 +16866,753 @@ Section 16 establishes:
 The next section defines how these checks become mandatory release gates through continuous integration, deployment automation, migration controls, and production rollback procedures.
 
 # 17 — CI/CD & Deployment
+---
+
+# 17. CI/CD & Deployment
+
+## 17.1 Purpose
+
+This section defines how Kablet builds, validates, releases, deploys, and recovers application changes.
+
+It establishes the architecture for:
+
+- Source control.
+- Continuous integration.
+- Release artifacts.
+- Deployment automation.
+- Database migrations.
+- Web and Worker deployment.
+- Environment promotion.
+- Production release gates.
+- Rollback procedures.
+- Configuration validation.
+- Deployment observability.
+- Release traceability.
+
+The objective is a reliable deployment process that supports rapid iteration without compromising canonical Business data or live customer operations.
+
+---
+
+# 17.A Deployment Principles
+
+## 17.2 Repository as Source of Code Truth
+
+GitHub will remain the authoritative source repository for Kablet application code, infrastructure configuration, migration definitions, and technical documentation.
+
+Production changes must be traceable to a committed revision.
+
+---
+
+## 17.3 Automated Validation
+
+Changes must pass the applicable automated checks before Production deployment.
+
+A successful build alone does not establish release readiness.
+
+---
+
+## 17.4 Immutable Release Identity
+
+Every deployed release must have an identifiable source revision.
+
+The running application and worker must expose their applicable release identity through operational telemetry.
+
+---
+
+## 17.5 Separate Deployment Responsibilities
+
+Kablet must distinguish:
+
+- Building application artifacts.
+- Testing application behavior.
+- Applying database migrations.
+- Deploying the Web process.
+- Deploying the Worker process.
+- Verifying deployment health.
+
+These may be orchestrated by one pipeline but must remain logically separate operations.
+
+---
+
+## 17.6 Production Protection
+
+Production deployment requires controlled credentials and appropriate authorization.
+
+Ordinary local development commands must not independently modify Production infrastructure.
+
+---
+
+# 17.B Initial CI/CD Technology
+
+## 17.7 GitHub Actions
+
+Kablet v0.1 will use GitHub Actions for continuous integration and deployment orchestration.
+
+The exact hosting-provider deployment integration will be finalized after provider selection.
+
+---
+
+## 17.8 Monorepo Build
+
+The CI pipeline must support the TypeScript monorepo defined in Section 02.
+
+It should use:
+
+- Node.js LTS.
+- pnpm.
+- Locked dependency installation.
+- TypeScript validation.
+- Applicable workspace builds.
+- Automated tests.
+
+---
+
+## 17.9 Dependency Reproducibility
+
+CI must install dependencies using the committed lockfile.
+
+Unexpected dependency resolution must not silently alter a Production release.
+
+---
+
+## 17.10 Build Artifacts
+
+Web and Worker deployments must originate from a known repository revision.
+
+Where supported, the deployment process should produce immutable artifacts or equivalent provider-managed release revisions.
+
+---
+
+# 17.C Branch and Release Workflow
+
+## 17.11 Main Branch
+
+`main` represents the integrated application state.
+
+Production deployment must originate from an approved revision rather than arbitrary uncommitted local changes.
+
+---
+
+## 17.12 Pull Requests
+
+Implementation changes should normally enter `main` through a reviewed Pull Request.
+
+Pull Requests must trigger applicable CI validation.
+
+---
+
+## 17.13 Branch Protection
+
+The repository should enforce appropriate protection for `main`.
+
+Candidate controls include:
+
+- Required CI checks.
+- Controlled merge permissions.
+- Prevention of accidental force pushes.
+- Applicable review requirements.
+
+The exact GitHub protection configuration will be finalized during repository setup.
+
+---
+
+## 17.14 Release Identity
+
+A release should retain:
+
+- Git commit SHA.
+- Build identifier.
+- Deployment timestamp.
+- Environment.
+- Applicable migration revision.
+- Application version where relevant.
+
+---
+
+# 17.D Continuous Integration Pipeline
+
+## 17.15 CI Stages
+
+The initial pipeline should follow this logical sequence:
+
+Source Checkout
+       |
+       v
+Dependency Installation
+       |
+       v
+Static Validation
+       |
+       v
+Unit & Contract Tests
+       |
+       v
+Disposable PostgreSQL Setup
+       |
+       v
+Database Migrations
+       |
+       v
+Integration & Security Tests
+       |
+       v
+Application Build
+       |
+       v
+Release Eligibility
+
+Independent checks may run in parallel where appropriate.
+
+---
+
+## 17.16 Static Validation
+
+CI must execute the applicable:
+
+- TypeScript checks.
+- Lint checks.
+- Formatting checks.
+- Schema validation.
+
+---
+
+## 17.17 Database Validation
+
+CI must apply committed migrations against disposable PostgreSQL.
+
+Database-dependent integration tests must execute against the resulting schema.
+
+---
+
+## 17.18 Security Gates
+
+Required security tests include applicable:
+
+- Tenant isolation.
+- Authorization.
+- Intelligence validation.
+- Action authorization.
+- Idempotency.
+- Webhook validation.
+- Storage isolation.
+
+A failed required security gate must prevent release eligibility.
+
+---
+
+## 17.19 Build Validation
+
+The pipeline must verify that the applicable Web and Worker artifacts can be built successfully.
+
+---
+
+## 17.20 Failure Behavior
+
+A failed required CI stage must produce a failed pipeline.
+
+Tests must not be silently skipped because a dependency is unavailable.
+
+---
+
+# 17.E Continuous Deployment
+
+## 17.21 Deployment Architecture
+
+Kablet will initially use managed hosting.
+
+The deployment must support two logical execution roles:
+
+**Web Process**
+
+Runs the Control Plane and Customer Runtime.
+
+**Worker Process**
+
+Executes durable background jobs and outbox processing.
+
+Both may originate from the same repository and shared domain packages.
+
+---
+
+## 17.22 Modular Monolith Preservation
+
+Separating Web and Worker processes does not convert Kablet into a microservices architecture.
+
+Both remain part of the same modular monolith and share controlled domain contracts.
+
+---
+
+## 17.23 Deployment Flow
+
+The intended Production deployment sequence is:
+
+Approved Source Revision
+         |
+         v
+Required CI Checks
+         |
+         v
+Build Release Artifacts
+         |
+         v
+Validate Environment Configuration
+         |
+         v
+Apply Required Database Migrations
+         |
+         v
+Deploy Compatible Web / Worker Versions
+         |
+         v
+Health Verification
+         |
+         v
+Release Confirmation
+
+The exact ordering of compatible process rollout may depend on the hosting provider and migration requirements.
+
+---
+
+# 17.F Database Migration Strategy
+
+## 17.24 Version-Controlled Migrations
+
+Drizzle migration files must remain committed and associated with the application revision.
+
+Production schema changes must not rely on manually editing the database outside the controlled migration process.
+
+---
+
+## 17.25 Migration Validation
+
+Every Production migration must first be tested against disposable PostgreSQL.
+
+Staging should validate the applicable release migration path.
+
+---
+
+## 17.26 Migration Execution Authority
+
+Production migrations must use an explicitly authorized execution identity.
+
+Ordinary Runtime database credentials should not require unrestricted schema-modification privileges.
+
+---
+
+## 17.27 Expand-and-Contract
+
+Where schema changes affect compatibility between deployed process versions, Kablet should use an expand-and-contract approach.
+
+Conceptually:
+
+1. Introduce compatible schema additions.
+2. Deploy code supporting the new structure.
+3. Migrate applicable data.
+4. Verify behavior.
+5. Remove obsolete structures in a later controlled release.
+
+---
+
+## 17.28 Destructive Changes
+
+Destructive migrations require explicit review and a suitable recovery strategy.
+
+They must not be bundled casually with unrelated application changes.
+
+---
+
+## 17.29 Migration Failure
+
+A failed required migration must stop deployment progression.
+
+The pipeline must not deploy application code that assumes an unavailable schema.
+
+---
+
+## 17.30 Migration Rollback
+
+Application rollback does not automatically reverse database migrations.
+
+The recovery plan must account for the actual committed schema state.
+
+Blindly reversing migrations may cause additional data loss or incompatibility.
+
+---
+
+# 17.G Web and Worker Compatibility
+
+## 17.31 Shared Contracts
+
+Web and Worker processes must use compatible versions of:
+
+- Domain contracts.
+- Job payloads.
+- Event schemas.
+- Database schema.
+- Action definitions.
+- Integration adapters.
+
+---
+
+## 17.32 Job Versioning
+
+Durable jobs may survive application deployment.
+
+A new Worker version must handle supported pending job versions or provide an explicit migration and recovery path.
+
+---
+
+## 17.33 Deployment Interruption
+
+Worker shutdown must avoid unnecessarily abandoning active operations.
+
+The worker should support controlled shutdown and lease-based recovery.
+
+---
+
+## 17.34 Duplicate Execution Safety
+
+A deployment restart may cause an interrupted job to execute again.
+
+Consequential operations must retain the idempotency guarantees established in Sections 07 and 09.
+
+---
+
+# 17.H Staging Promotion
+
+## 17.35 Staging Validation
+
+Production releases should be validated in Staging when applicable.
+
+Staging must use separate canonical data and credentials.
+
+---
+
+## 17.36 Release Candidate
+
+The release candidate tested in Staging should correspond to the revision intended for Production.
+
+Unrelated code changes must not silently enter between validation and Production deployment.
+
+---
+
+## 17.37 Promotion
+
+Where supported, Kablet should promote the same immutable artifact or equivalent release revision rather than rebuilding different code for Production.
+
+Environment-specific configuration remains separate.
+
+---
+
+# 17.I Production Deployment Safety
+
+## 17.38 Deployment Health
+
+Deployment success must include operational health verification.
+
+A hosting provider reporting that an artifact was uploaded does not independently establish that Kablet is functioning correctly.
+
+---
+
+## 17.39 Health Checks
+
+The implementation should distinguish:
+
+- Process liveness.
+- Application readiness.
+- Required dependency availability.
+- Worker processing health.
+
+---
+
+## 17.40 Smoke Tests
+
+Post-deployment smoke tests should verify critical behavior without creating uncontrolled real commercial side effects.
+
+Candidate checks include:
+
+- Application availability.
+- Database connectivity.
+- Authentication configuration.
+- Business routing.
+- Worker health.
+- Applicable Runtime readiness.
+
+---
+
+## 17.41 Deployment Failure
+
+If required health checks fail, the release must enter a controlled failure or recovery path.
+
+It must not be automatically declared successful merely because the deployment command returned without an error.
+
+---
+
+# 17.J Rollback and Recovery
+
+## 17.42 Application Rollback
+
+The hosting strategy should support returning to a previously known application revision where feasible.
+
+---
+
+## 17.43 Database Compatibility
+
+Rollback eligibility depends on database compatibility.
+
+The deployment process must not assume that an older application version can safely operate against every newer schema.
+
+---
+
+## 17.44 Worker Rollback
+
+Worker rollback must consider pending job payload versions and already-started external operations.
+
+---
+
+## 17.45 External Side Effects
+
+Rolling back application code cannot reverse an external booking, message, payment, or other consequential side effect.
+
+Such operations require domain-specific reconciliation or compensation where applicable.
+
+---
+
+## 17.46 Failed Release Evidence
+
+Deployment failure records should preserve:
+
+- Release revision.
+- Environment.
+- Failed stage.
+- Migration state.
+- Web deployment state.
+- Worker deployment state.
+- Relevant operational errors.
+- Recovery action.
+
+---
+
+# 17.K Secrets and Deployment Credentials
+
+## 17.47 CI Credentials
+
+GitHub Actions must use appropriately scoped deployment credentials.
+
+Long-lived unrestricted credentials should be avoided where supported alternatives exist.
+
+---
+
+## 17.48 Production Secrets
+
+Production secrets must remain in the approved infrastructure configuration mechanism.
+
+They must not be embedded into committed workflow files.
+
+---
+
+## 17.49 Environment Protection
+
+Production deployment should use GitHub Environment protection or equivalent controls where appropriate.
+
+---
+
+## 17.50 Secret Exposure Prevention
+
+CI logs must not print privileged environment values.
+
+Diagnostic commands must avoid unintentionally exposing connection strings, tokens, or provider credentials.
+
+---
+
+# 17.L Deployment Observability
+
+## 17.51 Release Metadata
+
+Every running process should expose its applicable release revision through controlled operational metadata.
+
+---
+
+## 17.52 Telemetry Correlation
+
+Logs, traces, and errors should identify the deployed version.
+
+This supports investigation of release-related regressions.
+
+---
+
+## 17.53 Deployment Metrics
+
+Candidate operational measurements include:
+
+- Deployment success rate.
+- Deployment duration.
+- Failed health checks.
+- Migration failures.
+- Rollback occurrences.
+- Release-related Runtime errors.
+
+---
+
+# 17.M MVP CI/CD Boundary
+
+## 17.54 Initial Pipeline
+
+The first implementation should establish:
+
+1. GitHub Actions.
+2. Locked pnpm installation.
+3. TypeScript checking.
+4. Linting.
+5. Unit tests.
+6. Disposable PostgreSQL integration tests.
+7. Migration validation.
+8. Application build.
+9. Separate environment configuration.
+10. Traceable release revision.
+
+---
+
+## 17.55 Production Deployment Requirements
+
+Before live customer traffic, Kablet must additionally establish:
+
+- Controlled Production deployment.
+- Separate Production credentials.
+- Managed hosting.
+- Database migration procedure.
+- Web and Worker deployment.
+- Health checks.
+- Basic smoke tests.
+- Operational monitoring.
+- Documented recovery procedure.
+
+---
+
+## 17.56 Explicit MVP Exclusions
+
+The initial implementation does not require:
+
+- Kubernetes.
+- A custom deployment orchestrator.
+- Multi-region active-active deployment.
+- A service mesh.
+- Complex canary infrastructure.
+- A proprietary CI system.
+- Automated infrastructure across multiple cloud providers.
+- A dedicated release-management platform.
+
+The objective is reliable release execution with minimal operational complexity.
+
+---
+
+# 17.N Architecture Decision Records
+
+## ADR-099 — GitHub Actions for CI/CD
+
+**Status:** Accepted.
+
+Kablet will use GitHub Actions for automated validation and deployment orchestration.
+
+---
+
+## ADR-100 — Immutable Release Identity
+
+**Status:** Accepted.
+
+Every deployed release must be traceable to a known source revision and applicable migration state.
+
+---
+
+## ADR-101 — Separate Web and Worker Execution Roles
+
+**Status:** Accepted.
+
+Web and Worker processes will be deployed as distinct execution roles while remaining part of the same modular monolith.
+
+---
+
+## ADR-102 — Migration-Gated Deployment
+
+**Status:** Accepted.
+
+Required database migrations must be validated and successfully applied before incompatible application code becomes active.
+
+---
+
+## ADR-103 — Compatibility-Aware Rollback
+
+**Status:** Accepted.
+
+Application rollback must account for database, job-contract, and external side-effect compatibility.
+
+Database migrations are not assumed automatically reversible.
+
+---
+
+## ADR-104 — Health-Verified Releases
+
+**Status:** Accepted.
+
+Production deployment success requires applicable health verification rather than artifact-upload success alone.
+
+---
+
+# 17.O CI/CD & Deployment Invariants
+
+1. GitHub is the authoritative source repository.
+2. Production code must correspond to a known committed revision.
+3. Required CI checks gate release eligibility.
+4. Dependency installation uses the committed lockfile.
+5. Database migrations are version-controlled.
+6. Database integration tests use disposable PostgreSQL.
+7. Failed required tests cannot be silently ignored.
+8. Production migration credentials remain controlled.
+9. A failed required migration stops deployment progression.
+10. Application rollback does not automatically reverse database changes.
+11. Web and Worker versions must preserve contract compatibility.
+12. Durable jobs may survive deployments.
+13. Deployment restarts must not duplicate consequential Actions.
+14. Production credentials remain outside source control.
+15. Environment configuration must be validated.
+16. Production deployment requires appropriate authorization.
+17. Deployment success includes health verification.
+18. External commercial side effects cannot be reversed by code rollback alone.
+19. Every release remains operationally identifiable.
+20. The MVP uses managed hosting rather than proprietary deployment infrastructure.
+
+---
+
+# 17.P Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Hosting provider.
+- Container versus provider-native build format.
+- Exact GitHub Actions workflow files.
+- Branch-protection configuration.
+- Production approval policy.
+- Deployment credential mechanism.
+- Release version format.
+- Health-check endpoint paths.
+- Migration execution command.
+- Staging promotion mechanism.
+- Worker shutdown timeout.
+- Rollback automation.
+- Production smoke-test implementation.
+
+These decisions will be finalized during infrastructure implementation.
+
+---
+
+# 17.Q Dependency
+
+Section 16 established Kablet's Testing Strategy.
+
+Section 17 establishes:
+
+**A GitHub Actions-based CI/CD architecture with reproducible builds, mandatory validation gates, version-controlled migrations, compatible Web and Worker deployments, protected Production credentials, health-verified releases, and rollback procedures that respect database state and external commercial side effects.**
+
+The next section defines how Kablet behaves when infrastructure, Intelligence providers, external integrations, background workers, or canonical persistence fail.
+
+# 18 — Failure & Recovery Architecture
