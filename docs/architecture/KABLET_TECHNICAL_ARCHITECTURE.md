@@ -12518,3 +12518,1028 @@ Section 11 establishes:
 The next section defines how engineers and operators observe Kablet's behavior across the entire runtime, including Intelligence calls, Decisions, Experience rendering, Actions, background processing, and integration failures.
 
 # 12 — Observability
+---
+
+# 12. Observability
+
+## 12.1 Purpose
+
+This section defines how Kablet observes, investigates, and measures the technical behavior of its application, Intelligence subsystem, Customer Runtime, background workers, integrations, and infrastructure.
+
+It establishes the architecture for:
+
+- Structured application logging.
+- Distributed tracing.
+- Operational metrics.
+- Error monitoring.
+- Request correlation.
+- Intelligence invocation monitoring.
+- Runtime performance measurement.
+- Action execution diagnostics.
+- Worker health.
+- Integration health.
+- Alerting.
+- Incident investigation.
+- Privacy-safe operational visibility.
+
+The objective is to make Kablet's end-to-end behavior understandable without relying on disconnected logs, unrestricted customer-data collection, or third-party analytics as a source of commercial truth.
+
+---
+
+# 12.A Fundamental Observability Model
+
+## 12.2 Three Observability Signals
+
+Kablet will use three primary technical observability signals.
+
+### Logs
+
+Structured records describing application behavior and diagnostic occurrences.
+
+### Traces
+
+Connected records describing the execution path of an operation across application boundaries.
+
+### Metrics
+
+Aggregated numerical measurements describing operational performance and health.
+
+These signals serve different purposes and should complement one another.
+
+---
+
+## 12.3 Canonical Events vs Observability
+
+Kablet must preserve a strict distinction between canonical commercial Events and technical observability.
+
+| Canonical Events | Observability |
+|---|---|
+| Domain occurrences | Technical execution evidence |
+| Commercial history | Operational diagnostics |
+| Decision and Outcome lineage | Request and process tracing |
+| PostgreSQL system of record | Configurable telemetry backend |
+| Domain retention rules | Operational retention rules |
+| Learning and analytics inputs | Engineering and incident investigation |
+
+An application log must not become the sole proof of a verified commercial Outcome.
+
+A canonical Event must not be overloaded with arbitrary debugging information.
+
+---
+
+## 12.4 Shared Correlation
+
+Although these systems remain distinct, they must share sufficient correlation references to connect technical execution with canonical domain records.
+
+For example:
+
+Visitor Interaction
+        |
+        v
+Runtime Request
+        |
+        v
+Intelligence Invocation
+        |
+        v
+Decision Acceptance
+        |
+        v
+Experience Delivery
+        |
+        v
+Action Invocation
+        |
+        v
+Integration Execution
+        |
+        v
+Verified Outcome
+
+An authorized investigator should be able to follow this chain across the relevant technical and canonical records.
+
+---
+
+# 12.B Initial Technology Strategy
+
+## 12.5 OpenTelemetry-Compatible Instrumentation
+
+Kablet v0.1 will adopt OpenTelemetry-compatible instrumentation for tracing and relevant operational metrics.
+
+This provides a vendor-neutral instrumentation boundary.
+
+The initial implementation does not require a self-hosted OpenTelemetry Collector or a dedicated observability cluster.
+
+---
+
+## 12.6 Structured Logging
+
+The TypeScript application and worker will emit structured JSON logs.
+
+Logs should use consistent fields and severity levels.
+
+Unstructured console output must not be the primary production diagnostic mechanism.
+
+---
+
+## 12.7 Managed Error Monitoring
+
+Kablet should use managed error monitoring for application and worker exceptions.
+
+The exact provider will be finalized in the deployment implementation.
+
+Provider-specific SDK usage should remain appropriately isolated.
+
+---
+
+## 12.8 Initial Infrastructure
+
+The MVP observability architecture should remain small:
+
+- Structured application logs.
+- Trace instrumentation.
+- Managed error reporting.
+- Basic operational metrics.
+- Hosting-provider infrastructure telemetry.
+- A limited set of actionable alerts.
+
+A dedicated ELK, Prometheus, Grafana, or Jaeger deployment is not required initially.
+
+---
+
+# 12.C Correlation Architecture
+
+## 12.9 Correlation ID
+
+Every meaningful customer-facing request should receive or resolve a correlation identity.
+
+The identity must be propagated through relevant internal operations.
+
+---
+
+## 12.10 Trace Identity vs Domain Identity
+
+Kablet must distinguish:
+
+- Trace ID.
+- Span ID.
+- Correlation ID.
+- Session ID.
+- Decision ID.
+- Experience ID.
+- Action Invocation ID.
+- Outcome ID.
+
+These identifiers serve different purposes.
+
+They may be linked but must not be treated as interchangeable.
+
+---
+
+## 12.11 Request Context
+
+A trusted request context should make relevant operational identifiers available to participating application modules.
+
+Conceptually:
+
+Request Context
+    |
+    +-- Correlation ID
+    +-- Trace Context
+    +-- Actor Type
+    +-- Authorized Tenant Context
+    +-- Relevant Domain References
+
+Sensitive context must not automatically be exported to every telemetry destination.
+
+---
+
+## 12.12 Background Context Propagation
+
+Asynchronous work must preserve the necessary correlation references from its originating operation.
+
+For example:
+
+Action Invocation
+        |
+        v
+Outbox Record
+        |
+        v
+Background Job
+        |
+        v
+Integration Attempt
+
+A worker may begin a new technical trace while retaining a link to the originating operation.
+
+It must not fabricate uninterrupted synchronous execution across an asynchronous boundary.
+
+---
+
+## 12.13 External Provider Correlation
+
+Where supported, integration adapters should retain relevant external request identifiers.
+
+These references assist provider-side investigation and reconciliation.
+
+External identifiers must remain scoped to the applicable provider and Integration Connection.
+
+---
+
+# 12.D Structured Logging
+
+## 12.14 Standard Log Envelope
+
+A conceptual structured log should include:
+
+| Field | Purpose |
+|---|---|
+| Timestamp | Log occurrence time |
+| Severity | Operational importance |
+| Service | Producing application or worker |
+| Environment | Deployment environment |
+| Message | Concise diagnostic description |
+| Correlation ID | Related operation chain |
+| Trace ID | Technical trace linkage |
+| Module | Producing application module |
+| Operation | Relevant operation |
+| Status | Applicable result classification |
+| Duration | Where relevant |
+| Error code | Controlled failure classification |
+
+Optional domain references may be included when appropriate and permitted.
+
+---
+
+## 12.15 Severity Levels
+
+The logging architecture should support conventional severity categories:
+
+- Debug.
+- Info.
+- Warn.
+- Error.
+- Fatal.
+
+Production verbosity should be configurable.
+
+---
+
+## 12.16 Structured Error Classification
+
+Expected domain failures should use controlled error categories rather than relying exclusively on arbitrary exception messages.
+
+Examples include:
+
+- Validation failure.
+- Authorization failure.
+- Intelligence timeout.
+- Invalid Intelligence proposal.
+- Experience validation failure.
+- Action execution failure.
+- Integration unavailable.
+- Database failure.
+- Job lease expiration.
+- Outcome reconciliation failure.
+
+---
+
+## 12.17 Sensitive Data Exclusion
+
+Logs must not indiscriminately include:
+
+- Integration credentials.
+- Authentication tokens.
+- Private customer information.
+- Full submitted forms.
+- Raw unrestricted Intelligence context.
+- Complete provider responses.
+- Private Business documents.
+
+Sensitive values should be excluded, redacted, or otherwise handled through explicit policy.
+
+---
+
+## 12.18 Log Volume
+
+High-frequency Runtime operations should use appropriate logging levels and sampling where applicable.
+
+The system must avoid creating unnecessary operational cost by recording every trivial rendering operation as a high-volume production log.
+
+---
+
+# 12.E Distributed Tracing
+
+## 12.19 Trace Purpose
+
+Tracing should explain how an operation moved through Kablet's internal boundaries.
+
+It must help identify:
+
+- Latency.
+- Failed dependencies.
+- Repeated execution.
+- Unexpected retries.
+- Slow database operations.
+- Provider delays.
+- Runtime bottlenecks.
+
+---
+
+## 12.20 Customer Runtime Trace
+
+A representative Runtime trace may include:
+
+HTTP Request
+    |
+    +-- Business Resolution
+    |
+    +-- Session Resolution
+    |
+    +-- Signal Validation
+    |
+    +-- State Resolution
+    |
+    +-- Context Assembly
+    |
+    +-- Intelligence Invocation
+    |
+    +-- Proposal Validation
+    |
+    +-- Decision Persistence
+    |
+    +-- Experience Persistence
+    |
+    +-- Response Delivery
+
+Each meaningful operation may produce a trace span.
+
+---
+
+## 12.21 Action Trace
+
+A consequential Action trace may include:
+
+Action Request
+    |
+    +-- Input Validation
+    |
+    +-- Authorization
+    |
+    +-- Idempotency Resolution
+    |
+    +-- Invocation Persistence
+    |
+    +-- Handler Execution
+    |
+    +-- Integration Adapter
+    |
+    +-- Result Normalization
+    |
+    +-- Canonical Result Update
+
+Asynchronous continuation may use linked traces rather than pretending that one HTTP request remained active.
+
+---
+
+## 12.22 Database Tracing
+
+Database instrumentation should help identify slow or failing operations.
+
+It must not automatically export sensitive SQL parameter values.
+
+---
+
+## 12.23 Trace Sampling
+
+Tracing may use configurable sampling to control volume and cost.
+
+Important failures should remain diagnosable even when ordinary successful requests are sampled.
+
+The exact sampling strategy will be finalized during deployment implementation.
+
+---
+
+# 12.F Intelligence Observability
+
+## 12.24 Intelligence Invocation Record
+
+Each meaningful Intelligence invocation should preserve appropriate operational metadata.
+
+Candidate fields include:
+
+- Invocation ID.
+- Business reference.
+- Correlation ID.
+- Provider.
+- Model.
+- Configuration version.
+- Prompt version.
+- Contract version.
+- Start time.
+- Duration.
+- Input token usage.
+- Output token usage.
+- Estimated or reported cost.
+- Validation result.
+- Final invocation status.
+- Accepted Decision reference where applicable.
+
+---
+
+## 12.25 Provider Latency
+
+Kablet must measure Intelligence provider latency separately from total customer-facing Runtime latency.
+
+This distinction helps identify whether a slow Experience originates from:
+
+- Context assembly.
+- Provider response.
+- Output validation.
+- Database persistence.
+- Network delivery.
+- Client rendering.
+
+---
+
+## 12.26 Intelligence Failure Categories
+
+The architecture should distinguish:
+
+- Provider unavailable.
+- Provider timeout.
+- Rate limit.
+- Invalid structured output.
+- Contract validation failure.
+- Semantic validation failure.
+- Business Truth violation.
+- Unsupported Component.
+- Unsupported Action.
+- Persistence failure.
+- Fallback activated.
+
+These failures require different engineering responses.
+
+---
+
+## 12.27 Intelligence Cost Monitoring
+
+Kablet should track Intelligence consumption at appropriate operational scopes.
+
+Candidate dimensions include:
+
+- Business.
+- Model.
+- Configuration version.
+- Decision operation.
+- Time period.
+
+Cost estimates must be identified as estimates where provider billing data is not definitive.
+
+---
+
+## 12.28 Raw Prompt and Response Retention
+
+Full prompts and raw model responses must not automatically enter ordinary production logs.
+
+Any diagnostic retention of such content requires explicit access, privacy, retention, and security controls.
+
+Canonical Decisions and Experiences remain separate from raw provider transcripts.
+
+---
+
+# 12.G Customer Runtime Observability
+
+## 12.29 Runtime Performance
+
+Kablet should measure the performance of the customer-facing Experience lifecycle.
+
+Candidate measurements include:
+
+- Initial application response latency.
+- Business resolution latency.
+- Intelligence latency.
+- Experience delivery latency.
+- Client rendering latency.
+- Transition latency.
+- Action request latency.
+- Rendering failures.
+
+---
+
+## 12.30 Server vs Browser Measurements
+
+Server-side response completion does not establish successful browser rendering.
+
+The observability architecture should preserve this distinction, consistent with Section 08.
+
+---
+
+## 12.31 Browser Error Monitoring
+
+The initial React Runtime should report meaningful client-side failures.
+
+Examples include:
+
+- Component rendering exceptions.
+- Invalid Experience transition handling.
+- Failed Runtime requests.
+- Unexpected client application errors.
+
+Browser reports remain untrusted telemetry inputs and must not establish canonical commercial Outcomes.
+
+---
+
+## 12.32 Performance Budgets
+
+The implementation should define practical customer-facing latency and performance budgets.
+
+Exact thresholds will be finalized during implementation and validated using actual measurements.
+
+---
+
+# 12.H Action and Integration Observability
+
+## 12.33 Action Execution Metrics
+
+Consequential Action execution should expose:
+
+- Request count.
+- Completion count.
+- Failure count.
+- Pending count.
+- Unknown-result count.
+- Execution duration.
+- Retry count.
+- Reconciliation backlog.
+
+---
+
+## 12.34 Integration Metrics
+
+Provider-specific monitoring should include:
+
+- Request latency.
+- Timeout rate.
+- Error rate.
+- Rate-limit responses.
+- Authentication failures.
+- Webhook validation failures.
+- Delayed confirmations.
+
+---
+
+## 12.35 Unknown Results
+
+An external timeout must not automatically be classified as a failed commercial operation.
+
+Observability must preserve an explicit unknown-result category where appropriate.
+
+This supports safe reconciliation rather than blind replay.
+
+---
+
+## 12.36 Integration Health
+
+The operational system should distinguish:
+
+- Configured.
+- Connected.
+- Healthy.
+- Degraded.
+- Unavailable.
+- Requires intervention.
+
+A successful credential test alone does not establish ongoing provider health.
+
+---
+
+# 12.I Worker and Outbox Observability
+
+## 12.37 Worker Metrics
+
+The initial worker should expose:
+
+- Pending jobs.
+- Active jobs.
+- Completed jobs.
+- Failed jobs.
+- Retry counts.
+- Lease expirations.
+- Processing duration.
+- Oldest pending-job age.
+
+---
+
+## 12.38 Outbox Monitoring
+
+The system must monitor whether committed outbox records are being processed.
+
+An increasing backlog may indicate worker failure or downstream degradation even when the web application remains healthy.
+
+---
+
+## 12.39 Worker Heartbeat
+
+The deployment should support a practical mechanism for determining whether the worker is operational.
+
+A running worker process is not sufficient proof that it is successfully processing work.
+
+---
+
+## 12.40 Failed-Job Investigation
+
+An authorized operator should be able to correlate a failed job with:
+
+- Originating domain operation.
+- Relevant outbox record.
+- Job identity.
+- Execution attempts.
+- Failure classification.
+- Applicable integration.
+- Recovery status.
+
+---
+
+# 12.J Database and Infrastructure Observability
+
+## 12.41 PostgreSQL Monitoring
+
+Kablet should monitor relevant database health indicators.
+
+Candidate indicators include:
+
+- Connection usage.
+- Query latency.
+- Transaction failures.
+- Lock contention.
+- Storage consumption.
+- Migration failures.
+- Database availability.
+
+---
+
+## 12.42 Storage Monitoring
+
+Object-storage diagnostics should include:
+
+- Upload failures.
+- Delivery failures.
+- Processing errors.
+- Invalid references.
+- Storage usage.
+
+---
+
+## 12.43 Infrastructure Health
+
+The deployment must provide visibility into:
+
+- Application availability.
+- Worker availability.
+- Database connectivity.
+- Storage availability.
+- Relevant external dependency failures.
+
+---
+
+# 12.K Alerting
+
+## 12.44 Actionable Alerts
+
+Alerts should correspond to conditions requiring investigation or intervention.
+
+The MVP should avoid generating large volumes of low-value notifications.
+
+---
+
+## 12.45 Initial Alert Categories
+
+Candidate initial alerts include:
+
+- Customer Runtime unavailable.
+- Sustained elevated Runtime errors.
+- Database unavailable.
+- Worker not processing jobs.
+- Outbox backlog increasing beyond threshold.
+- Repeated consequential Action failures.
+- Integration authentication failure.
+- Elevated Intelligence failure rate.
+- Unexpected Intelligence cost increase.
+
+---
+
+## 12.46 Alert Ownership
+
+Every production alert should have an identifiable operational owner or response procedure.
+
+An alert without a practical response path provides limited value.
+
+---
+
+## 12.47 Alert Thresholds
+
+Exact thresholds must be based on deployment requirements and observed operating conditions.
+
+They should not be invented solely to make the architecture document appear complete.
+
+---
+
+# 12.L Incident Investigation
+
+## 12.48 Journey Investigation
+
+Kablet should support authorized investigation of an individual customer journey using canonical domain references and technical correlation.
+
+For example:
+
+Session
+    |
+    v
+Decision
+    |
+    v
+Experience
+    |
+    v
+Interaction
+    |
+    v
+Action
+    |
+    v
+Outcome
+
+Relevant traces and logs should help explain technical behavior at each stage.
+
+---
+
+## 12.49 Investigation Is Not Unrestricted Surveillance
+
+Operational investigation must preserve:
+
+- Tenant isolation.
+- Role-based authorization.
+- Data minimization.
+- Retention requirements.
+- Appropriate access auditing.
+
+The ability to correlate a Session must not imply unrestricted access to all customer personal information.
+
+---
+
+## 12.50 Incident Reconstruction
+
+For consequential incidents, the architecture should help answer:
+
+1. What operation was requested?
+2. Which Business owned it?
+3. Which canonical records were committed?
+4. Which external dependencies were contacted?
+5. Which failures occurred?
+6. Was the operation retried?
+7. Could an external side effect have succeeded?
+8. What recovery or reconciliation remains necessary?
+
+---
+
+# 12.M Telemetry Retention and Privacy
+
+## 12.51 Retention Classes
+
+Operational telemetry should follow defined retention policies.
+
+Different retention requirements may apply to:
+
+- Application logs.
+- Traces.
+- Error reports.
+- Aggregated metrics.
+- Canonical Events.
+- Audit records.
+
+---
+
+## 12.52 Data Minimization
+
+Telemetry must collect the minimum information reasonably required for its operational purpose.
+
+Full customer conversations and sensitive Business documents must not become default tracing attributes.
+
+---
+
+## 12.53 Environment Separation
+
+Development, staging, and production telemetry must remain distinguishable.
+
+Production secrets and personal information must not be casually copied into lower-trust environments for debugging.
+
+---
+
+## 12.54 Third-Party Telemetry Providers
+
+Any external observability provider must be evaluated for:
+
+- Data access.
+- Retention.
+- Security.
+- Applicable privacy requirements.
+- Operational dependency.
+
+Provider integration must not compromise Kablet's canonical tenant-isolation boundaries.
+
+---
+
+# 12.N MVP Observability Boundary
+
+## 12.55 Minimum Instrumentation
+
+The first implementation should include:
+
+1. Structured JSON logging.
+2. Request correlation.
+3. OpenTelemetry-compatible tracing.
+4. Runtime request-duration measurement.
+5. Intelligence latency and failure measurement.
+6. Intelligence usage and cost metadata.
+7. Action execution diagnostics.
+8. Worker and outbox health.
+9. Managed exception reporting.
+10. Basic operational alerts.
+
+---
+
+## 12.56 First End-to-End Trace
+
+The initial engineering milestone must make it possible to investigate:
+
+Visitor Signal
+        |
+        v
+State Resolution
+        |
+        v
+Intelligence Invocation
+        |
+        v
+Decision Acceptance
+        |
+        v
+Experience Delivery
+        |
+        v
+Customer Interaction
+        |
+        v
+Action Execution
+        |
+        v
+Verified Outcome
+
+The trace and associated canonical records must share sufficient correlation references to reconstruct the journey.
+
+---
+
+## 12.57 Explicit MVP Exclusions
+
+The MVP does not require:
+
+- A self-hosted observability cluster.
+- A custom log-search engine.
+- Advanced anomaly detection.
+- Automated root-cause analysis.
+- Full-session video replay.
+- Unrestricted prompt logging.
+- A complex incident-management platform.
+- A dedicated analytics warehouse for telemetry.
+
+The objective is practical operational visibility.
+
+---
+
+# 12.O Architecture Decision Records
+
+## ADR-069 — OpenTelemetry-Compatible Instrumentation
+
+**Status:** Accepted.
+
+Kablet will use OpenTelemetry-compatible instrumentation for tracing and applicable operational metrics.
+
+The initial telemetry backend may be managed.
+
+---
+
+## ADR-070 — Structured Production Logging
+
+**Status:** Accepted.
+
+The application and worker will use consistent structured JSON logging.
+
+Sensitive values must be excluded or appropriately redacted.
+
+---
+
+## ADR-071 — Separate Commercial Evidence and Technical Telemetry
+
+**Status:** Accepted.
+
+Canonical Events and Outcomes remain distinct from logs, traces, and operational metrics.
+
+Shared correlation references connect them where appropriate.
+
+---
+
+## ADR-072 — End-to-End Correlation
+
+**Status:** Accepted.
+
+Meaningful customer-facing operations will propagate correlation context across Runtime, Intelligence, domain persistence, Action execution, and background processing.
+
+---
+
+## ADR-073 — Intelligence Usage and Cost Visibility
+
+**Status:** Accepted.
+
+Intelligence invocations will preserve appropriate model, configuration, latency, validation, token-usage, and cost metadata.
+
+Raw provider transcripts are not automatically retained in ordinary logs.
+
+---
+
+## ADR-074 — Managed Initial Observability
+
+**Status:** Accepted.
+
+Kablet v0.1 will prioritize managed error monitoring and existing hosting telemetry rather than deploying a dedicated self-hosted observability stack.
+
+---
+
+# 12.P Observability Invariants
+
+1. Canonical commercial Events and technical telemetry remain distinct.
+2. Logs, traces, and metrics serve complementary purposes.
+3. Meaningful operations preserve correlation context.
+4. Technical trace identity is distinct from canonical domain identity.
+5. Background processing preserves originating correlation.
+6. Logs use structured fields.
+7. Expected failures use controlled classifications.
+8. Secrets must not enter ordinary logs.
+9. Sensitive customer data must not be indiscriminately recorded.
+10. Tracing must support investigation of Runtime bottlenecks.
+11. Intelligence provider latency is measured separately from total Runtime latency.
+12. Intelligence usage and cost remain observable.
+13. Invalid Intelligence output is distinguishable from provider unavailability.
+14. Raw prompts and responses are not automatically production telemetry.
+15. Server delivery is not automatically browser rendering.
+16. Browser telemetry cannot independently establish commercial Outcomes.
+17. Action monitoring distinguishes completed, failed, pending, and unknown results.
+18. Worker health is independently observable.
+19. Outbox backlog is monitored.
+20. Database and storage failures are observable.
+21. Alerts should be actionable.
+22. Investigation access must preserve tenant isolation.
+23. Operational visibility does not justify unrestricted personal-data collection.
+24. Telemetry retention follows explicit policy.
+25. Production and non-production telemetry remain distinguishable.
+26. External observability providers must follow applicable security and privacy requirements.
+27. The MVP prioritizes useful end-to-end diagnostics over observability infrastructure breadth.
+
+---
+
+# 12.Q Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Managed error-monitoring provider.
+- Trace exporter.
+- Telemetry backend.
+- Logging library.
+- Exact span naming.
+- Sampling rates.
+- Metric names.
+- Alert thresholds.
+- Telemetry retention periods.
+- Dashboard provider.
+- Production performance budgets.
+- Incident response procedures.
+- Error-reporting SDK configuration.
+- Telemetry access roles.
+- Detailed redaction implementation.
+
+These decisions will be finalized during implementation and deployment planning.
+
+---
+
+# 12.R Dependency
+
+Section 11 established Kablet's Analytics and Experimentation architecture.
+
+Section 12 establishes:
+
+**An OpenTelemetry-compatible operational observability architecture that connects structured logs, traces, metrics, Intelligence usage, Runtime performance, Action execution, integration health, and worker processing through consistent correlation identities while keeping canonical commercial evidence and sensitive customer information appropriately separated.**
+
+The next section defines Kablet's security architecture, secret management, trusted execution boundaries, data protection, and defense against unauthorized cross-tenant access.
+
+# 13 — Security & Secrets
