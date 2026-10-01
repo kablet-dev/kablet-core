@@ -2645,9 +2645,7 @@ The contract remains.
 
 ## ADR-001 — Start Kablet as a Modular Monolith
 
-### Status
-
-Accepted for Technical Architecture v0.1.
+**Status:** Accepted.
 
 ### Context
 
@@ -2693,9 +2691,7 @@ Future extraction remains possible through explicit contracts.
 
 ## ADR-002 — Separate Control Plane and Customer Runtime Logically
 
-### Status
-
-Accepted for Technical Architecture v0.1.
+**Status:** Accepted.
 
 ### Context
 
@@ -2731,9 +2727,7 @@ The Customer Runtime remains a natural future extraction boundary.
 
 ## ADR-003 — Keep Learning / Analysis Off the Critical Runtime Path
 
-### Status
-
-Accepted for Technical Architecture v0.1.
+**Status:** Accepted.
 
 ### Decision
 
