@@ -4458,3 +4458,804 @@ Section 03 establishes:
 The next section defines the mechanisms that prevent one actor, Business, Visitor, or integration from accessing or modifying data outside its authority.
 
 # 04 — Authentication & Authorization
+---
+
+# 04. Authentication & Authorization
+
+## 04.1 Purpose
+
+This section defines how Kablet v0.1 will authenticate actors, establish trusted ownership context, authorize operations, and enforce tenant isolation.
+
+It translates the Foundation's Identity & Ownership and Privacy & Tenant Isolation principles into concrete technical architecture.
+
+The system must protect:
+
+- Organizations.
+- Businesses.
+- Business Truth.
+- Visitors.
+- Sessions.
+- Visitor State.
+- Decisions.
+- Experiences.
+- Actions.
+- Events.
+- Outcomes.
+- Integrations.
+- Intelligence context.
+
+Authentication, authorization, ownership, and data isolation are related but distinct responsibilities.
+
+---
+
+# 04.A Core Security Model
+
+## 04.2 Authentication
+
+Authentication establishes the identity of an actor.
+
+For example:
+
+Who is attempting to access the Kablet Control Plane?
+
+Authentication does not automatically determine which Businesses that actor may access.
+
+---
+
+## 04.3 Authorization
+
+Authorization determines whether an authenticated or otherwise trusted actor may perform a specific operation on a particular resource.
+
+Conceptually:
+
+Actor
++
+Operation
++
+Resource
++
+Ownership Context
++
+Applicable Capability
+=
+Authorization Decision
+
+Authorization must occur on trusted server-side boundaries.
+
+---
+
+## 04.4 Ownership
+
+Ownership establishes which Organization and Business a resource belongs to.
+
+Ownership must not be inferred solely from:
+
+- The current URL.
+- Client-provided IDs.
+- Authentication-provider metadata.
+- Frontend state.
+- AI output.
+
+Canonical Kablet domain relationships determine ownership.
+
+---
+
+## 04.5 Tenant Isolation
+
+Tenant isolation ensures that one Organization cannot access another Organization's private operational data without explicit, authorized arrangements.
+
+Kablet will enforce isolation through multiple layers.
+
+Application authorization and PostgreSQL RLS serve complementary purposes.
+
+Neither frontend filtering nor AI instructions constitute a security boundary.
+
+---
+
+# 04.B Authentication Provider
+
+## 04.6 Initial Provider Selection
+
+Kablet v0.1 will use Supabase Auth as its initial managed authentication provider.
+
+Supabase Auth will handle the initial Business User authentication lifecycle.
+
+This avoids building custom credential infrastructure before Kablet has validated its product.
+
+---
+
+## 04.7 Provider Identity Is Not Kablet Identity
+
+Supabase authentication identity must remain separate from Kablet's canonical User record.
+
+Conceptually:
+
+Supabase Auth Identity
+        |
+        v
+Kablet Identity Mapping
+        |
+        v
+Canonical Kablet User
+        |
+        v
+Membership
+        |
+        v
+Organization / Business Access
+
+A Kablet User may have an associated external authentication identity.
+
+That association must not redefine the canonical Kablet User model.
+
+---
+
+## 04.8 Authentication Adapter
+
+Authentication-provider-specific behavior must remain behind a controlled application boundary.
+
+Domain modules must not directly depend on Supabase Auth SDK objects.
+
+The adapter should support the capabilities required by Kablet, including:
+
+- Session verification.
+- Authenticated identity resolution.
+- User identity mapping.
+- Authentication failure handling.
+
+The exact interface will be defined during implementation.
+
+---
+
+## 04.9 Authentication Scope
+
+The initial managed authentication system serves Business Users accessing the Control Plane.
+
+Anonymous customer Visitors do not require Supabase accounts.
+
+Visitor identity and Session continuity belong to Kablet's customer Runtime architecture.
+
+---
+
+# 04.C Actor Types
+
+## 04.10 Business User
+
+A Business User is a human identity that may receive access to one or more Organizations or Businesses through Memberships.
+
+Authentication establishes who the User is.
+
+Membership and authorization establish what the User may do.
+
+---
+
+## 04.11 Visitor
+
+A Visitor is a customer-side identity interacting with a Business's frontend.
+
+Visitors may be anonymous.
+
+Visitor identity is Business-scoped by default.
+
+A Visitor must not gain Business administration capabilities merely by possessing a valid customer Session.
+
+---
+
+## 04.12 System Actor
+
+A System Actor represents trusted non-human execution.
+
+Examples include:
+
+- Background workers.
+- Scheduled jobs.
+- Integration processors.
+- Internal system operations.
+
+System Actors must operate through explicitly scoped capabilities and trusted execution context.
+
+System identity does not automatically imply unrestricted tenant access.
+
+---
+
+## 04.13 External Integration Actor
+
+An external integration may submit information or trigger an operation through an authenticated integration boundary.
+
+The integration must be associated with its authorized Business context and allowed capabilities.
+
+Webhook payload contents alone must not establish authorization.
+
+---
+
+# 04.D Organization and Membership Authorization
+
+## 04.14 Organization Boundary
+
+Organization remains Kablet's primary tenant ownership boundary.
+
+Every Business belongs to one Organization at a given ownership state.
+
+Organization-level access must be established through explicit Membership or another authorized relationship.
+
+---
+
+## 04.15 Membership Model
+
+Membership connects a User to an authorized organizational or business context.
+
+A Membership must support:
+
+- User identity.
+- Organization context.
+- Business scope where applicable.
+- Granted capabilities.
+- Membership status.
+- Relevant lifecycle information.
+
+The exact physical schema is defined during implementation.
+
+---
+
+## 04.16 Capabilities
+
+Kablet will use explicit capabilities rather than treating a broad role label as sufficient authorization.
+
+Conceptual capabilities may include:
+
+- Organization management.
+- Business management.
+- Business Truth reading.
+- Business Truth editing.
+- Integration management.
+- Experiment management.
+- Reporting access.
+- User management.
+- Action configuration.
+
+The exact capability vocabulary will be finalized in the authorization contract.
+
+---
+
+## 04.17 Roles
+
+Roles may provide convenient collections of capabilities.
+
+However:
+
+Role name is not the final authorization decision.
+
+The system must evaluate the applicable capabilities and resource context.
+
+This supports future:
+
+- Multiple Businesses.
+- Agencies.
+- Enterprise Organizations.
+- Delegated administration.
+- Restricted operators.
+
+---
+
+## 04.18 Authorization Context
+
+A typical Control Plane operation requires:
+
+Authenticated User
+        ↓
+Canonical User
+        ↓
+Membership Resolution
+        ↓
+Organization / Business Context
+        ↓
+Capability Evaluation
+        ↓
+Resource Ownership Validation
+        ↓
+Authorized Operation
+
+This evaluation must occur server-side.
+
+---
+
+# 04.E PostgreSQL Row-Level Security
+
+## 04.19 RLS Decision
+
+Kablet v0.1 will use PostgreSQL Row-Level Security as an additional tenant-isolation mechanism for tenant-sensitive canonical tables.
+
+RLS complements application authorization.
+
+It does not replace it.
+
+---
+
+## 04.20 Defense in Depth
+
+The intended security model is:
+
+Trusted Actor Resolution
+        ↓
+Kablet Authorization
+        ↓
+Tenant-Scoped Application Operation
+        ↓
+PostgreSQL RLS
+        ↓
+Database Constraints
+        ↓
+Canonical Data
+
+Each layer protects against a different class of failure.
+
+---
+
+## 04.21 Database Execution Identity
+
+The application must use database execution identities appropriate to the operation.
+
+Ordinary tenant-scoped application requests must not use an unrestricted database identity that silently bypasses RLS.
+
+Migration and maintenance privileges must be separated from normal runtime privileges.
+
+---
+
+## 04.22 Trusted Tenant Context
+
+Where RLS relies on database session or transaction context, that context must be established by trusted server-side code.
+
+Client-provided Organization or Business identifiers are untrusted until resolved and authorized.
+
+A validated identifier is not, by itself, proof of authorization.
+
+---
+
+## 04.23 Transaction-Scoped Context
+
+If PostgreSQL session settings are used to communicate tenant context to RLS policies, the implementation should prefer transaction-local settings.
+
+Tenant context must not leak between unrelated requests through pooled database connections.
+
+The precise SQL and connection-pooling strategy will be defined during implementation.
+
+---
+
+## 04.24 RLS Default-Deny Principle
+
+Tenant-sensitive tables should deny unauthorized access by default.
+
+Policies must explicitly define permitted access.
+
+The absence of a tenant context must not accidentally result in unrestricted data access.
+
+---
+
+## 04.25 RLS and Relational Constraints
+
+RLS controls permitted row access.
+
+Relational constraints protect structural consistency.
+
+Both are necessary.
+
+For example, database constraints should help prevent records from being linked across incompatible ownership scopes.
+
+RLS alone does not establish the correctness of every relationship.
+
+---
+
+## 04.26 RLS Testing
+
+RLS behavior must be tested against real PostgreSQL.
+
+Tests must verify that:
+
+- Tenant A cannot read Tenant B's records.
+- Tenant A cannot modify Tenant B's records.
+- Unauthorized inserts fail.
+- Cross-tenant relationship attempts fail where prohibited.
+- Missing tenant context fails safely.
+- Background operations preserve correct tenant scope.
+- Connection reuse does not leak tenant context.
+
+Mock-only tests are insufficient for these guarantees.
+
+---
+
+# 04.F Business-Level Isolation
+
+## 04.27 Organization Access Does Not Erase Business Scope
+
+An Organization may own multiple Businesses.
+
+The architecture must distinguish Organization-wide access from Business-specific access.
+
+A User authorized for Business A must not automatically receive access to Business B merely because both share an Organization.
+
+The applicable Membership and capability model determines access.
+
+---
+
+## 04.28 Business-Scoped Resources
+
+Visitor-related records must resolve to their owning Business.
+
+This includes:
+
+- Visitors.
+- Sessions.
+- Visitor State.
+- Decisions.
+- Experiences.
+- Actions.
+- Events.
+- Outcomes.
+
+Business scope must be preserved through internal operations and background processing.
+
+---
+
+# 04.G Customer Runtime Security
+
+## 04.29 Anonymous Visitor Sessions
+
+The public customer Runtime must support anonymous Visitors.
+
+Anonymous access does not mean unrestricted access.
+
+A Visitor Session must be associated with the correct Business and permitted customer-facing operations.
+
+---
+
+## 04.30 Public Business Truth
+
+Some Business Truth is intentionally customer-facing.
+
+The Runtime may expose authorized public information through controlled application interfaces.
+
+Public access to selected Business Truth must not grant access to:
+
+- Internal Business configuration.
+- Private operational records.
+- Other Visitors.
+- Decision histories.
+- Integration credentials.
+- Administrative capabilities.
+
+---
+
+## 04.31 Visitor Session Protection
+
+Visitor Session identifiers and credentials must be generated and handled securely.
+
+The implementation must not assume that knowledge of an arbitrary Session ID establishes ownership of that Session.
+
+Session-continuity mechanisms will be specified in the Runtime Architecture.
+
+---
+
+## 04.32 Public Runtime Rate Limiting
+
+Public endpoints require appropriate abuse protection.
+
+Rate limiting and related controls must consider:
+
+- Public Session creation.
+- Intelligence invocation.
+- Signal submission.
+- Action execution.
+- Expensive external operations.
+
+The exact technology and thresholds will be defined later.
+
+---
+
+# 04.H Intelligence Authorization
+
+## 04.33 Intelligence Is Not an Authorization Authority
+
+AI-generated output must not grant permissions.
+
+Intelligence may propose an Action.
+
+Kablet must independently determine whether that Action is available and authorized.
+
+---
+
+## 04.34 Context Assembly Enforcement
+
+Context Assembly must select information according to:
+
+- Business ownership.
+- Authorization.
+- Relevance.
+- Purpose.
+- Applicable privacy constraints.
+
+Intelligence providers must not receive unrestricted access to Kablet's database.
+
+---
+
+## 04.35 Tool Execution
+
+If Intelligence uses tools, those tools must execute through controlled Kablet capabilities.
+
+Tool execution must preserve:
+
+- Business context.
+- Applicable actor authority.
+- Action constraints.
+- Input validation.
+- Auditability.
+
+A model's request to invoke a tool is not sufficient authorization.
+
+---
+
+## 04.36 Business Authority and Visitor Authority
+
+Some operations may require both Business authorization and Visitor confirmation.
+
+For example, a Business may permit appointment booking, but the Visitor must still intentionally submit the required booking information.
+
+The system must not confuse permission to offer an Action with permission to execute it on behalf of a Visitor.
+
+---
+
+# 04.I Background Workers and Integrations
+
+## 04.37 Background Worker Identity
+
+Workers must execute with trusted system identity.
+
+Each tenant-sensitive job must carry or resolve its authorized Business context.
+
+A worker's infrastructure privileges must not become unrestricted domain authority.
+
+---
+
+## 04.38 Job Context
+
+Tenant-sensitive jobs should preserve:
+
+- Organization.
+- Business.
+- Operation.
+- Relevant resource.
+- Initiating actor or trusted source.
+- Correlation identity.
+- Applicable authority.
+
+This context must be validated before consequential execution.
+
+---
+
+## 04.39 Integration Credentials
+
+Integration credentials must be stored and accessed through controlled infrastructure.
+
+They must not be included in ordinary:
+
+- Visitor State.
+- Experience payloads.
+- Event payloads.
+- Intelligence context.
+
+---
+
+## 04.40 Webhook Authentication
+
+External webhook ingestion must verify the sender using the provider's supported authentication or signature mechanism where available.
+
+The receiving system must resolve the authorized integration and Business context before applying canonical changes.
+
+Webhook data remains untrusted input until validated.
+
+---
+
+# 04.J Privileged Operations
+
+## 04.41 Administrative Access
+
+Privileged platform operations must be explicit and auditable.
+
+Platform administration must not silently become ordinary unrestricted tenant access.
+
+The initial implementation should minimize privileged execution paths.
+
+---
+
+## 04.42 Migration Identity
+
+Database migrations require a separate privileged execution context.
+
+Normal application requests must not execute with migration-level privileges.
+
+---
+
+## 04.43 Service Credentials
+
+High-privilege provider credentials must remain server-side.
+
+They must never be exposed through:
+
+- Browser bundles.
+- Public Runtime responses.
+- Component payloads.
+- AI-generated Experiences.
+- Client-side configuration.
+
+---
+
+# 04.K Authorization Failure Behavior
+
+## 04.44 Fail Closed
+
+If authorization cannot be established, the operation must not proceed.
+
+Examples include:
+
+- Missing Membership.
+- Invalid Session.
+- Incorrect Business scope.
+- Insufficient capability.
+- Invalid integration authority.
+- Missing trusted tenant context.
+
+The system must not infer permission from incomplete information.
+
+---
+
+## 04.45 Safe Error Responses
+
+Authorization failures must not unnecessarily reveal private resource existence or tenant information.
+
+Operational logs may retain appropriate diagnostic information subject to access and privacy controls.
+
+---
+
+## 04.46 Authorization Events
+
+Meaningful security-sensitive operations should be observable.
+
+Examples include:
+
+- Membership changes.
+- Privileged configuration changes.
+- Delegated authority changes.
+- Integration authorization changes.
+- Repeated unauthorized access attempts.
+
+Security audit records are distinct from ordinary customer interaction Events.
+
+---
+
+# 04.L Architecture Decision Records
+
+## ADR-016 — Supabase Auth as Initial Authentication Provider
+
+**Status:** Accepted for v0.1.
+
+Kablet will use Supabase Auth for initial Business User authentication.
+
+Canonical Kablet User and Membership records remain independent of the provider's domain representation.
+
+Provider-specific behavior will be isolated behind an authentication adapter.
+
+---
+
+## ADR-017 — Kablet-Owned Authorization
+
+**Status:** Accepted.
+
+Authorization is implemented through Kablet's own ownership, Membership, resource, and capability model.
+
+Authentication-provider identity alone does not grant Business access.
+
+---
+
+## ADR-018 — PostgreSQL RLS for Tenant Isolation
+
+**Status:** Accepted.
+
+Tenant-sensitive canonical tables will use PostgreSQL RLS as an additional enforcement layer.
+
+Application authorization remains mandatory.
+
+The exact policy and execution-role implementation will be specified in the physical schema and security implementation.
+
+---
+
+## ADR-019 — Separate Actor Types
+
+**Status:** Accepted.
+
+Business Users, customer Visitors, System Actors, and external Integration Actors remain distinct security concepts.
+
+Their identities and authorities must not be conflated.
+
+---
+
+## ADR-020 — Trusted Context and Default Denial
+
+**Status:** Accepted.
+
+Tenant-sensitive operations require trusted ownership context.
+
+Missing or invalid authorization must fail closed.
+
+Client-supplied identifiers are not sufficient proof of authority.
+
+---
+
+# 04.M Authentication & Authorization Invariants
+
+1. Authentication and authorization remain separate.
+2. Supabase Auth is an initial provider, not the canonical Kablet identity model.
+3. Organization is the primary tenant boundary.
+4. Business-level scope remains enforceable.
+5. User access is established through Membership and applicable capabilities.
+6. Ownership does not automatically imply access.
+7. IDs are not authorization credentials.
+8. Business Users and Visitors remain distinct.
+9. System Actors operate through scoped authority.
+10. External integrations require authenticated and authorized boundaries.
+11. Authorization is enforced server-side.
+12. PostgreSQL RLS provides additional tenant isolation.
+13. Ordinary application access must not silently bypass RLS.
+14. Missing tenant context fails safely.
+15. Database connection reuse must not leak tenant context.
+16. RLS behavior must be tested against real PostgreSQL.
+17. Public Visitor access does not grant administrative authority.
+18. Intelligence does not grant permissions.
+19. Intelligence tool calls require independent authorization.
+20. Consequential Actions respect Business and applicable Visitor authority.
+21. Workers preserve trusted tenant context.
+22. Integration credentials remain outside ordinary domain and model context.
+23. Webhook payloads remain untrusted until authenticated and validated.
+24. Privileged administration is explicit and auditable.
+25. Migration privileges remain separate from runtime privileges.
+26. High-privilege credentials never enter client-side execution.
+27. Authorization failure must fail closed.
+28. Security-sensitive operations must be observable.
+29. Authentication-provider replacement must not redefine Foundation identity concepts.
+30. Tenant isolation must survive every execution boundary.
+
+---
+
+# 04.N Explicitly Not Finalized Yet
+
+This section does not define:
+
+- Exact Supabase Auth configuration.
+- Exact login and onboarding screens.
+- MFA policy.
+- Exact Membership table schema.
+- Final capability vocabulary.
+- Exact RLS SQL policies.
+- Database role definitions.
+- JWT claim design.
+- Session-cookie implementation.
+- Visitor Session token format.
+- Rate-limit thresholds.
+- Integration credential encryption implementation.
+- Security audit retention.
+- Enterprise SSO.
+- Agency access implementation.
+
+These will be finalized through the relevant implementation contracts and security specifications.
+
+---
+
+# 04.O Dependency
+
+Section 03 established Kablet's canonical PostgreSQL data architecture.
+
+Section 04 establishes:
+
+**Managed authentication, Kablet-owned authorization, explicit actor separation, server-enforced ownership, and PostgreSQL RLS as defense in depth.**
+
+The next section defines how Kablet assembles authorized context, invokes reasoning systems, validates their output, and produces canonical Decisions without surrendering control to an AI provider.
+
+# 05 — Intelligence Architecture
