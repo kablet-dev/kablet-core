@@ -13543,3 +13543,927 @@ Section 12 establishes:
 The next section defines Kablet's security architecture, secret management, trusted execution boundaries, data protection, and defense against unauthorized cross-tenant access.
 
 # 13 — Security & Secrets
+---
+
+# 13. Security & Secrets
+
+## 13.1 Purpose
+
+This section defines Kablet's technical security architecture across the Control Plane, public Customer Runtime, canonical database, Intelligence subsystem, external integrations, background workers, object storage, and deployment infrastructure.
+
+It establishes requirements for:
+
+- Trust boundaries.
+- Authentication and authorization.
+- Tenant isolation.
+- Secret management.
+- Credential rotation.
+- Public Runtime security.
+- Database access.
+- Integration security.
+- Intelligence input and output security.
+- Storage protection.
+- Data minimization.
+- Auditability.
+- Secure deployment.
+- Incident containment.
+
+This section implements the security principles established in Foundation Specification v0.1 and the authentication architecture defined in Section 04.
+
+---
+
+# 13.A Security Principles
+
+## 13.2 Default Deny
+
+Kablet must deny access when the applicable identity, ownership, capability, or authorization context cannot be established.
+
+Missing authorization information must not be interpreted as permission.
+
+---
+
+## 13.3 Defense in Depth
+
+Security must operate across multiple boundaries:
+
+1. Authentication.
+2. Trusted request context.
+3. Application authorization.
+4. Domain validation.
+5. Tenant-scoped repositories.
+6. PostgreSQL isolation.
+7. Storage access policies.
+8. Infrastructure permissions.
+
+No single mechanism is sufficient for the entire system.
+
+---
+
+## 13.4 Capability Does Not Imply Authority
+
+A system possessing the technical ability to perform an operation does not automatically possess domain authority to perform it.
+
+Examples:
+
+- Intelligence may propose a booking but cannot authorize it.
+- A worker may possess database connectivity but cannot access arbitrary Business records.
+- A storage adapter may support deletion but cannot delete an Asset without an authorized operation.
+- A Business User may belong to an Organization without automatically having every Business capability.
+
+---
+
+## 13.5 Trusted Boundaries
+
+Kablet must treat the following as untrusted until validated:
+
+- Browser requests.
+- Customer input.
+- Client-provided identifiers.
+- Uploaded files.
+- External API responses.
+- Webhook payloads.
+- Retrieved documents.
+- Intelligence provider output.
+- User-controlled domain configuration.
+
+Trust must be established by Kablet-controlled validation and authorization.
+
+---
+
+# 13.B Security Architecture
+
+## 13.6 Logical Security Boundaries
+
+The intended architecture is:
+
+Public Customer Runtime
+          |
+          v
+Request Validation
+          |
+          v
+Trusted Business / Session Context
+          |
+          v
+Domain Authorization
+          |
+          v
+Scoped Application Services
+          |
+          v
+PostgreSQL / Controlled Adapters
+
+The Control Plane follows a separate authenticated User and Membership authorization path.
+
+---
+
+## 13.7 Control Plane Boundary
+
+Control Plane operations require authenticated Business User identity and applicable Membership authorization.
+
+The server must independently resolve:
+
+- Canonical User.
+- Organization.
+- Business.
+- Membership.
+- Requested capability.
+- Resource ownership.
+
+Client-supplied Organization or Business IDs are selectors, not authorization evidence.
+
+---
+
+## 13.8 Public Runtime Boundary
+
+Customer-facing Experiences may be publicly accessible.
+
+Public accessibility does not grant administrative authority.
+
+Anonymous Visitors must operate through constrained Business-scoped Session capabilities.
+
+---
+
+## 13.9 System Actor Boundary
+
+Workers and internal services must execute under trusted infrastructure identity.
+
+They must also establish the applicable domain execution context.
+
+Infrastructure authentication and domain authorization remain separate requirements.
+
+---
+
+# 13.C Authentication and Authorization
+
+## 13.10 Supabase Auth
+
+Supabase Auth remains the initial managed authentication provider for Business Users, as accepted in Section 04.
+
+Kablet owns canonical User, Membership, Organization, Business, and capability semantics.
+
+---
+
+## 13.11 Server-Side Authorization
+
+Consequential authorization must occur on trusted server-side boundaries.
+
+The frontend may hide unavailable controls for usability, but visual restrictions are not security controls.
+
+---
+
+## 13.12 Resource Ownership
+
+Authorization must verify both the requested capability and ownership of the relevant resource.
+
+For example:
+
+Permission to edit Business media does not authorize modification of another Business's Asset.
+
+---
+
+## 13.13 Privileged Operations
+
+Administrative and maintenance capabilities must be explicitly separated from ordinary Business operations.
+
+Privileged access must not become the default application execution path.
+
+---
+
+# 13.D PostgreSQL Security
+
+## 13.14 Tenant Isolation
+
+PostgreSQL Row-Level Security will provide defense-in-depth protection for applicable tenant-sensitive canonical tables.
+
+Application-level authorization remains mandatory.
+
+---
+
+## 13.15 Database Roles
+
+The implementation must distinguish database access responsibilities.
+
+Candidate roles include:
+
+- Application Runtime.
+- Background Worker.
+- Migration / Schema Administration.
+- Restricted Maintenance.
+
+Exact role definitions will be finalized during physical database design.
+
+---
+
+## 13.16 RLS Enforcement
+
+The implementation must account for the fact that privileged PostgreSQL roles and certain managed-provider credentials may bypass RLS.
+
+Ordinary application operations must not unintentionally use unrestricted privileged database access.
+
+---
+
+## 13.17 Trusted Tenant Context
+
+Where PostgreSQL policies depend on application-provided tenant context, that context must be established through a trusted mechanism.
+
+Transaction-local context is preferred where appropriate.
+
+The implementation must prevent tenant-context leakage through pooled database connections.
+
+---
+
+## 13.18 Drizzle and Direct SQL
+
+Using Drizzle does not automatically establish correct RLS context.
+
+Every database access path, including raw SQL, must follow the applicable tenant and authorization boundary.
+
+---
+
+## 13.19 Database Testing
+
+Security tests must verify:
+
+- Same-tenant authorized access.
+- Cross-tenant read rejection.
+- Cross-tenant modification rejection.
+- Missing-context rejection.
+- Restricted-role behavior.
+- Privileged-operation separation.
+- Connection reuse without context leakage.
+
+These must be executable tests against PostgreSQL, not merely TypeScript mocks.
+
+---
+
+# 13.E Secret Management
+
+## 13.20 Secret Definition
+
+Secrets include:
+
+- Database credentials.
+- Supabase privileged credentials.
+- Intelligence provider API keys.
+- Integration access tokens.
+- Webhook signing secrets.
+- Encryption keys.
+- Deployment credentials.
+- Storage administration credentials.
+
+Secrets must not become ordinary Business Truth or Experience data.
+
+---
+
+## 13.21 Secret Storage
+
+Production secrets must be stored through an appropriate managed secret or environment-configuration mechanism.
+
+The repository must not contain live production credentials.
+
+---
+
+## 13.22 Environment Separation
+
+Development, staging, and production must use appropriately separated credentials.
+
+Production secrets must not be copied into development merely for convenience.
+
+---
+
+## 13.23 Client Exposure
+
+High-privilege secrets must never be included in:
+
+- Browser bundles.
+- Public Runtime configuration.
+- Experience payloads.
+- Intelligence requests.
+- Ordinary Events.
+- Application logs.
+
+Public client configuration must be explicitly distinguished from privileged credentials.
+
+---
+
+## 13.24 Secret Rotation
+
+The architecture must support credential replacement without requiring destructive changes to canonical Business records.
+
+Rotation procedures should account for:
+
+- Database access.
+- Intelligence providers.
+- Integration credentials.
+- Webhook verification.
+- Storage access.
+
+---
+
+## 13.25 Secret Logging
+
+Secrets must be excluded or appropriately redacted from operational telemetry.
+
+Error messages and provider SDK exceptions must not be assumed safe to log without review.
+
+---
+
+# 13.F Integration Credential Security
+
+## 13.26 Business-Scoped Connections
+
+Integration credentials belong to controlled Integration Connections associated with an authorized Business.
+
+A Business must not access another Business's credentials through an Integration Connection identifier.
+
+---
+
+## 13.27 Least Privilege
+
+Where providers support scoped permissions, Kablet should request only the permissions required by enabled integration capabilities.
+
+---
+
+## 13.28 Credential Resolution
+
+Action handlers should obtain credentials through a trusted integration-credential boundary.
+
+Credentials must not be embedded in canonical Action payloads or durable job payloads.
+
+---
+
+## 13.29 Revocation
+
+The system must support disabling an Integration Connection.
+
+Revocation must prevent new unauthorized execution while preserving appropriate historical Action and Outcome evidence.
+
+---
+
+# 13.G Public Runtime Security
+
+## 13.30 Business Resolution
+
+Public requests must resolve to a valid Business through a trusted routing mechanism.
+
+Host headers, route parameters, and preview identifiers must be validated before establishing Business context.
+
+Detailed domain-routing behavior is defined in Section 14.
+
+---
+
+## 13.31 Visitor Sessions
+
+Anonymous Visitor Sessions must use appropriately protected identifiers or tokens.
+
+Session identity must not grant administrative authority.
+
+---
+
+## 13.32 Session Protection
+
+The implementation must consider:
+
+- Token unpredictability.
+- Expiration.
+- Appropriate cookie attributes.
+- Session fixation.
+- Cross-site request risks.
+- Unauthorized Session reuse.
+
+Exact Session transport and token design will be finalized during implementation.
+
+---
+
+## 13.33 Rate Limiting
+
+Public endpoints require appropriate abuse controls.
+
+Priority areas include:
+
+- Intelligence invocation.
+- Session creation.
+- Form submission.
+- Action requests.
+- Authentication.
+- Upload initiation.
+
+Limits should account for legitimate traffic patterns and Business requirements.
+
+---
+
+## 13.34 Input Validation
+
+All customer input must pass server-side validation.
+
+Client-side validation may improve usability but does not establish trust.
+
+---
+
+## 13.35 Browser Security
+
+The web Runtime should implement appropriate browser protections, including:
+
+- Safe content rendering.
+- Suitable Content Security Policy.
+- Appropriate response headers.
+- Controlled external destinations.
+- Protection against script injection.
+- Secure cookie handling.
+
+The exact policy will be finalized after identifying the required integrations and hosting environment.
+
+---
+
+# 13.H Intelligence Security
+
+## 13.36 Intelligence Is an Untrusted Proposal Source
+
+External Intelligence output must not be treated as executable authority.
+
+Kablet validates all proposed State changes, Decisions, Experiences, Components, and Actions.
+
+---
+
+## 13.37 Prompt Injection
+
+Visitor input, retrieved documents, and external content may contain instructions attempting to redirect Intelligence behavior.
+
+These inputs must not be allowed to override Kablet's authorization, Business Truth, or execution boundaries.
+
+---
+
+## 13.38 Context Minimization
+
+The Context Assembler must provide only relevant, authorized information.
+
+An Intelligence invocation must not receive unrestricted database records merely because they may be useful to reasoning.
+
+---
+
+## 13.39 Output Validation
+
+Structured output validation must include:
+
+- Contract validation.
+- Business ownership.
+- Truth grounding.
+- Component eligibility.
+- Action eligibility.
+- Semantic constraints.
+
+Provider-side structured-output support does not replace Kablet validation.
+
+---
+
+## 13.40 Tool and Action Authority
+
+The Intelligence provider must not receive unrestricted direct access to consequential Business systems.
+
+Execution belongs to the controlled Action Architecture.
+
+---
+
+## 13.41 Provider Data Handling
+
+External Intelligence provider configuration must be reviewed for applicable:
+
+- Data retention.
+- Privacy.
+- Security.
+- Logging.
+- Regional requirements.
+- Contractual controls.
+
+The exact provider settings will be finalized during deployment.
+
+---
+
+# 13.I Storage and Upload Security
+
+## 13.42 Storage Ownership
+
+Canonical Asset ownership remains in PostgreSQL.
+
+Storage access must follow the approved Asset and Business context.
+
+---
+
+## 13.43 Upload Validation
+
+Uploaded content must be treated as untrusted.
+
+The implementation must validate applicable file type, size, content, and ownership requirements.
+
+---
+
+## 13.44 Restricted Assets
+
+Private Assets require authorized delivery.
+
+A public customer Experience must not expose restricted storage objects through arbitrary references.
+
+---
+
+## 13.45 Storage Credentials
+
+Privileged storage credentials remain server-side.
+
+Temporary upload or delivery permissions must be appropriately scoped and time-limited.
+
+---
+
+# 13.J Webhook Security
+
+## 13.46 Verification
+
+Incoming webhooks must use the provider's applicable authentication or signature-verification mechanism.
+
+Verification must occur before trusting the payload's claimed Business identity or result.
+
+---
+
+## 13.47 Replay Protection
+
+Webhook ingestion must account for repeated delivery and applicable replay risks.
+
+Provider Event identity, timestamp verification, and idempotency should be used where supported.
+
+---
+
+## 13.48 Business Mapping
+
+A verified webhook must resolve to the correct authorized Integration Connection and Business.
+
+An external payload must not be able to redirect an operation into another tenant's canonical records.
+
+---
+
+## 13.49 Outcome Verification
+
+A technically valid webhook does not automatically establish every claimed commercial Outcome.
+
+The Outcome domain must apply the relevant evidence and source-authority rules.
+
+---
+
+# 13.K Worker Security
+
+## 13.50 Worker Identity
+
+Workers must operate using controlled infrastructure credentials.
+
+Their access must be appropriate to their responsibilities.
+
+---
+
+## 13.51 Job Payload Validation
+
+Durable job payloads must use registered, versioned contracts.
+
+Workers must not execute arbitrary code or unrestricted instructions stored inside job payloads.
+
+---
+
+## 13.52 Tenant Context
+
+Every tenant-sensitive job must establish trusted Organization and Business context before accessing canonical records.
+
+---
+
+## 13.53 Privileged Maintenance
+
+Privileged maintenance operations must use explicit, separately controlled execution paths.
+
+They must not become a workaround for ordinary tenant-scoped processing.
+
+---
+
+# 13.L Data Protection
+
+## 13.54 Data Minimization
+
+Kablet should collect and retain only the data required for its defined operational and commercial purposes.
+
+---
+
+## 13.55 Data Classification
+
+The implementation should distinguish appropriate data categories, including:
+
+- Public Business information.
+- Internal Business information.
+- Customer personal information.
+- Authentication data.
+- Integration credentials.
+- Canonical commercial evidence.
+- Operational telemetry.
+
+These categories may require different access and retention controls.
+
+---
+
+## 13.56 Encryption
+
+Kablet should use appropriate encryption in transit and at rest through its infrastructure providers.
+
+Highly sensitive credentials may require additional application-level protection.
+
+Exact encryption and key-management choices will be finalized during implementation.
+
+---
+
+## 13.57 Retention and Deletion
+
+The architecture must support applicable data-retention and deletion requirements.
+
+Append-oriented Event history does not imply that personal information is permanently undeletable.
+
+---
+
+## 13.58 Backups
+
+Production data requires an appropriate backup and recovery strategy.
+
+Backup access, retention, and restoration must follow applicable security controls.
+
+Detailed recovery requirements are defined in Section 18.
+
+---
+
+# 13.M Auditability
+
+## 13.59 Security-Relevant Operations
+
+Meaningful administrative and security-sensitive operations should produce appropriate audit evidence.
+
+Examples include:
+
+- Membership changes.
+- Business authorization changes.
+- Integration connection changes.
+- Credential replacement.
+- Business Truth modifications.
+- Asset approval.
+- Privileged maintenance.
+- Data deletion.
+
+---
+
+## 13.60 Audit vs Diagnostic Logs
+
+Audit evidence and ordinary diagnostic logs serve different purposes.
+
+Security-sensitive operations must not depend exclusively on temporary application logs for historical accountability.
+
+---
+
+## 13.61 Audit Access
+
+Audit records must follow appropriate access controls.
+
+A Business User must not gain unrestricted visibility into another tenant's administrative history.
+
+---
+
+# 13.N Secure Development and Deployment
+
+## 13.62 Dependency Security
+
+The implementation should use maintained dependencies and appropriate dependency vulnerability checks.
+
+---
+
+## 13.63 Secret Scanning
+
+The repository and CI pipeline should include practical controls against accidental credential commits.
+
+---
+
+## 13.64 Protected Production Changes
+
+Production migrations and privileged configuration changes must follow controlled deployment procedures.
+
+---
+
+## 13.65 Environment Configuration
+
+Environment-specific settings must be explicit.
+
+The application must fail safely when required production security configuration is missing.
+
+---
+
+## 13.66 Security Testing
+
+The implementation strategy must include:
+
+- Authorization tests.
+- Cross-tenant database tests.
+- Public endpoint abuse tests.
+- Action authorization tests.
+- Webhook validation tests.
+- Storage isolation tests.
+- Intelligence-output validation tests.
+- Secret-exposure checks.
+
+---
+
+# 13.O Incident Containment
+
+## 13.67 Revocation Capabilities
+
+The architecture should support disabling or revoking affected:
+
+- User Sessions.
+- Memberships.
+- Integration Connections.
+- API credentials.
+- Public capabilities where appropriate.
+
+---
+
+## 13.68 Compromised Credentials
+
+Credential compromise must have a defined containment and rotation path.
+
+Historical canonical records should remain available according to applicable retention and security rules.
+
+---
+
+## 13.69 Tenant Isolation Incident
+
+A suspected cross-tenant exposure must be treated as a security incident requiring investigation through appropriate audit and operational evidence.
+
+The system must not silently repair records while discarding relevant incident evidence.
+
+---
+
+# 13.P MVP Security Boundary
+
+## 13.70 Minimum Required Controls
+
+The first production-capable implementation must include:
+
+1. Supabase Auth for Business Users.
+2. Kablet-owned Membership authorization.
+3. Trusted server-side tenant context.
+4. PostgreSQL RLS for applicable tenant-sensitive tables.
+5. Separate privileged database access.
+6. Server-side secret management.
+7. Public Runtime input validation.
+8. Appropriate rate limiting.
+9. Controlled Intelligence output validation.
+10. Authorized Action execution.
+11. Verified webhook ingestion.
+12. Business-scoped storage access.
+13. Secure Session handling.
+14. Security-relevant audit evidence.
+15. Executable cross-tenant isolation tests.
+
+---
+
+## 13.71 Explicit MVP Exclusions
+
+The MVP does not require:
+
+- Enterprise SSO.
+- A custom identity provider.
+- A proprietary secrets vault.
+- A dedicated security operations center.
+- A custom encryption framework.
+- Complex enterprise policy administration.
+- Multiple regional security deployments.
+
+These capabilities may follow demonstrated requirements.
+
+---
+
+# 13.Q Architecture Decision Records
+
+## ADR-075 — Defense-in-Depth Security
+
+**Status:** Accepted.
+
+Kablet will combine authentication, trusted context, application authorization, domain validation, scoped repositories, and database-level isolation.
+
+---
+
+## ADR-076 — Default-Deny Authorization
+
+**Status:** Accepted.
+
+Missing or invalid authority must result in denial.
+
+Client-provided identifiers and Intelligence proposals cannot independently establish permission.
+
+---
+
+## ADR-077 — Managed Secret Configuration
+
+**Status:** Accepted.
+
+Production secrets will use controlled server-side infrastructure configuration.
+
+Live credentials must not be committed to the repository or exposed to the Customer Runtime.
+
+---
+
+## ADR-078 — Intelligence as Untrusted Proposal Source
+
+**Status:** Accepted.
+
+External Intelligence providers cannot override Business Truth, tenant isolation, Action authorization, or executable Component boundaries.
+
+---
+
+## ADR-079 — Verified External Ingestion
+
+**Status:** Accepted.
+
+External webhooks and integration responses require applicable authentication, validation, Business mapping, and idempotency before canonical acceptance.
+
+---
+
+## ADR-080 — Executable Tenant Isolation Testing
+
+**Status:** Accepted.
+
+Cross-tenant security must be demonstrated through actual integration tests, including PostgreSQL RLS behavior, rather than relying solely on application-level assumptions.
+
+---
+
+# 13.R Security & Secrets Invariants
+
+1. Security follows default-deny behavior.
+2. Authentication is distinct from authorization.
+3. Authorization is distinct from ownership.
+4. Capability does not imply authority.
+5. Browser input remains untrusted.
+6. Intelligence output remains untrusted until validated.
+7. External provider content remains untrusted until validated.
+8. Tenant context must be established by trusted server-side mechanisms.
+9. Organization membership does not automatically grant every Business capability.
+10. PostgreSQL RLS provides defense in depth.
+11. Application authorization remains mandatory.
+12. Ordinary Runtime operations must not unintentionally bypass RLS.
+13. Database connection reuse must not leak tenant context.
+14. Production credentials remain outside source control.
+15. High-privilege secrets never enter public Experience payloads.
+16. Integration credentials remain Business-scoped.
+17. Credentials must support controlled revocation and rotation.
+18. Anonymous Visitor Sessions do not grant administrative authority.
+19. Public Runtime endpoints require appropriate abuse controls.
+20. Customer input requires server-side validation.
+21. Arbitrary AI-generated executable frontend code is prohibited.
+22. Intelligence cannot directly execute unrestricted consequential operations.
+23. Storage access preserves canonical Asset ownership.
+24. Webhooks require applicable verification and replay protection.
+25. Workers preserve trusted tenant context.
+26. Job payloads cannot establish unrestricted execution authority.
+27. Sensitive data follows minimization and retention requirements.
+28. Audit evidence remains distinct from diagnostic telemetry.
+29. Production security configuration must fail safely when incomplete.
+30. Cross-tenant isolation requires executable tests.
+31. Security incidents require appropriate containment and investigation.
+32. The MVP must implement core security boundaries before production traffic.
+
+---
+
+# 13.S Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact Supabase Auth configuration.
+- Final Membership capability vocabulary.
+- PostgreSQL RLS SQL.
+- Database role definitions.
+- Secrets-management provider.
+- Credential encryption implementation.
+- Visitor Session token format.
+- Cookie configuration.
+- Rate-limit thresholds.
+- Content Security Policy.
+- Webhook verification implementations.
+- Production backup retention.
+- Audit retention periods.
+- Security-monitoring provider.
+- Incident response procedures.
+- Regional data-residency configuration.
+
+These decisions will be finalized during implementation, testing, and deployment planning.
+
+---
+
+# 13.T Dependency
+
+Section 12 established Kablet's operational Observability architecture.
+
+Section 13 establishes:
+
+**A default-deny, defense-in-depth security architecture that protects tenant boundaries, separates authentication from authorization, isolates secrets, validates untrusted Intelligence and external inputs, controls consequential execution, and requires executable cross-tenant security tests.**
+
+The next section defines how Kablet connects Business-owned domains to the public Customer Runtime without allowing untrusted hostnames or preview routes to compromise Business resolution and tenant isolation.
+
+# 14 — Custom Domains & Traffic Routing
