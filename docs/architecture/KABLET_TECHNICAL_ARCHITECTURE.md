@@ -15952,3 +15952,917 @@ Section 15 establishes:
 The next section defines Kablet's testing strategy, including how its permanent Foundation contracts will be verified through automated tests and how the first complete Visitor-to-Outcome flow will be proven.
 
 # 16 — Testing Strategy
+---
+
+# 16. Testing Strategy
+
+## 16.1 Purpose
+
+This section defines how Kablet verifies its technical architecture, permanent domain boundaries, security guarantees, and complete customer conversion lifecycle.
+
+The testing strategy must establish confidence in:
+
+- Domain correctness.
+- Tenant isolation.
+- Business Truth authority.
+- Visitor State transitions.
+- Intelligence proposal validation.
+- Decision acceptance.
+- Experience composition.
+- Component contracts.
+- Action authorization.
+- Idempotent execution.
+- Event and Outcome integrity.
+- Background processing.
+- External integration behavior.
+- Customer Runtime functionality.
+- Deployment readiness.
+
+The objective is not maximum test count.
+
+The objective is executable evidence that Kablet preserves its critical invariants under normal operation, failure, concurrency, and recovery.
+
+---
+
+# 16.A Fundamental Testing Philosophy
+
+## 16.2 Test Architectural Contracts
+
+Kablet tests must verify observable behavior and domain contracts.
+
+They should avoid excessive dependence on incidental implementation details.
+
+A valid refactor should not require rewriting unrelated tests when the underlying contract remains unchanged.
+
+---
+
+## 16.3 Test the Boundaries
+
+The highest-priority tests are those protecting permanent Foundation boundaries.
+
+Examples include:
+
+- Visitor is distinct from Business User.
+- Business Truth cannot be silently mutated by Intelligence.
+- A proposed Decision is not automatically accepted.
+- A proposed Experience is not automatically delivered.
+- An Action requires independent authorization.
+- A completed Action is not automatically a verified commercial Outcome.
+- Cross-tenant access is rejected.
+- Repeated technical delivery does not duplicate consequential operations.
+
+---
+
+## 16.4 Success Responses Are Insufficient
+
+An HTTP success response alone does not establish domain correctness.
+
+Tests must inspect relevant canonical records and side effects.
+
+For example, a booking test should verify the applicable:
+
+- Action Invocation.
+- Execution Attempt.
+- Provider result.
+- Canonical Action status.
+- Event lineage.
+- Outcome evidence.
+
+---
+
+## 16.5 Deterministic by Default
+
+Automated tests should be deterministic wherever practical.
+
+External model variability, live provider availability, and uncontrolled production data must not become dependencies of the ordinary test suite.
+
+---
+
+# 16.B Testing Layers
+
+## 16.6 Test Categories
+
+Kablet will use complementary testing layers.
+
+| Layer | Primary responsibility |
+|---|---|
+| Static validation | Type and code correctness |
+| Unit tests | Isolated domain behavior |
+| Contract tests | Boundary compatibility |
+| Integration tests | Real infrastructure behavior |
+| Runtime tests | Customer-facing application behavior |
+| End-to-end tests | Complete domain journey |
+| Security tests | Authorization and isolation |
+| Failure tests | Recovery and idempotency |
+
+These layers should share test fixtures and contracts where appropriate.
+
+---
+
+## 16.7 Static Validation
+
+The repository must support automated:
+
+- TypeScript checking.
+- Linting.
+- Formatting validation.
+- Contract/schema validation where applicable.
+
+Static validation is necessary but does not replace runtime tests.
+
+---
+
+## 16.8 Unit Testing
+
+Vitest is the initial unit-testing framework.
+
+Unit tests should cover domain logic that can be verified without external infrastructure.
+
+Examples include:
+
+- Business rules.
+- State transition validation.
+- Decision policy constraints.
+- Component payload validation.
+- Metric calculations.
+- Authorization policy functions.
+- Controlled status transitions.
+
+---
+
+## 16.9 Integration Testing
+
+Integration tests must verify actual collaboration between domain modules and infrastructure.
+
+Database-dependent tests must use real disposable PostgreSQL rather than relying exclusively on mocked repositories.
+
+---
+
+## 16.10 Browser Testing
+
+Playwright is the initial browser-level testing framework.
+
+Browser tests should validate the actual customer-facing Runtime, including rendering, interaction, transitions, and consequential Action initiation.
+
+---
+
+# 16.C Test Infrastructure
+
+## 16.11 Disposable PostgreSQL
+
+Automated database integration tests require disposable PostgreSQL.
+
+The test runner must not connect to Production or shared customer data.
+
+---
+
+## 16.12 Migration-Based Setup
+
+The test database should be initialized using committed database migrations.
+
+This verifies that the repository can construct the expected schema from its version-controlled migration history.
+
+---
+
+## 16.13 Deterministic Fixtures
+
+Reusable fixtures should establish representative:
+
+- Organizations.
+- Businesses.
+- Memberships.
+- Business Truth.
+- Visitors.
+- Sessions.
+- Component definitions.
+- Action definitions.
+- Integration Connections.
+- Experiment configurations.
+
+Fixtures must preserve real ownership relationships.
+
+---
+
+## 16.14 Test Isolation
+
+Tests must prevent unintended state leakage.
+
+Each test or appropriately isolated test group should begin from a known database state.
+
+---
+
+## 16.15 External Test Adapters
+
+The test architecture should provide deterministic adapters for:
+
+- Intelligence.
+- Booking integrations.
+- Messaging integrations where applicable.
+- Storage operations where appropriate.
+
+Adapters must reproduce the relevant Kablet-owned contracts, including meaningful failure behavior.
+
+---
+
+# 16.D Identity and Tenant Isolation Tests
+
+## 16.16 Identity Tests
+
+Tests must verify the separation between:
+
+- User.
+- Membership.
+- Organization.
+- Business.
+- Visitor.
+- Session.
+- System Actor.
+
+---
+
+## 16.17 Authorization Tests
+
+Tests should cover:
+
+- Authorized capability.
+- Missing capability.
+- Invalid Membership.
+- Wrong Business.
+- Wrong Organization.
+- Missing trusted context.
+- Disabled or revoked access.
+
+---
+
+## 16.18 PostgreSQL RLS Tests
+
+Cross-tenant isolation must be tested against actual PostgreSQL policies.
+
+Required scenarios include:
+
+1. Business A can access authorized Business A records.
+2. Business A cannot read Business B's protected records.
+3. Business A cannot modify Business B's protected records.
+4. Missing tenant context fails closed.
+5. Connection reuse does not leak tenant context.
+6. Ordinary application access does not unintentionally bypass RLS.
+
+---
+
+## 16.19 Public Runtime Isolation
+
+A Visitor associated with Business A must not obtain Business B's private State, Session, Experience, or Action data by changing client-provided identifiers.
+
+---
+
+# 16.E Business Truth Tests
+
+## 16.20 Truth Authority
+
+Tests must verify that canonical Business Truth is modified only through authorized domain operations.
+
+---
+
+## 16.21 Truth Revision
+
+Meaningful Truth changes must preserve applicable revision and provenance information.
+
+---
+
+## 16.22 Intelligence Grounding
+
+An Intelligence proposal referencing a price, service, testimonial, or other authoritative Business claim must be validated against the permitted Truth context.
+
+Invented or unauthorized claims must be rejected or handled through an explicitly controlled fallback.
+
+---
+
+## 16.23 Historical Interpretation
+
+A Decision referencing an earlier Truth revision must remain historically interpretable after subsequent Truth changes.
+
+---
+
+# 16.F Visitor State and Decision Tests
+
+## 16.24 State Transitions
+
+Tests should verify:
+
+- Valid State updates.
+- Invalid State proposals.
+- Revision changes.
+- Stale update handling.
+- Business ownership.
+- Session association.
+
+---
+
+## 16.25 Decision Acceptance
+
+A proposed Decision must not automatically become canonical.
+
+Tests must distinguish:
+
+- Intelligence proposal received.
+- Proposal validated.
+- Proposal rejected.
+- Decision accepted.
+- Decision persisted.
+
+---
+
+## 16.26 Decision Context
+
+Accepted Decisions must preserve the applicable historical context references.
+
+---
+
+## 16.27 Fallback Behavior
+
+When Intelligence fails or produces invalid output, Kablet must follow a controlled fallback path.
+
+Fallback must not silently authorize unsupported Components, Actions, or Business claims.
+
+---
+
+# 16.G Intelligence Contract Tests
+
+## 16.28 Provider Independence
+
+Kablet-owned Intelligence contracts must be testable without requiring a live OpenAI invocation.
+
+---
+
+## 16.29 Structured Output
+
+Tests must cover:
+
+- Valid structured output.
+- Malformed output.
+- Missing required fields.
+- Unsupported Component types.
+- Unsupported Actions.
+- Invalid Truth references.
+- Cross-Business references.
+- Semantically invalid proposals.
+
+---
+
+## 16.30 Prompt Injection Resistance
+
+Adversarial inputs should test attempts to:
+
+- Override Business Truth.
+- Access another tenant.
+- Execute unauthorized Actions.
+- Introduce arbitrary executable UI.
+- Reveal restricted context.
+
+These tests verify Kablet's enforcement boundaries, not a guarantee that an external model will never produce malicious text.
+
+---
+
+## 16.31 Live Provider Contract Checks
+
+A limited separate test suite may verify compatibility with the configured external Intelligence provider.
+
+These tests should not become mandatory dependencies for every local unit-test run.
+
+---
+
+# 16.H Experience Runtime Tests
+
+## 16.32 Experience Contract
+
+Tests must verify that only validated declarative Experience Plans become canonical.
+
+---
+
+## 16.33 Component Registry
+
+Every supported Component type should have tests covering:
+
+- Valid payload.
+- Invalid payload.
+- Required fields.
+- Compatible Actions.
+- Compatible Assets.
+- Rendering behavior.
+
+---
+
+## 16.34 Experience Transitions
+
+Tests must verify controlled:
+
+- Addition.
+- Replacement.
+- Update.
+- Removal.
+- Reordering.
+- Action-status changes.
+
+Stale or invalid revisions must not silently overwrite newer canonical Experience state.
+
+---
+
+## 16.35 Browser Rendering
+
+Playwright tests should verify that the Runtime renders supported Components and accepts customer interactions.
+
+---
+
+## 16.36 Exposure Semantics
+
+Tests must preserve the distinction between:
+
+- Delivered.
+- Rendered.
+- Exposed.
+- Interacted.
+
+An Experience delivered by the server must not automatically generate fabricated browser exposure evidence.
+
+---
+
+# 16.I Action and Integration Tests
+
+## 16.37 Action Authorization
+
+Consequential Actions must be independently authorized.
+
+A valid Experience Component must not automatically authorize its associated Action.
+
+---
+
+## 16.38 Action Input
+
+Tests must cover valid, missing, malformed, and unauthorized Action inputs.
+
+---
+
+## 16.39 Idempotency
+
+Repeated technical delivery of the same consequential operation must not create duplicate commercial side effects.
+
+Required scenarios include:
+
+- Repeated request.
+- Repeated job execution.
+- Worker restart.
+- Duplicate webhook.
+- Provider timeout followed by retry handling.
+
+---
+
+## 16.40 Unknown External Results
+
+A provider timeout after a potentially successful external operation must not automatically trigger an unsafe duplicate execution.
+
+Tests must verify the applicable unknown-result and reconciliation path.
+
+---
+
+## 16.41 Provider Normalization
+
+Integration adapters must translate provider-specific responses into controlled Kablet result contracts.
+
+An HTTP 200 response must not automatically be interpreted as a verified commercial conversion.
+
+---
+
+## 16.42 Outcome Verification
+
+Tests must distinguish:
+
+- Action requested.
+- Action completed.
+- Booking pending.
+- Booking confirmed.
+- Booking rejected.
+- Booking cancelled.
+- Revenue verified.
+
+---
+
+# 16.J Event and Outcome Tests
+
+## 16.43 Event Envelope
+
+Canonical Event tests must validate required identity, ownership, version, timestamp, and correlation fields.
+
+---
+
+## 16.44 Event Lineage
+
+Relevant Events must preserve their applicable references to:
+
+- Business.
+- Visitor.
+- Session.
+- Decision.
+- Experience.
+- Component.
+- Action.
+- Experiment.
+
+---
+
+## 16.45 Transactional Integrity
+
+Where a domain operation requires atomic canonical persistence and Event/outbox creation, tests must verify that partial database failure cannot leave an invalid committed state.
+
+---
+
+## 16.46 Duplicate Delivery
+
+Event consumers must tolerate at-least-once delivery.
+
+Technical retries must not automatically become duplicate commercial occurrences.
+
+---
+
+## 16.47 Delayed Outcomes
+
+Tests must verify that a delayed Outcome can remain linked to its originating Action and Session.
+
+---
+
+## 16.48 Outcome Reversal
+
+Where applicable, cancellation, refund, or reversal must update the correct commercial interpretation without silently erasing historical evidence.
+
+---
+
+# 16.K Worker and Recovery Tests
+
+## 16.49 Job Claiming
+
+Concurrent workers must not independently claim the same available job as separate simultaneous executions.
+
+---
+
+## 16.50 Lease Recovery
+
+Tests must cover recovery after a worker stops while holding a job lease.
+
+---
+
+## 16.51 Retry Behavior
+
+Tests must verify:
+
+- Retryable failure.
+- Non-retryable failure.
+- Bounded attempts.
+- Backoff behavior.
+- Terminal failure visibility.
+- Idempotent recovery.
+
+---
+
+## 16.52 Outbox Recovery
+
+Committed outbox records must remain processable after application or worker interruption.
+
+---
+
+## 16.53 Consequential Retry Safety
+
+Worker recovery must preserve the same commercial Action identity when retrying technical execution.
+
+---
+
+# 16.L Storage and Routing Tests
+
+## 16.54 Asset Security
+
+Tests should verify:
+
+- Authorized upload.
+- Unauthorized upload.
+- Cross-tenant Asset rejection.
+- Private Asset access control.
+- Invalid media reference.
+- Unapproved Asset rejection.
+- Asset revision handling.
+
+---
+
+## 16.55 Domain Resolution
+
+Tests must verify:
+
+- Valid hostname resolution.
+- Unknown hostname rejection.
+- Inactive hostname rejection.
+- Correct Business mapping.
+- Untrusted Business-ID override rejection.
+- Preview/production separation.
+
+---
+
+# 16.M Analytics and Experiment Tests
+
+## 16.56 Metric Correctness
+
+Tests must verify that metric calculations use the defined numerator, denominator, eligibility, and time basis.
+
+---
+
+## 16.57 Experiment Assignment
+
+Tests should cover:
+
+- Eligibility.
+- Stable assignment.
+- Variant persistence.
+- Definition version.
+- Assignment before treatment.
+
+---
+
+## 16.58 Assignment vs Exposure
+
+An assigned Visitor who never receives an observable treatment exposure must remain distinguishable from an exposed Visitor.
+
+---
+
+## 16.59 Delayed Conversion
+
+Experiment reporting must correctly handle applicable delayed verified Outcomes.
+
+---
+
+# 16.N First End-to-End Acceptance Test
+
+## 16.60 Primary Engineering Milestone
+
+The first major acceptance test must prove one complete customer journey.
+
+The intended flow is:
+
+Business Configuration
+        |
+        v
+Visitor Arrives
+        |
+        v
+Session Created
+        |
+        v
+Visitor Expresses Intent
+        |
+        v
+State Updated
+        |
+        v
+Context Assembled
+        |
+        v
+Intelligence Proposal
+        |
+        v
+Decision Validated & Accepted
+        |
+        v
+Experience Composed
+        |
+        v
+Experience Delivered
+        |
+        v
+Visitor Interaction
+        |
+        v
+Action Authorized
+        |
+        v
+Booking Executed
+        |
+        v
+Outcome Verified
+        |
+        v
+Canonical Lineage Confirmed
+
+---
+
+## 16.61 Acceptance Criteria
+
+The test passes only when:
+
+1. Every canonical record belongs to the correct Business.
+2. Visitor and Session identity remain consistent.
+3. Business Truth is not silently modified.
+4. Intelligence output passes Kablet validation.
+5. The accepted Decision is persisted.
+6. The Experience references that Decision.
+7. The Runtime renders the applicable Components.
+8. Customer interaction is captured.
+9. The Action passes independent authorization.
+10. The booking adapter executes through the controlled Action boundary.
+11. The applicable commercial Outcome is verified.
+12. Required Events preserve the relevant lineage.
+13. Repeated technical delivery does not create duplicate bookings.
+14. The resulting conversion can be measured through canonical evidence.
+
+---
+
+## 16.62 Negative Acceptance Path
+
+A companion end-to-end test should verify that invalid or unauthorized Intelligence output cannot bypass Kablet's validation and execution boundaries.
+
+---
+
+# 16.O Test Execution Strategy
+
+## 16.63 Local Feedback
+
+Fast unit and static tests should be executable during ordinary development.
+
+---
+
+## 16.64 Pull Request Validation
+
+CI should run the applicable:
+
+- Type checks.
+- Lint checks.
+- Unit tests.
+- Contract tests.
+- PostgreSQL integration tests.
+- Security boundary tests.
+
+---
+
+## 16.65 Release Validation
+
+Staging release validation should additionally execute the applicable end-to-end and infrastructure-dependent checks.
+
+---
+
+## 16.66 Flaky Tests
+
+Repeatedly unreliable tests must be investigated rather than permanently ignored.
+
+Critical security and commercial correctness tests must not be casually disabled to obtain a passing pipeline.
+
+---
+
+## 16.67 Test Reporting
+
+CI must clearly report failed checks.
+
+A deployment must not be described as verified when required tests were skipped or unavailable.
+
+---
+
+# 16.P MVP Testing Boundary
+
+## 16.68 Initial Test Priorities
+
+The first implementation should prioritize:
+
+1. Domain schema validation.
+2. PostgreSQL constraints.
+3. Tenant isolation.
+4. Intelligence proposal validation.
+5. Decision persistence.
+6. Experience validation.
+7. Action authorization.
+8. Idempotent booking execution.
+9. Event and Outcome lineage.
+10. One complete end-to-end conversion.
+
+---
+
+## 16.69 Explicit MVP Exclusions
+
+The initial implementation does not require:
+
+- A proprietary testing framework.
+- Exhaustive visual snapshot testing.
+- Large-scale synthetic traffic infrastructure.
+- Continuous live-provider testing.
+- Complex chaos-engineering infrastructure.
+- A dedicated performance-testing cluster.
+
+These may follow demonstrated requirements.
+
+---
+
+# 16.Q Architecture Decision Records
+
+## ADR-093 — Vitest as Initial TypeScript Test Framework
+
+**Status:** Accepted.
+
+Vitest will support unit and applicable integration-level TypeScript testing.
+
+---
+
+## ADR-094 — Playwright for Browser Verification
+
+**Status:** Accepted.
+
+Playwright will verify customer-facing Runtime behavior and applicable end-to-end journeys.
+
+---
+
+## ADR-095 — Real Disposable PostgreSQL for Database Correctness
+
+**Status:** Accepted.
+
+Database transactions, RLS, constraints, concurrency, and job-claiming behavior must be tested against disposable PostgreSQL.
+
+Mocks are insufficient as the sole verification method.
+
+---
+
+## ADR-096 — Deterministic External Adapters
+
+**Status:** Accepted.
+
+Ordinary automated tests will use controlled Intelligence and integration adapters where appropriate.
+
+Live-provider contract tests remain separate.
+
+---
+
+## ADR-097 — Foundation Invariants as Executable Tests
+
+**Status:** Accepted.
+
+Permanent Foundation boundaries must be protected through automated behavioral tests.
+
+---
+
+## ADR-098 — Visitor-to-Outcome Acceptance Gate
+
+**Status:** Accepted.
+
+The first major engineering milestone requires a complete, verifiable Visitor-to-Outcome journey with canonical lineage and consequential Action idempotency.
+
+---
+
+# 16.R Testing Invariants
+
+1. Tests verify domain behavior, not merely HTTP status codes.
+2. Permanent Foundation boundaries require executable protection.
+3. Unit tests should remain deterministic.
+4. Database-dependent correctness requires real PostgreSQL.
+5. Automated tests never use Production as disposable infrastructure.
+6. Test fixtures preserve canonical ownership relationships.
+7. Cross-tenant isolation requires negative tests.
+8. Missing trusted context must fail closed.
+9. Business Truth cannot be silently mutated by Intelligence.
+10. Intelligence proposals require validation before acceptance.
+11. Invalid Components and Actions must be rejected.
+12. Experience delivery is distinct from rendering and exposure.
+13. Consequential Actions require independent authorization.
+14. Technical retries must not duplicate commercial operations.
+15. Unknown external results require safe handling.
+16. Provider success responses are not automatically verified Outcomes.
+17. Canonical Events preserve applicable lineage.
+18. Required transactional persistence must be tested.
+19. Workers must tolerate crashes and repeated delivery.
+20. Analytics tests preserve metric-definition semantics.
+21. Experiment assignment is distinct from exposure.
+22. Critical tests must not be silently skipped.
+23. CI failures must be visible.
+24. The first engineering milestone must prove a complete Visitor-to-Outcome journey.
+
+---
+
+# 16.S Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact test-directory structure.
+- Final fixture implementation.
+- Disposable PostgreSQL provisioning method.
+- Test coverage thresholds.
+- Playwright browser matrix.
+- Performance-test thresholds.
+- Provider sandbox configuration.
+- CI parallelization.
+- Test-reporting service.
+- Detailed acceptance-test scenarios for the first vertical.
+
+These decisions will be finalized during repository implementation.
+
+---
+
+# 16.T Dependency
+
+Section 15 established Kablet's Environment architecture.
+
+Section 16 establishes:
+
+**A layered testing strategy using Vitest, Playwright, deterministic external adapters, and disposable PostgreSQL to verify Kablet's permanent domain boundaries, tenant isolation, Intelligence validation, consequential Action idempotency, recovery behavior, and complete Visitor-to-verified-Outcome lineage.**
+
+The next section defines how these checks become mandatory release gates through continuous integration, deployment automation, migration controls, and production rollback procedures.
+
+# 17 — CI/CD & Deployment
