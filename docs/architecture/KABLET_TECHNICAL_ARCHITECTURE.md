@@ -7411,3 +7411,1115 @@ Section 06 establishes:
 The next section defines how customer-facing capabilities produce consequential operations through controlled execution boundaries.
 
 # 07 — Action & Integration Architecture
+---
+
+# 07. Action & Integration Architecture
+
+## 07.1 Purpose
+
+This section defines how Kablet converts customer intent and accepted Decisions into controlled business operations.
+
+It establishes the technical boundaries for:
+
+- Action definitions.
+- Action availability.
+- Action authorization.
+- Visitor confirmation.
+- Action execution.
+- External integrations.
+- Execution idempotency.
+- Asynchronous completion.
+- Result verification.
+- Failure and recovery.
+- Outcome attribution.
+
+The architecture must allow Kablet to move customers toward commercial outcomes without granting unrestricted execution authority to Intelligence providers or customer-facing Components.
+
+---
+
+# 07.A Fundamental Action Model
+
+## 07.2 Actions Are First-Class Capabilities
+
+An Action represents a controlled operation that Kablet may offer or execute within an authorized Business context.
+
+Examples include:
+
+- Submit a lead.
+- Request an appointment.
+- Create a booking.
+- Initiate a checkout handoff.
+- Request a quotation.
+- Open an authorized contact channel.
+- Submit customer information.
+- Retrieve supported availability.
+
+An Action is not equivalent to a button.
+
+A button is one possible customer-facing mechanism for invoking an Action.
+
+---
+
+## 07.3 Action Definition vs Action Execution
+
+Kablet must distinguish:
+
+**Action Definition**
+
+Describes an available operation, its inputs, constraints, authorization requirements, and execution behavior.
+
+**Action Invocation**
+
+Represents a request to perform a particular Action.
+
+**Action Attempt**
+
+Represents a specific execution attempt.
+
+**Action Result**
+
+Represents the observed result of execution.
+
+**Outcome**
+
+Represents a meaningful commercial result established through appropriate evidence.
+
+These concepts must not be conflated.
+
+---
+
+## 07.4 Canonical Action Flow
+
+The intended execution flow is:
+
+Visitor Interaction
+        |
+        v
+Action Request
+        |
+        v
+Action Definition Resolution
+        |
+        v
+Input Validation
+        |
+        v
+Business Context Validation
+        |
+        v
+Authorization & Business Rules
+        |
+        v
+Visitor Confirmation (where required)
+        |
+        v
+Canonical Action Invocation
+        |
+        v
+Action Executor
+        |
+        v
+Internal Operation / Integration Adapter
+        |
+        v
+Execution Result
+        |
+        v
+Result Verification
+        |
+        v
+Canonical Events / Outcome Update
+
+Every consequential operation must pass through the applicable Kablet execution boundary.
+
+---
+
+# 07.B Action Registry
+
+## 07.5 Controlled Action Registry
+
+Kablet will maintain a controlled registry of supported Action types.
+
+Intelligence may propose registered Actions.
+
+The Experience Runtime may present registered Actions.
+
+Neither may invent an arbitrary executable operation.
+
+---
+
+## 07.6 Action Contract
+
+A conceptual Action Definition should include:
+
+- Action type.
+- Contract version.
+- Input schema.
+- Output schema.
+- Applicable Business scope.
+- Availability requirements.
+- Authorization requirements.
+- Visitor confirmation requirements.
+- Execution adapter.
+- Idempotency policy.
+- Result classification.
+- Relevant Event semantics.
+
+The exact TypeScript and Zod schemas will be finalized during implementation.
+
+---
+
+## 07.7 Action Availability
+
+An Action must be available within the relevant Business context before it can be offered.
+
+Availability may depend on:
+
+- Business configuration.
+- Enabled integrations.
+- Relevant Business Truth.
+- Required information.
+- Supported capabilities.
+- Applicable rules.
+- Operational status.
+
+An Action being implemented in Kablet does not automatically make it available to every Business.
+
+---
+
+## 07.8 Capability Does Not Imply Authority
+
+An enabled Action capability does not authorize every possible invocation.
+
+For example:
+
+A Business may enable appointment booking.
+
+That does not permit Intelligence to create arbitrary appointments without satisfying the Action's required inputs, Business constraints, and applicable Visitor confirmation.
+
+---
+
+# 07.C Initial Action Categories
+
+## 07.9 Informational Actions
+
+Informational Actions retrieve or present permitted information without directly creating a commercial commitment.
+
+Examples:
+
+- Retrieve service information.
+- Retrieve authorized availability.
+- Open an approved contact destination.
+
+These operations still require appropriate ownership and input validation.
+
+---
+
+## 07.10 Lead Actions
+
+Lead Actions collect and submit customer information through a controlled process.
+
+A lead submission must distinguish:
+
+- Form displayed.
+- Information entered.
+- Submission requested.
+- Submission accepted.
+- Lead persisted.
+- External delivery completed.
+
+Displaying a form or receiving a click is not proof of successful lead creation.
+
+---
+
+## 07.11 Booking Actions
+
+Booking Actions support appointment-related operations.
+
+The architecture must distinguish:
+
+- Booking requested.
+- Booking pending.
+- Booking confirmed.
+- Booking rejected.
+- Booking cancelled.
+- Appointment attended.
+
+The exact supported lifecycle depends on the underlying Business capability and integration.
+
+---
+
+## 07.12 Commerce Actions
+
+Commerce Actions may support:
+
+- Product selection.
+- Checkout initiation.
+- External checkout handoff.
+- Order-status retrieval.
+- Verified purchase feedback.
+
+The initial MVP does not require Kablet to become a payment processor or commerce system of record.
+
+---
+
+## 07.13 Communication Actions
+
+Communication Actions may support approved customer contact mechanisms.
+
+Examples include:
+
+- Email handoff.
+- Messaging handoff.
+- Contact request.
+- Callback request.
+
+Opening an external communication channel must not automatically be counted as a completed lead or conversion.
+
+---
+
+# 07.D Intelligence and Action Authority
+
+## 07.14 Intelligence Proposes Actions
+
+The Intelligence subsystem may select an eligible Action as part of a proposed Decision or Experience Plan.
+
+It must reference the controlled Action Registry.
+
+---
+
+## 07.15 Intelligence Does Not Execute Consequential Actions
+
+An external reasoning provider must not directly receive unrestricted credentials for:
+
+- Booking systems.
+- Payment systems.
+- CRM systems.
+- Messaging providers.
+- Business administration.
+- Database mutation.
+
+Consequential execution belongs to Kablet's Action system.
+
+---
+
+## 07.16 Action Proposal Validation
+
+A proposed Action must be validated against:
+
+1. Registered Action type.
+2. Supported contract version.
+3. Correct Business.
+4. Applicable Business Rules.
+5. Required input.
+6. Authorized integration.
+7. Available capability.
+8. Applicable confirmation requirements.
+
+A valid Intelligence response does not bypass these checks.
+
+---
+
+# 07.E Visitor Confirmation
+
+## 07.17 Confirmation Requirements
+
+Some Actions require an intentional Visitor operation.
+
+Examples include:
+
+- Submitting personal contact information.
+- Requesting an appointment.
+- Confirming a booking.
+- Initiating a purchase.
+- Agreeing to applicable terms.
+
+The Action Contract must identify where confirmation is required.
+
+---
+
+## 07.18 Presentation Is Not Consent
+
+Displaying an Action does not establish Visitor consent.
+
+Selecting a recommendation does not automatically authorize every subsequent consequential operation.
+
+The system must preserve the distinction between recommendation, request, and confirmed execution.
+
+---
+
+## 07.19 Confirmation Context
+
+Where required, the Action Invocation should preserve sufficient information to establish what the Visitor intentionally requested.
+
+This may include:
+
+- Action identity.
+- Relevant Business.
+- Selected service or offer.
+- Required submitted information.
+- Applicable Experience.
+- Confirmation occurrence.
+
+Sensitive information must follow the relevant privacy and retention rules.
+
+---
+
+# 07.F Action Execution Architecture
+
+## 07.20 Action Executor
+
+Kablet will implement a controlled Action Executor inside the TypeScript application architecture.
+
+The executor is responsible for coordinating:
+
+- Validated invocation.
+- Trusted execution context.
+- Idempotency.
+- Adapter selection.
+- Execution status.
+- Result normalization.
+- Failure classification.
+- Canonical persistence.
+
+---
+
+## 07.21 Action Handler Interface
+
+Each supported Action type should have a defined execution handler.
+
+Conceptually:
+
+Validated Action Invocation
+        |
+        v
+Action Executor
+        |
+        v
+Registered Action Handler
+        |
+        v
+Internal Domain Operation
+        OR
+External Integration Adapter
+
+Handlers must not silently bypass applicable authorization or canonical recording requirements.
+
+---
+
+## 07.22 Synchronous and Asynchronous Execution
+
+Not every Action completes during the originating HTTP request.
+
+The architecture must support:
+
+**Synchronous execution**
+
+For operations that can safely return a definitive result within the request lifecycle.
+
+**Asynchronous execution**
+
+For operations requiring delayed processing, external confirmation, webhook feedback, or retryable background work.
+
+---
+
+## 07.23 Execution Status
+
+The initial conceptual status vocabulary should distinguish:
+
+- Requested.
+- Validated.
+- Accepted.
+- Processing.
+- Completed.
+- Failed.
+- Cancelled.
+- Awaiting external confirmation.
+- Unknown or reconciliation required.
+
+The physical status model will be finalized during implementation.
+
+---
+
+## 07.24 Execution Attempt History
+
+An Action Invocation may require more than one execution attempt.
+
+Retries must remain attributable to the same logical invocation where appropriate.
+
+A second technical attempt must not automatically become a second commercial Action.
+
+---
+
+# 07.G Idempotency
+
+## 07.25 Idempotency Is Mandatory for Consequential Actions
+
+Kablet must protect duplicate-sensitive operations against accidental repeated execution.
+
+Examples include:
+
+- Booking creation.
+- Lead submission.
+- Order creation.
+- Payment-related operations.
+- External messaging.
+- Webhook-driven updates.
+
+---
+
+## 07.26 Idempotency Identity
+
+An Action Invocation should have a stable identity suitable for deduplication.
+
+The implementation may use an idempotency key derived from trusted invocation context or another controlled mechanism.
+
+The exact strategy will be defined in the Action implementation contract.
+
+---
+
+## 07.27 Retries Are Not New Customer Intent
+
+A network timeout followed by a retry must not automatically create a second booking or lead.
+
+The system must distinguish:
+
+Original Invocation
+
+Execution Attempt 1
+
+Execution Attempt 2
+
+Final Observed Result
+
+---
+
+## 07.28 External Idempotency
+
+Where supported, Kablet should propagate appropriate idempotency identifiers to external providers.
+
+Where an external provider lacks idempotency support, Kablet must account for uncertainty and avoid blindly repeating potentially consequential operations.
+
+---
+
+# 07.H Integration Architecture
+
+## 07.29 Integration Adapters
+
+External Business systems will connect through controlled integration adapters.
+
+Examples include:
+
+- Booking providers.
+- CRM systems.
+- Commerce platforms.
+- Messaging services.
+- Payment-status providers.
+- Business management systems.
+
+The adapter translates external provider behavior into Kablet-owned integration contracts.
+
+---
+
+## 07.30 Provider Independence
+
+Canonical Kablet Action and Outcome records must not depend on one provider's proprietary object model.
+
+Provider-specific identifiers may be retained as external references.
+
+They must not replace canonical Kablet identity.
+
+---
+
+## 07.31 Integration Connection
+
+An Integration Connection should resolve to:
+
+- Owning Business.
+- Provider.
+- Connection identity.
+- Enabled capabilities.
+- Credential reference.
+- Configuration.
+- Operational status.
+- Relevant external resource mappings.
+
+The exact schema will be defined during implementation.
+
+---
+
+## 07.32 Integration Capabilities
+
+An integration must explicitly expose which operations it supports.
+
+For example:
+
+A booking integration may support availability lookup and booking creation but not cancellation.
+
+Kablet must not assume every provider supports an identical capability set.
+
+---
+
+## 07.33 Integration Configuration
+
+Business operators may configure supported integrations through the Control Plane.
+
+Configuration must be validated before activation.
+
+The Customer Runtime must not receive unrestricted integration credentials or internal configuration.
+
+---
+
+# 07.I Integration Credentials and Security
+
+## 07.34 Credential Isolation
+
+Integration credentials must remain in controlled server-side infrastructure.
+
+They must never appear in:
+
+- Customer-facing Experience payloads.
+- Browser bundles.
+- Intelligence context.
+- Ordinary Events.
+- Public Runtime responses.
+
+---
+
+## 07.35 Scoped Provider Access
+
+Where supported, integrations should use the minimum provider permissions required for their enabled capabilities.
+
+A booking-only integration should not automatically receive unrestricted Business administration authority.
+
+---
+
+## 07.36 Tenant Isolation
+
+Integration Connections belong to their authorized Business context.
+
+A Business must not invoke another Business's integration merely by supplying its Connection ID.
+
+---
+
+## 07.37 Webhook Verification
+
+Incoming webhooks must pass the provider's applicable verification mechanism before trusted processing.
+
+The receiving system must resolve the authorized Integration Connection and Business context.
+
+Webhook payload data remains untrusted until validated.
+
+---
+
+# 07.J External Result Normalization
+
+## 07.38 Provider Responses Are Evidence
+
+External responses must be normalized into Kablet-owned result contracts.
+
+For example:
+
+Provider Booking Response
+        |
+        v
+Integration Adapter
+        |
+        v
+Normalized Booking Result
+        |
+        v
+Canonical Action Update
+
+The provider's raw response may be retained under appropriate operational and privacy controls.
+
+---
+
+## 07.39 Transport Success Is Not Commercial Success
+
+An HTTP success response does not automatically establish that the intended commercial operation completed.
+
+The adapter must interpret the provider's documented result semantics.
+
+Examples:
+
+- Request accepted.
+- Booking pending.
+- Booking confirmed.
+- Lead created.
+- External processing incomplete.
+
+---
+
+## 07.40 External References
+
+Kablet should preserve relevant external identifiers to support:
+
+- Reconciliation.
+- Duplicate detection.
+- Status updates.
+- Cancellation.
+- Debugging.
+- Outcome verification.
+
+External identifiers must remain scoped to the appropriate provider and Integration Connection.
+
+---
+
+# 07.K Action-to-Outcome Relationship
+
+## 07.41 Action Result Is Not Automatically Outcome
+
+An Action may produce an immediate technical result without producing a verified commercial Outcome.
+
+For example:
+
+Checkout Opened
+
+is not equivalent to:
+
+Purchase Completed.
+
+---
+
+## 07.42 Outcome Verification
+
+The Outcome domain determines whether sufficient evidence exists to establish a meaningful commercial result.
+
+Evidence may originate from:
+
+- Kablet-controlled operations.
+- Verified external provider responses.
+- Authenticated webhooks.
+- Authorized Business updates.
+- Reconciliation processes.
+
+---
+
+## 07.43 Delayed Outcomes
+
+Some Outcomes occur after the original customer Session.
+
+Examples include:
+
+- Appointment attendance.
+- Lead qualification.
+- Order completion.
+- Revenue realization.
+- Cancellation.
+- Refund.
+
+The architecture must preserve the relationship between the original Action and later Outcome developments.
+
+---
+
+## 07.44 Outcome Lineage
+
+Where available, a verified Outcome should remain attributable to:
+
+Business
+    |
+    v
+Visitor / Session
+    |
+    v
+Decision
+    |
+    v
+Experience
+    |
+    v
+Component Interaction
+    |
+    v
+Action Invocation
+    |
+    v
+Execution Result
+    |
+    v
+Outcome
+
+This lineage supports Kablet's future Learning Brain.
+
+---
+
+## 07.45 Attribution Does Not Prove Causation
+
+Linking an Outcome to an Experience or Decision establishes historical attribution.
+
+It does not automatically establish incremental conversion lift.
+
+Controlled experimentation remains a separate analytical responsibility.
+
+---
+
+# 07.L Reliability and Failure Recovery
+
+## 07.46 Failure Categories
+
+The Action system must distinguish:
+
+- Invalid input.
+- Unauthorized operation.
+- Unavailable capability.
+- Integration misconfiguration.
+- Provider rejection.
+- Provider timeout.
+- Network failure.
+- Unknown execution result.
+- Canonical persistence failure.
+- Webhook verification failure.
+- Reconciliation failure.
+
+These failures must not all be represented as one generic unsuccessful Action.
+
+---
+
+## 07.47 Unknown External Result
+
+A particularly important failure occurs when an external operation may have succeeded but Kablet did not receive its definitive response.
+
+For example:
+
+Kablet sends a booking request.
+
+The provider creates the booking.
+
+The network connection times out before Kablet receives confirmation.
+
+The system must not automatically retry in a way that creates a duplicate booking.
+
+The appropriate recovery may require:
+
+- Idempotent retry.
+- Provider status lookup.
+- Webhook confirmation.
+- Reconciliation.
+- Explicit unresolved status.
+
+---
+
+## 07.48 Retry Policy
+
+Retries must be:
+
+- Bounded.
+- Operation-aware.
+- Idempotency-aware.
+- Observable.
+- Appropriate to provider behavior.
+
+A retry policy suitable for an informational lookup may be unsafe for booking creation.
+
+---
+
+## 07.49 Canonical Persistence Failure
+
+If an external operation succeeds but canonical persistence fails, the system must support recovery or reconciliation.
+
+It must not silently discard evidence of the external operation.
+
+The exact recovery mechanism will be defined in the Async and Failure Architecture sections.
+
+---
+
+## 07.50 Integration Unavailable
+
+When an integration becomes unavailable, Kablet should degrade the affected capability rather than unnecessarily destroying the entire customer Experience.
+
+For example:
+
+Booking may become temporarily unavailable while informational Components remain functional.
+
+The Runtime must represent unavailable Actions accurately.
+
+---
+
+# 07.M Transaction and Async Boundaries
+
+## 07.51 Local Transactions
+
+Canonical changes that must succeed together should use appropriate PostgreSQL transactions.
+
+External provider calls must not be assumed to participate in those transactions.
+
+---
+
+## 07.52 Transactional Outbox
+
+Where canonical changes require reliable asynchronous processing, Kablet should use a transactional outbox or an equivalent mechanism.
+
+The outbox must preserve the required Business and correlation context.
+
+---
+
+## 07.53 Background Execution
+
+Background Action processing must preserve:
+
+- Trusted Business context.
+- Invocation identity.
+- Relevant authorization context.
+- Idempotency.
+- Execution attempts.
+- Correlation identity.
+- Result attribution.
+
+Background execution does not remove domain authorization requirements.
+
+---
+
+# 07.N Observability
+
+## 07.54 Action Observability
+
+Consequential Action execution should be observable through structured operational records.
+
+Relevant metadata may include:
+
+- Action Invocation ID.
+- Business.
+- Action type.
+- Execution status.
+- Adapter.
+- Attempt count.
+- Latency.
+- Failure classification.
+- External reference.
+- Correlation ID.
+- Result timestamp.
+
+Sensitive customer information must follow applicable privacy controls.
+
+---
+
+## 07.55 Integration Health
+
+Kablet should be able to distinguish:
+
+- Configured integration.
+- Connected integration.
+- Operational integration.
+- Degraded integration.
+- Unavailable integration.
+
+The exact health-check implementation is deferred.
+
+---
+
+## 07.56 Action Auditability
+
+Meaningful consequential operations must retain sufficient evidence to explain:
+
+- What was requested.
+- Which Business owned the operation.
+- What was authorized.
+- Which handler executed.
+- What external system was contacted.
+- What result was observed.
+- Whether an Outcome was established.
+
+---
+
+# 07.O Initial MVP Boundary
+
+## 07.57 Start With One Conversion Action
+
+The first implementation should prioritize one complete conversion Action rather than implementing numerous shallow integrations.
+
+The initial vertical and Business will determine the exact Action.
+
+Booking is the preferred reference flow for the first engineering milestone, subject to final MVP scope.
+
+---
+
+## 07.58 First Milestone
+
+The first complete Action implementation must demonstrate:
+
+Visitor Intent
+    |
+    v
+Accepted Decision
+    |
+    v
+Validated Experience
+    |
+    v
+Customer Interaction
+    |
+    v
+Authorized Action
+    |
+    v
+Execution
+    |
+    v
+Verified Result
+    |
+    v
+Canonical Outcome
+
+The entire lineage must be inspectable.
+
+---
+
+## 07.59 Avoid Premature Integration Breadth
+
+The MVP does not require:
+
+- A universal integration marketplace.
+- Dozens of booking providers.
+- Native payment processing.
+- Complex workflow automation.
+- A generic no-code integration builder.
+- Multi-step autonomous agent execution.
+- Enterprise CRM synchronization.
+
+Additional integrations should follow validated customer and product requirements.
+
+---
+
+# 07.P Architecture Decision Records
+
+## ADR-035 — Kablet-Owned Action Registry
+
+**Status:** Accepted.
+
+Kablet will maintain a controlled registry of supported Action types.
+
+Intelligence and Components may reference registered Actions but cannot invent unrestricted executable operations.
+
+---
+
+## ADR-036 — Separate Proposal, Invocation, Attempt, Result, and Outcome
+
+**Status:** Accepted.
+
+The architecture will preserve the distinction between proposed Actions, customer requests, execution attempts, technical results, and verified commercial Outcomes.
+
+---
+
+## ADR-037 — Consequential Action Authorization
+
+**Status:** Accepted.
+
+Consequential Actions require trusted Business context, applicable authorization, validated input, and Visitor confirmation where required.
+
+AI reasoning alone cannot authorize execution.
+
+---
+
+## ADR-038 — Integration Adapter Boundary
+
+**Status:** Accepted.
+
+External systems connect through provider-specific adapters that normalize results into Kablet-owned contracts.
+
+Canonical Action and Outcome records remain provider-independent.
+
+---
+
+## ADR-039 — Idempotent Consequential Execution
+
+**Status:** Accepted.
+
+Duplicate-sensitive Actions require an appropriate idempotency and retry strategy.
+
+A technical retry must not automatically create another commercial operation.
+
+---
+
+## ADR-040 — External Results Require Verification
+
+**Status:** Accepted.
+
+Transport-level success is not automatically a completed commercial Outcome.
+
+The Outcome domain evaluates applicable evidence and verification status.
+
+---
+
+## ADR-041 — One Complete MVP Conversion Flow
+
+**Status:** Accepted.
+
+The initial implementation will prioritize one end-to-end conversion Action with complete canonical lineage before expanding integration breadth.
+
+---
+
+# 07.Q Action & Integration Invariants
+
+1. Actions are controlled Kablet capabilities.
+2. Action Definitions and Action Invocations remain distinct.
+3. Action Invocations and execution attempts remain distinct.
+4. Execution results and commercial Outcomes remain distinct.
+5. Intelligence may propose Actions but does not own execution authority.
+6. Components present Actions but do not execute unrestricted operations.
+7. Action availability is Business-scoped.
+8. Capability does not imply authority.
+9. Consequential Actions require trusted validation and authorization.
+10. Visitor confirmation is required where applicable.
+11. Presentation is not consent.
+12. Customer input remains untrusted.
+13. External integrations operate through controlled adapters.
+14. Canonical domain records remain provider-independent.
+15. Integration credentials never enter ordinary customer-facing payloads.
+16. Integration Connections preserve Business ownership.
+17. Webhooks require appropriate authentication and validation.
+18. External provider responses are normalized.
+19. HTTP success is not automatically commercial success.
+20. External identifiers remain scoped and attributable.
+21. Consequential operations require appropriate idempotency.
+22. Retries do not automatically create new customer intent.
+23. Unknown external results require explicit handling.
+24. Delayed Outcomes remain linked to originating Actions where possible.
+25. Attribution does not automatically establish causation.
+26. Background execution preserves trusted Business context.
+27. External calls are not assumed to participate in local database transactions.
+28. Required asynchronous work must use reliable publication.
+29. Action failure must be represented accurately.
+30. Integration failure should remain localized where possible.
+31. Consequential execution must be observable.
+32. The MVP prioritizes one complete conversion flow over integration breadth.
+
+---
+
+# 07.R Explicitly Not Finalized Yet
+
+This section does not finalize:
+
+- Exact Action TypeScript interfaces.
+- Final Action Registry vocabulary.
+- Exact booking provider.
+- Exact CRM provider.
+- Exact checkout integration.
+- Final Action status enum.
+- Idempotency-key format.
+- Retry counts.
+- Provider timeout values.
+- Credential-storage implementation.
+- Webhook endpoint structure.
+- Outbox table structure.
+- Background queue provider.
+- Reconciliation schedules.
+- Final Outcome verification rules.
+- Integration health-check intervals.
+- Exact MVP booking contract.
+
+These decisions belong to implementation contracts and the relevant later architecture sections.
+
+---
+
+# 07.S Dependency
+
+Section 06 established Kablet's adaptive customer-facing Experience Runtime.
+
+Section 07 establishes:
+
+**A controlled Action execution system that converts customer interactions into authorized Business operations, integrates with external systems through provider adapters, protects consequential execution through idempotency, and preserves the evidence required to establish verified commercial Outcomes.**
+
+The next section defines how Kablet records these occurrences and connects them into a durable, queryable Event and Outcome history.
+
+# 08 — Event & Outcome Architecture
