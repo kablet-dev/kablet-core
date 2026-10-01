@@ -5259,3 +5259,1041 @@ Section 04 establishes:
 The next section defines how Kablet assembles authorized context, invokes reasoning systems, validates their output, and produces canonical Decisions without surrendering control to an AI provider.
 
 # 05 — Intelligence Architecture
+---
+
+# 05. Intelligence Architecture
+
+## 05.1 Purpose
+
+This section defines the initial technical architecture of Kablet Intelligence.
+
+It implements the permanent Intelligence Interface established in Foundation Specification v0.1.
+
+The architecture must allow Kablet to:
+
+- Interpret customer Signals.
+- Maintain structured Visitor State.
+- Assemble relevant Business context.
+- Determine the next commercial objective.
+- Propose Decisions.
+- Generate controlled Experience Plans.
+- Select available Components.
+- Propose authorized Actions.
+- Validate Intelligence output.
+- Preserve Decision attribution.
+- Handle provider failures.
+- Incorporate future learned strategies.
+
+The Intelligence system must remain independent of any individual model provider.
+
+---
+
+# 05.A Fundamental Architecture
+
+## 05.2 Intelligence Is a Kablet Subsystem
+
+Kablet Intelligence is not equivalent to an external LLM.
+
+It is a Kablet-owned subsystem that coordinates:
+
+1. Context Assembly.
+2. Interpretation.
+3. Decision policy.
+4. External reasoning.
+5. Structured output.
+6. Validation.
+7. Decision acceptance.
+8. Experience planning.
+9. Failure handling.
+
+An external AI model may perform some of these operations.
+
+It does not own the entire subsystem.
+
+---
+
+## 05.3 Two Intelligence Responsibilities
+
+Kablet distinguishes two major intelligence responsibilities.
+
+### Runtime Brain
+
+Determines what should happen for a particular Visitor during a particular interaction.
+
+It consumes relevant current context and proposes the next Decision.
+
+### Learning Brain
+
+Consumes accumulated historical evidence to improve future decision strategies.
+
+It analyzes relationships between:
+
+- Visitor context.
+- State.
+- Decisions.
+- Experiences.
+- Exposure.
+- Interaction.
+- Actions.
+- Outcomes.
+- Experiments.
+
+The Runtime Brain is required for the initial customer-facing product.
+
+The Learning Brain begins with a minimal implementation and evolves as evidence accumulates.
+
+---
+
+## 05.4 Canonical Intelligence Flow
+
+The initial flow is:
+
+Visitor Signal
+       |
+       v
+Signal Validation
+       |
+       v
+Visitor State Interpretation
+       |
+       v
+Proposed State Update
+       |
+       v
+State Validation
+       |
+       v
+Context Assembly
+       |
+       v
+Kablet Intelligence Interface
+       |
+       v
+Reasoning / Decision Proposal
+       |
+       v
+Structured Intelligence Result
+       |
+       v
+Kablet Validation
+       |
+       v
+Accepted Decision
+       |
+       v
+Validated Experience Plan
+       |
+       v
+Customer Runtime
+
+State interpretation and Decision generation may share an underlying provider invocation where appropriate.
+
+However, their canonical outputs and validation responsibilities remain distinct.
+
+---
+
+# 05.B Intelligence Module Boundaries
+
+## 05.5 Initial Internal Modules
+
+The Intelligence subsystem will contain the following logical capabilities:
+
+| Module | Responsibility |
+|---|---|
+| Context Assembler | Select relevant authorized information |
+| Signal Interpreter | Interpret incoming Visitor Signals |
+| State Proposal | Propose structured State updates |
+| Decision Policy | Determine eligible strategies and constraints |
+| Intelligence Orchestrator | Coordinate reasoning operations |
+| Provider Adapter | Communicate with external AI |
+| Output Parser | Decode structured provider output |
+| Intelligence Validator | Validate proposed results |
+| Decision Acceptance | Convert valid proposals into canonical Decisions |
+| Fallback Handler | Recover from failed or invalid Intelligence operations |
+| Configuration Registry | Identify applicable Intelligence configuration |
+
+These are logical responsibilities.
+
+They do not require separate deployable services or separate packages from day one.
+
+---
+
+## 05.6 Module Ownership
+
+The Intelligence subsystem owns reasoning orchestration.
+
+It does not own:
+
+- Canonical Business Truth.
+- Canonical Visitor identity.
+- Canonical Visitor State persistence.
+- Customer-facing rendering.
+- Consequential Action execution.
+- Canonical Outcome verification.
+
+It interacts with those domains through explicit interfaces.
+
+---
+
+# 05.C Context Assembly
+
+## 05.7 Context Assembly Is Mandatory
+
+The Runtime must not send unrestricted database contents to an AI provider.
+
+Context Assembly creates the relevant information package required for a particular Intelligence operation.
+
+The initial Context Assembler will operate inside the TypeScript application.
+
+---
+
+## 05.8 Context Sources
+
+An Intelligence request may require:
+
+- Organization and Business context.
+- Relevant Property / Location.
+- Business objective.
+- Authorized Business Truth.
+- Business Rules.
+- Visitor context.
+- Current Visitor State.
+- Current Experience.
+- Relevant Session history.
+- Available Components.
+- Available Actions.
+- Experiment context.
+- Applicable Intelligence configuration.
+- Prior learned strategy where available.
+
+Only necessary and authorized information should be included.
+
+---
+
+## 05.9 Context Selection
+
+Context Assembly must consider:
+
+1. Ownership.
+2. Authorization.
+3. Relevance.
+4. Current objective.
+5. Applicable Business constraints.
+6. Privacy.
+7. Available capabilities.
+8. Context size and operational cost.
+
+More context is not automatically better context.
+
+---
+
+## 05.10 Business Truth References
+
+Where possible, Context Assembly should preserve stable references to canonical Business Truth.
+
+For example:
+
+Service ID
++
+Service name
++
+Authorized price
++
+Relevant revision
+
+This allows a proposed Decision to reference the actual canonical information that informed it.
+
+---
+
+## 05.11 Historical Context
+
+The Intelligence system may receive selected historical information where relevant.
+
+It must distinguish:
+
+- Current Visitor State.
+- Historical Visitor Signals.
+- Prior Decisions.
+- Prior Experiences.
+- Verified Outcomes.
+- Inferred information.
+
+Historical information must not automatically override current authoritative Business Truth.
+
+---
+
+## 05.12 Context Assembly Security
+
+Context Assembly must operate under trusted Business context.
+
+A model must not be allowed to request unrestricted information from another Business.
+
+Retrieval and context selection must preserve the same ownership boundaries established in Sections 03 and 04.
+
+---
+
+# 05.D Intelligence Interface
+
+## 05.13 Kablet-Owned Interface
+
+The Runtime communicates with Kablet Intelligence through an internal TypeScript contract.
+
+It must not depend directly on the OpenAI SDK.
+
+Conceptually:
+
+Customer Runtime
+       |
+       v
+Kablet Intelligence Interface
+       |
+       v
+Intelligence Orchestrator
+       |
+       v
+Provider Adapter
+
+The exact TypeScript interface will be defined during implementation contracts.
+
+---
+
+## 05.14 Intelligence Request
+
+A conceptual Intelligence Request contains:
+
+- Request identity.
+- Business context.
+- Session context.
+- Current Visitor State reference.
+- Current Experience reference.
+- Objective.
+- Selected Business Truth.
+- Applicable constraints.
+- Available Components.
+- Available Actions.
+- Experiment context.
+- Relevant learned strategy.
+- Intelligence configuration reference.
+
+The request should carry structured information rather than relying on an uncontrolled natural-language prompt containing the entire application state.
+
+---
+
+## 05.15 Intelligence Result
+
+A conceptual Intelligence Result may contain:
+
+- Proposed State updates.
+- Proposed Decision objective.
+- Proposed strategy.
+- Selected Business Truth references.
+- Proposed Experience Plan.
+- Selected Components.
+- Proposed Actions.
+- Generated customer-facing content.
+- Relevant confidence metadata.
+- Operational metadata.
+
+This is a proposal until Kablet accepts and validates it.
+
+---
+
+## 05.16 Proposed Is Not Canonical
+
+The following must remain distinct:
+
+Provider Output
+
+Intelligence Proposal
+
+Validated Proposal
+
+Accepted Decision
+
+Canonical Experience
+
+A successful API response from an AI provider does not automatically create an accepted Kablet Decision.
+
+---
+
+# 05.E Provider Architecture
+
+## 05.17 Initial Provider
+
+Kablet v0.1 will initially implement an OpenAI provider adapter.
+
+The adapter will handle:
+
+- Provider request construction.
+- Model invocation.
+- Structured output handling.
+- Provider errors.
+- Timeout handling.
+- Token and cost metadata where available.
+- Provider response normalization.
+
+OpenAI-specific objects must not spread into Kablet's permanent domain models.
+
+---
+
+## 05.18 Provider Interface
+
+The internal provider interface should support an operation conceptually equivalent to:
+
+Structured Intelligence Input
+        |
+        v
+Provider Invocation
+        |
+        v
+Structured Provider Result
+
+The interface must not assume every future provider has identical:
+
+- Conversation objects.
+- Tool formats.
+- Model parameters.
+- Response metadata.
+- Structured-output capabilities.
+
+Provider adapters translate these differences.
+
+---
+
+## 05.19 Model Configuration
+
+The selected model must be configurable rather than hardcoded throughout the application.
+
+An Intelligence configuration may identify:
+
+- Provider.
+- Model.
+- Operation type.
+- Prompt/template version.
+- Output contract version.
+- Applicable decision policy.
+- Timeout.
+- Retry policy.
+- Relevant generation parameters.
+
+Exact model selection and parameter values will be finalized during implementation.
+
+---
+
+## 05.20 Model Routing
+
+The initial system may use one primary model.
+
+Complex routing is not required for MVP.
+
+Future routing may distinguish:
+
+- Signal interpretation.
+- State extraction.
+- Decision generation.
+- Content generation.
+- Complex reasoning.
+- Low-cost routine operations.
+
+All routes must preserve the same Kablet-owned Intelligence boundary.
+
+---
+
+# 05.F Structured Output
+
+## 05.21 Structured Output Is Required
+
+The Intelligence subsystem must request structured results for operations that influence canonical State, Decisions, Experiences, or Actions.
+
+Free-form generated text must not be interpreted as unrestricted executable instructions.
+
+---
+
+## 05.22 Zod Validation
+
+Kablet will use Zod to validate applicable Intelligence output contracts.
+
+The provider adapter may use provider-native structured-output capabilities where supported.
+
+However, provider-side schema enforcement does not replace Kablet's own validation.
+
+---
+
+## 05.23 Structural Validation
+
+Structural validation verifies that the proposed result matches its expected contract.
+
+Examples:
+
+- Required fields exist.
+- Field types are valid.
+- Component types are recognized.
+- Operations belong to supported vocabularies.
+- Payload structures are valid.
+
+---
+
+## 05.24 Semantic Validation
+
+Semantic validation verifies that the proposed result is permissible within Kablet's domain.
+
+Examples:
+
+- Referenced Service exists.
+- Referenced Truth belongs to the correct Business.
+- Price matches authoritative Truth.
+- Proposed Component is available.
+- Proposed Action is authorized.
+- Business Rules are respected.
+- Experience operations are supported.
+
+A structurally valid JSON object may still be semantically invalid.
+
+---
+
+## 05.25 Authorization Validation
+
+Authorization validation must not be delegated solely to the AI model.
+
+Any consequential proposed Action must pass Kablet's trusted authorization boundary.
+
+---
+
+# 05.G Decision Architecture
+
+## 05.26 Decision Policy
+
+The Decision Policy determines which strategies are eligible for a given context.
+
+Initially, this may combine:
+
+- Deterministic rules.
+- Business constraints.
+- Available capabilities.
+- AI reasoning.
+- Experiment assignment.
+
+The policy must not assume every Decision is produced exclusively by an LLM.
+
+---
+
+## 05.27 Decision Objective
+
+Meaningful Decisions should identify their intended objective.
+
+Examples:
+
+- Clarify intent.
+- Resolve a concern.
+- Present relevant proof.
+- Compare options.
+- Recommend a Service.
+- Explain pricing.
+- Present an authorized offer.
+- Initiate an available conversion Action.
+
+The objective is part of the structured Decision representation.
+
+---
+
+## 05.28 Decision Acceptance
+
+After validation, an Intelligence proposal may become an accepted canonical Decision.
+
+Decision acceptance must preserve:
+
+- Business context.
+- Visitor / Session context.
+- Relevant State reference.
+- Intelligence configuration.
+- Selected strategy.
+- Relevant Business Truth references.
+- Experiment context.
+- Resulting Experience relationship.
+
+---
+
+## 05.29 Decision History
+
+Accepted Decisions are historical records.
+
+A later provider response must not silently rewrite an earlier accepted Decision.
+
+New understanding produces new State and new Decisions.
+
+---
+
+# 05.H Experience Generation
+
+## 05.30 Experience Plans
+
+The Intelligence subsystem produces declarative Experience Plans.
+
+It does not produce arbitrary executable frontend code.
+
+An Experience Plan may specify:
+
+- Customer-facing message.
+- Selected Component instances.
+- Component order.
+- Relevant Business Truth references.
+- Presentation hints.
+- Available Actions.
+- Supported Experience operations.
+
+---
+
+## 05.31 Component Registry Awareness
+
+Intelligence must receive the relevant available Component capabilities.
+
+It may select supported Components.
+
+It may not invent an arbitrary Component type and assume the Runtime can render it.
+
+---
+
+## 05.32 Truth-Grounded Generation
+
+Generated customer-facing content must respect canonical Business Truth.
+
+Where an Experience communicates factual Business information, it should remain grounded in authorized Truth references.
+
+The model must not silently invent:
+
+- Prices.
+- Discounts.
+- Availability.
+- Credentials.
+- Testimonials.
+- Guarantees.
+- Business policies.
+
+---
+
+## 05.33 Experience Validation
+
+A proposed Experience must pass the Experience Contract validator before being accepted for delivery.
+
+The validation process belongs to Kablet, not the AI provider.
+
+---
+
+# 05.I Actions and Tool Use
+
+## 05.34 Proposed Actions
+
+Intelligence may propose Actions from the available Action registry.
+
+It must not directly execute arbitrary consequential operations.
+
+---
+
+## 05.35 Action Execution Boundary
+
+The required flow is:
+
+Intelligence Proposes Action
+        |
+        v
+Kablet Validates
+        |
+        v
+Applicable Authorization
+        |
+        v
+Visitor Confirmation Where Required
+        |
+        v
+Action Executor
+        |
+        v
+Verified Result
+
+Reasoning authority and execution authority remain separate.
+
+---
+
+## 05.36 Tool Permissions
+
+Provider tool calls must be mapped to controlled Kablet capabilities.
+
+The existence of a tool in an AI provider request must not automatically authorize its execution.
+
+---
+
+# 05.J Runtime Failure Architecture
+
+## 05.37 Failure Categories
+
+The Intelligence subsystem must distinguish:
+
+- Context Assembly failure.
+- Provider timeout.
+- Provider unavailable.
+- Invalid structured output.
+- Semantic validation failure.
+- Authorization failure.
+- Unsupported Component.
+- Unsupported Action.
+- Business Truth reference failure.
+- Persistence failure.
+
+These failures require different handling.
+
+---
+
+## 05.38 Retry Policy
+
+Retries should be bounded.
+
+The implementation must avoid uncontrolled recursive model calls or repeated expensive provider invocations.
+
+Exact retry limits and timeouts will be configured during implementation.
+
+---
+
+## 05.39 Invalid Output
+
+Invalid Intelligence output must never be rendered or executed merely because the provider returned successfully.
+
+Possible recovery mechanisms include:
+
+- Deterministic correction where safe.
+- Bounded retry.
+- Controlled fallback.
+- Preservation of the last valid Experience where appropriate.
+- Explicit failure response.
+
+---
+
+## 05.40 Fallback Experience
+
+Kablet must support a minimal valid customer Experience when advanced Intelligence is unavailable.
+
+The fallback may use:
+
+- Canonical Business information.
+- Supported Components.
+- Safe customer-facing messaging.
+- Available authorized Actions.
+
+A provider outage should not automatically require the entire customer frontend to disappear.
+
+---
+
+## 05.41 Persistence Failure
+
+If required canonical Decision or Experience persistence fails, the Runtime must not silently represent the corresponding historical operation as durably accepted.
+
+Critical persistence failures require explicit handling.
+
+---
+
+# 05.K Intelligence Observability
+
+## 05.42 Invocation Records
+
+Meaningful Intelligence operations should be attributable to an invocation record.
+
+Operational metadata may include:
+
+- Invocation identity.
+- Business / Session context.
+- Operation type.
+- Configuration version.
+- Provider.
+- Model.
+- Start and completion time.
+- Latency.
+- Token usage where available.
+- Estimated cost where available.
+- Validation status.
+- Failure classification.
+- Accepted Decision reference.
+
+Sensitive payload retention must follow applicable privacy policy.
+
+---
+
+## 05.43 Provider Output Is Not Canonical History
+
+Raw provider output may be useful for debugging under controlled retention.
+
+However, Kablet's canonical history consists of accepted structured State, Decisions, Experiences, Events, and Outcomes.
+
+The system must not require indefinite retention of raw provider conversations to interpret its domain history.
+
+---
+
+## 05.44 Intelligence Configuration Versioning
+
+Every accepted Decision should be attributable to the Intelligence configuration materially responsible for producing it.
+
+This supports:
+
+- Debugging.
+- Provider comparison.
+- Experimentation.
+- Historical interpretation.
+- Future learning.
+
+---
+
+# 05.L Learning Brain Integration
+
+## 05.45 Initial Learning Boundary
+
+The Runtime Brain will be designed to accept optional learned strategy information.
+
+The Learning Brain will not be required to operate synchronously for every Visitor interaction.
+
+---
+
+## 05.46 Learning Inputs
+
+Future learning may consume:
+
+- Structured Visitor context.
+- State revisions.
+- Accepted Decisions.
+- Validated Experiences.
+- Actual exposures.
+- Interactions.
+- Action results.
+- Verified Outcomes.
+- Experiment assignments and exposures.
+
+---
+
+## 05.47 Learning Output
+
+Learning should produce controlled artifacts such as:
+
+- Strategy recommendations.
+- Business-specific policy improvements.
+- Experiment evidence.
+- Component effectiveness estimates.
+- Decision-policy configuration.
+
+These artifacts may influence future Intelligence through explicit interfaces.
+
+Learning must not silently mutate authoritative Business Truth.
+
+---
+
+## 05.48 Three Learning Levels
+
+The architecture must remain compatible with:
+
+### Business-Level Intelligence
+
+Learns from evidence belonging to a specific Business.
+
+### Vertical Intelligence
+
+May generalize appropriate patterns across Businesses within a category, subject to governance.
+
+### Network-Level Intelligence
+
+May learn abstract commercial interaction principles across categories, subject to privacy and data-use constraints.
+
+Only Business-level learning is an initial implementation priority.
+
+---
+
+## 05.49 Learning Evidence
+
+Observed correlation must not automatically be treated as proof of incremental commercial lift.
+
+Experimentation and appropriate analysis remain necessary.
+
+---
+
+# 05.M Performance and Cost
+
+## 05.50 Intelligence Is a Latency-Sensitive Dependency
+
+Intelligence invocation may be one of the most expensive operations in the customer Runtime.
+
+The implementation should avoid unnecessary repeated calls.
+
+---
+
+## 05.51 Context Efficiency
+
+Context Assembly should provide relevant information rather than unrestricted historical data.
+
+This improves:
+
+- Latency.
+- Cost.
+- Reliability.
+- Privacy.
+- Output consistency.
+
+---
+
+## 05.52 Cost Attribution
+
+Where available, provider usage and cost should be attributable to:
+
+- Business.
+- Session.
+- Intelligence operation.
+- Configuration.
+- Accepted Decision.
+
+This supports future unit-economics analysis.
+
+---
+
+# 05.N Architecture Decision Records
+
+## ADR-021 — Kablet-Owned Intelligence Interface
+
+**Status:** Accepted.
+
+The Runtime will communicate through a Kablet-owned Intelligence Interface.
+
+Provider SDKs remain infrastructure implementations.
+
+---
+
+## ADR-022 — OpenAI as Initial Reasoning Adapter
+
+**Status:** Accepted for v0.1.
+
+OpenAI will provide the initial external reasoning capability.
+
+Canonical Kablet objects must remain provider-independent.
+
+---
+
+## ADR-023 — Structured Intelligence Output
+
+**Status:** Accepted.
+
+Operations influencing canonical State, Decisions, Experiences, or Actions must produce controlled structured output.
+
+Zod and domain validation will enforce Kablet contracts.
+
+---
+
+## ADR-024 — Separate Proposal From Acceptance
+
+**Status:** Accepted.
+
+Provider output remains a proposal until validated and accepted by Kablet.
+
+Invalid output must not become canonical behavior automatically.
+
+---
+
+## ADR-025 — Explicit Context Assembly
+
+**Status:** Accepted.
+
+The Intelligence provider receives selected authorized context rather than unrestricted application data.
+
+---
+
+## ADR-026 — Separate Runtime and Learning Responsibilities
+
+**Status:** Accepted.
+
+Runtime Intelligence handles current Visitor Decisions.
+
+Learning consumes historical evidence and improves future strategy through controlled interfaces.
+
+Heavy learning processing remains outside the normal synchronous customer path.
+
+---
+
+## ADR-027 — Controlled Intelligence Fallback
+
+**Status:** Accepted.
+
+Provider failures and invalid output must have bounded recovery and controlled fallback behavior.
+
+A failed model invocation must not corrupt canonical Business Truth, Visitor State, or historical Decisions.
+
+---
+
+# 05.O Intelligence Architecture Invariants
+
+1. Kablet Intelligence is not equivalent to an LLM.
+2. The Runtime communicates through a Kablet-owned Intelligence Interface.
+3. Context Assembly is explicit.
+4. Context Assembly preserves tenant isolation.
+5. Intelligence receives only authorized relevant context.
+6. Canonical Business Truth remains authoritative.
+7. Canonical Visitor State remains Kablet-owned.
+8. Provider output is a proposal, not a canonical Decision.
+9. Proposed State updates require validation.
+10. Structured output is required for consequential domain operations.
+11. Provider-side schema enforcement does not replace Kablet validation.
+12. Structural and semantic validation remain distinct.
+13. Intelligence cannot invent unsupported Components.
+14. Intelligence cannot invent unauthorized Actions.
+15. Intelligence does not directly execute consequential operations.
+16. Reasoning authority and execution authority remain separate.
+17. Accepted Decisions are first-class historical records.
+18. Decision configuration attribution is preserved.
+19. Experience Plans are declarative.
+20. Arbitrary AI-generated executable frontend code is prohibited.
+21. Generated Business claims must respect authoritative Truth.
+22. Intelligence failures have bounded recovery behavior.
+23. Invalid output must not be executed or rendered automatically.
+24. Provider replacement must not redefine canonical domain objects.
+25. Runtime and Learning responsibilities remain distinct.
+26. Heavy learning does not block normal customer interactions.
+27. Business-specific learning remains Business-scoped.
+28. Cross-tenant learning requires separate governance.
+29. Learning evidence does not automatically establish causation.
+30. Provider usage should be observable and attributable.
+31. Sensitive model context must follow privacy constraints.
+32. Future Intelligence implementations must preserve the same Foundation boundaries.
+
+---
+
+# 05.P Explicitly Not Finalized Yet
+
+This section does not define:
+
+- Exact OpenAI model.
+- Exact model parameters.
+- Final system prompts.
+- Final prompt templates.
+- Exact Intelligence Request JSON schema.
+- Exact Intelligence Result JSON schema.
+- Exact State extraction schema.
+- Exact Decision strategy vocabulary.
+- Confidence scoring formula.
+- Context token budget.
+- Retry count.
+- Timeout values.
+- Provider fallback order.
+- Model-routing algorithm.
+- Retrieval implementation.
+- Embedding model.
+- Vector database.
+- Proprietary learning algorithm.
+- Experiment optimization algorithm.
+- Model training or fine-tuning.
+
+These decisions will be finalized through implementation contracts and later learning architecture as evidence requires.
+
+---
+
+# 05.Q Dependency
+
+Section 04 established trusted identity, authorization, and tenant isolation.
+
+Section 05 establishes:
+
+**A Kablet-owned Intelligence subsystem that assembles authorized context, invokes replaceable reasoning providers, validates structured proposals, accepts canonical Decisions, generates controlled Experience Plans, and remains compatible with future learning.**
+
+The next section defines how those validated Experience Plans become actual customer-facing interfaces.
+
+# 06 — Experience Runtime
