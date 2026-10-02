@@ -33,3 +33,8 @@ $env:PGPASSWORD = $env:TEST_MANAGER_PASSWORD
 ```
 
 Drop an orphan only after confirming its exact name, owner, and that it is not in use; never use a wildcard or prefix-only deletion. Clear `$env:PGPASSWORD` after inspection.
+# Security boundary
+
+Visitor State tenant context is established only by the trusted server-side repository after its authenticated request layer has resolved and authorized the organization and business. Browser or visitor input must never be passed directly to PostgreSQL or used to set `kablet.organization_id` / `kablet.business_id`. The runtime database credentials are server-only; transaction-local settings provide scoping, not authentication.
+
+Existing installations need no role recreation or password rotation. Disposable migration tests require `TEST_ROLE_ADMIN_URL`, a separately supplied role-administrator connection used only to grant `SET ROLE kablet_privacy_owner` for the serialized migration window and revoke it in `finally` immediately afterward. It is not an application credential and is not used for runtime queries. Integration files run sequentially because this membership is cluster-global.

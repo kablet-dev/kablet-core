@@ -10,6 +10,9 @@ import { describe, expect, it } from 'vitest';
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
 const manager = loadTestManagerConfig();
 const baseConnection = `postgresql://${encodeURIComponent(manager.TEST_MANAGER_USER)}:${encodeURIComponent(manager.TEST_MANAGER_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}`;
+const bootstrapUser = process.env.TEST_BOOTSTRAP_USER;
+const bootstrapPassword = process.env.TEST_BOOTSTRAP_PASSWORD;
+const roleAdminUrl = process.env.TEST_ROLE_ADMIN_URL;
 
 function databaseName() { return `kablet_test_${randomBytes(16).toString('hex')}`; }
 
@@ -31,11 +34,19 @@ async function provision() {
   if (identity.rows[0].current_user !== 'kablet_test_manager' || identity.rows[0].current_database !== 'postgres') throw new Error('Unsafe test-manager identity');
   const name = databaseName();
   await managerPool.query(`CREATE DATABASE "${name}" OWNER "kablet_test_manager"`);
-  return { name, managerPool, url: `${baseConnection}/${name}` };
+  if (!bootstrapUser || !bootstrapPassword) throw new Error('TEST_BOOTSTRAP_USER and TEST_BOOTSTRAP_PASSWORD are required for trusted migration bootstrap');
+  await managerPool.query(`GRANT CONNECT, CREATE ON DATABASE "${name}" TO "${bootstrapUser}"`);
+  const managerTarget = new pg.Pool({ connectionString: `${baseConnection}/${name}`, max: 1 });
+  try {
+    await managerTarget.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${bootstrapUser}"`);
+    await managerTarget.query('GRANT USAGE, CREATE ON SCHEMA public TO kablet_privacy_owner');
+  } finally { await managerTarget.end(); }
+  const bootstrapConnection = `postgresql://${encodeURIComponent(bootstrapUser)}:${encodeURIComponent(bootstrapPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${name}`;
+  return { name, managerPool, url: bootstrapConnection };
 }
 
 async function dispose(resource: Awaited<ReturnType<typeof provision>>) {
-  const target = new pg.Pool({ connectionString: resource.url, max: 1 });
+  const target = new pg.Pool({ connectionString: `${baseConnection}/${resource.name}`, max: 1 });
   const identity = await target.query('select current_database(), current_user');
   await target.end();
   if (identity.rows[0].current_database !== resource.name || identity.rows[0].current_user !== 'kablet_test_manager') throw new Error('Unsafe cleanup target');
@@ -55,7 +66,16 @@ describe('disposable PostgreSQL integration', () => {
       second = await provision();
       for (const resource of [first, second]) {
         const { db, pool } = createDb(resource.url); pools.push(pool);
-        await migrate(db, { migrationsFolder }); await migrate(db, { migrationsFolder });
+        if (!roleAdminUrl) throw new Error('TEST_ROLE_ADMIN_URL is required to revoke bootstrap privacy-owner SET access after migrations');
+        const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1, connectionTimeoutMillis: 5000, query_timeout: 10000 });
+        try {
+          await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
+          await migrate(db, { migrationsFolder }); await migrate(db, { migrationsFolder });
+        } finally {
+          await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap');
+          await roleAdmin.end();
+        }
+        if ((await resource.managerPool.query("select pg_has_role('kablet_test_bootstrap', 'kablet_privacy_owner', 'SET') as can_set")).rows[0].can_set) throw new Error('bootstrap privacy-owner SET access remains after trusted post-migration revocation');
         expect((await db.execute(sql`insert into infrastructure_ledger default values returning id`)).rows).toHaveLength(1);
         await expect(db.transaction(async tx => { await tx.execute(sql`insert into infrastructure_ledger default values`); throw new Error('rollback-check'); })).rejects.toThrow('rollback-check');
       }
@@ -65,7 +85,7 @@ describe('disposable PostgreSQL integration', () => {
       await Promise.allSettled(pools.map(pool => pool.end()));
       if (second) await dispose(second); if (first) await dispose(first);
     }
-  }, 30000);
+  }, 90000);
 
   it('enforces Business Truth publication and revision invariants', async () => {
     let resource: Awaited<ReturnType<typeof provision>> | undefined;
@@ -73,7 +93,16 @@ describe('disposable PostgreSQL integration', () => {
     try {
       resource = await provision();
       const { db, pool } = createDb(resource.url); pools.push(pool);
-      await migrate(db, { migrationsFolder });
+      if (!roleAdminUrl) throw new Error('TEST_ROLE_ADMIN_URL is required to revoke bootstrap privacy-owner SET access after migrations');
+      const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1, connectionTimeoutMillis: 5000, query_timeout: 10000 });
+      try {
+        await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
+        await migrate(db, { migrationsFolder });
+      } finally {
+        await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap');
+        await roleAdmin.end();
+      }
+      if ((await resource.managerPool.query("select pg_has_role('kablet_test_bootstrap', 'kablet_privacy_owner', 'SET') as can_set")).rows[0].can_set) throw new Error('bootstrap privacy-owner SET access remains after trusted post-migration revocation');
       const tables = await db.execute(sql`select table_name from information_schema.tables where table_schema = 'public' and table_name in ('organizations','businesses','business_offerings','business_offering_revisions','offering_publications')`);
       expect(tables.rows).toHaveLength(5);
       const org = '11111111-1111-4111-8111-111111111111';
