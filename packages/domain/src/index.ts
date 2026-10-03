@@ -11,3 +11,4 @@ export type Provenance = z.infer<typeof provenanceSchema>;
 export const offeringRevisionSchema = z.object({ offeringId: z.string().uuid(), revisionNumber: z.number().int().positive(), name: z.string().trim().min(1).max(200), description: z.string().trim().min(1).max(5000), pricing: pricingSchema, visibility: z.enum(['public', 'private']), approvalStatus: z.enum(['draft', 'approved', 'rejected']), provenance: provenanceSchema });
 export type OfferingRevision = z.infer<typeof offeringRevisionSchema>;
 export * from './visitor-state';
+export * from './decision';

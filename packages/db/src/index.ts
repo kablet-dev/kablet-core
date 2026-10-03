@@ -4,3 +4,4 @@ export function createDb(url: string) { const pool = new pg.Pool({connectionStri
 export type Database = ReturnType<typeof createDb>;
 export * from './business-truth.js';
 export * from './visitor-state.js';
+export * from './decision.js';
