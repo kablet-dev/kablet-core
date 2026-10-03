@@ -31,12 +31,25 @@ export function createVisitorStateRepository(db: Database['db']) {
     async createSession(organizationId: string, businessId: string, visitorId: string) {
       return context(db, organizationId, businessId, async tx => { const id = randomUUID(); await tx.execute(sql`insert into visitor_sessions (id,organization_id,business_id,visitor_identity_id) values (${id}::uuid,${organizationId}::uuid,${businessId}::uuid,${visitorId}::uuid)`); return id; });
     },
+    async getCurrentState(organizationId: string, businessId: string, visitorId: string) {
+      return context(db, organizationId, businessId, async tx => {
+        const result = await tx.execute(sql`select s.version, s.current_revision_id, r.state from visitor_states s join visitor_state_revisions r on r.id = s.current_revision_id where s.visitor_identity_id=${visitorId}::uuid`);
+        if (!result.rows[0]) throw new Error('visitor state not found');
+        const row = result.rows[0];
+        return { version: Number(row.version), revisionId: String(row.current_revision_id), state: visitorStateSchema.parse(row.state) };
+      });
+    },
     async ingest(organizationId: string, input: unknown) {
       const observation = observationSchema.parse(input);
       if (observation.organizationId !== organizationId) throw new Error('observation organization mismatch');
       return context(db, organizationId, observation.businessId, async tx => {
-        const duplicate = await tx.execute(sql`select id from visitor_observations where organization_id=${organizationId}::uuid and visitor_identity_id=${observation.visitorIdentityId}::uuid and idempotency_key=${observation.idempotencyKey}`);
-        if (duplicate.rows[0]) return { idempotent: true, revisionId: null };
+        const duplicate = await tx.execute(sql`select id, kind, value from visitor_observations where organization_id=${organizationId}::uuid and visitor_identity_id=${observation.visitorIdentityId}::uuid and idempotency_key=${observation.idempotencyKey}`);
+        if (duplicate.rows[0]) {
+          const sameKind = duplicate.rows[0].kind === observation.kind;
+          const sameValue = JSON.stringify(duplicate.rows[0].value) === JSON.stringify(observation.value);
+          if (!sameKind || !sameValue) throw new Error('observation idempotency key conflicts with a different input');
+          return { idempotent: true, revisionId: null };
+        }
         const owner = await tx.execute(sql`select 1 from visitor_sessions where id=${observation.sessionId}::uuid and organization_id=${organizationId}::uuid and business_id=${observation.businessId}::uuid and visitor_identity_id=${observation.visitorIdentityId}::uuid and status='active'`);
         if (!owner.rows[0]) throw new Error('session does not belong to visitor and business');
         if (observation.correctionOfObservationId) {

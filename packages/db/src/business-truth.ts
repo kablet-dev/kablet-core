@@ -35,5 +35,12 @@ export function createBusinessTruthRepository(db: Database['db']) {
         return result.rows[0] ?? null;
       });
     },
+    async listPublicOfferings(organizationId: string, businessId: string) {
+      return withTenantContext(db, organizationId, async tx => {
+        await tx.execute(sql`select set_config('kablet.business_id', ${businessId}, true)`);
+        const result = await tx.execute(sql`select p.offering_id, p.revision_id as offering_revision_id, r.name, r.description, r.pricing_kind, r.currency, r.amount_minor from offering_publications p join business_offerings o on o.id=p.offering_id and o.business_id=${businessId}::uuid and o.active join businesses b on b.id=o.business_id and b.active join business_offering_revisions r on r.id=p.revision_id and r.approval_status='approved' and r.visibility='public' order by r.name`);
+        return result.rows.map(row => ({ offeringId: String(row.offering_id), offeringRevisionId: String(row.offering_revision_id), name: String(row.name), description: String(row.description), priceLabel: row.pricing_kind === 'fixed' && row.currency !== null && row.amount_minor !== null ? `${String(row.currency)} ${String(row.amount_minor)}` : 'Price available on request' }));
+      });
+    },
   };
 }
