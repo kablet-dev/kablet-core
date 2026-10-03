@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="experience-shell"><div className="experience-frame"><section className="experience-card"><span className="eyebrow">Preparing your experience</span><h2>One moment</h2><p>We are preparing a careful starting point.</p></section></div></main>; }

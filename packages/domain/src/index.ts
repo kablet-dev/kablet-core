@@ -12,3 +12,4 @@ export const offeringRevisionSchema = z.object({ offeringId: z.string().uuid(), 
 export type OfferingRevision = z.infer<typeof offeringRevisionSchema>;
 export * from './visitor-state';
 export * from './decision';
+export * from './experience';

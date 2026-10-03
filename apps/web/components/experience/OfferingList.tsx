@@ -1,0 +1,2 @@
+import type { ExperienceComponent } from '@kablet/domain';
+export function OfferingList({ component }: { component: ExperienceComponent }) { if (component.type !== 'offering-list') return null; return <section className="experience-card"><span className="eyebrow">Explore</span><h2>{component.heading}</h2><p>{component.body}</p>{component.offerings.map(offering => <article key={offering.offeringId}><h3>{offering.name}</h3><p>{offering.description}</p><small>{offering.priceLabel}</small></article>)}</section>; }
