@@ -1,2 +1,1 @@
-import type { NextConfig } from 'next';
-const config: NextConfig = { transpilePackages: ['@kablet/domain','@kablet/config'] }; export default config;
+﻿import type { NextConfig } from 'next'; const config: NextConfig = { transpilePackages: ['@kablet/domain', '@kablet/config', '@kablet/db'], webpack: (webpackConfig) => { webpackConfig.resolve = webpackConfig.resolve ?? {}; webpackConfig.resolve.extensionAlias = { ...webpackConfig.resolve.extensionAlias, '.js': ['.ts', '.tsx', '.js'] }; return webpackConfig; } }; export default config;

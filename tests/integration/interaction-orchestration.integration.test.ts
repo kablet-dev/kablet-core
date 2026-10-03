@@ -47,10 +47,11 @@ describe('real interaction orchestration', () => {
     try {
       const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
       const started = await service.start(new Date(Date.now() + 60_000));
+      expect(started.experience.contractVersion).toBe('experience.v1');
       const experience = await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'orchestration-1' });
       expect(experience.contractVersion).toBe('experience.v1');
-      const rows = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid and version=1)::int as revisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions`); });
-      expect(rows.rows[0]).toMatchObject({ observations: 1, revisions: 1, decisions: 1 });
+      const rows = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid and version=1)::int as revisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid and visitor_state_version=0)::int as initial_decisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid and visitor_state_version=1)::int as intent_decisions`); });
+      expect(rows.rows[0]).toMatchObject({ observations: 1, revisions: 1, decisions: 2, initial_decisions: 1, intent_decisions: 1 });
     } finally { await cleanup(resource); }
   }, 90000);
 
@@ -61,7 +62,7 @@ describe('real interaction orchestration', () => {
       const started = await service.start(new Date(Date.now() + 60_000));
       const first = await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'replay-1' });
       const beforeReplay = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid)::int as revisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select version from visitor_states where visitor_identity_id=${started.visitorId}::uuid) as version`); });
-      expect(beforeReplay.rows[0]).toMatchObject({ observations: 1, revisions: 2, decisions: 1, version: '1' });
+      expect(beforeReplay.rows[0]).toMatchObject({ observations: 1, revisions: 2, decisions: 2, version: '1' });
       const second = await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'replay-1' });
       expect(second).toEqual(first);
       await expect(service.expressIntent(started.handle, { intent: 'select_offering', idempotencyKey: 'replay-1' })).rejects.toThrow('observation idempotency key conflicts with a different input');
@@ -73,16 +74,17 @@ describe('real interaction orchestration', () => {
   it('recovers after observation commit and Decision failure without duplicating state', async () => {
     const resource = await disposable();
     try {
+      const normalService = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await normalService.start(new Date(Date.now() + 60_000));
       const realDecisions = createDecisionRepository(resource.runtime.db);
       let fail = true;
       const failing = { create: async (...args: Parameters<typeof realDecisions.create>) => { if (fail) { fail = false; throw new Error('controlled decision failure'); } return realDecisions.create(...args); } } as typeof realDecisions;
-      const started = await createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business, decisionRepository: failing }).start(new Date(Date.now() + 60_000));
       const failingService = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business, decisionRepository: failing });
       await expect(failingService.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'recovery-1' })).rejects.toThrow('controlled decision failure');
       const recovered = await createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business }).expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'recovery-1' });
       expect(recovered.contractVersion).toBe('experience.v1');
-      const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select count(*)::int as count from visitor_observations`); });
-      expect(counts.rows[0].count).toBe(1);
+      const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid)::int as revisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select version from visitor_states where visitor_identity_id=${started.visitorId}::uuid) as version`); });
+      expect(counts.rows[0]).toMatchObject({ observations: 1, revisions: 2, decisions: 2, version: '1' });
     } finally { await cleanup(resource); }
   }, 90000);
 });

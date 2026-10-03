@@ -59,6 +59,9 @@ importers:
       '@kablet/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@kablet/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@kablet/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -71,6 +74,9 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.18.6

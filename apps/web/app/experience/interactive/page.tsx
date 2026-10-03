@@ -1,0 +1,3 @@
+import { InteractiveExperience } from '../../../components/experience/InteractiveExperience';
+
+export default function InteractivePage() { return <main className="experience-shell"><div className="experience-frame"><header className="experience-header"><div className="brand-mark"><span className="brand-dot" />Northstar Studio</div><span className="eyebrow">A live Kablet interaction</span><h1>A front door that listens.</h1><p className="hero-copy">Express what you need. Kablet carries that signal through Visitor State, Decision and Experience before responding.</p></header><InteractiveExperience /><p className="demo-note">Early product preview · no booking, payment or external action is connected.</p></div></main>; }
