@@ -13,3 +13,4 @@ export type OfferingRevision = z.infer<typeof offeringRevisionSchema>;
 export * from './visitor-state';
 export * from './decision';
 export * from './experience';
+export * from './interaction';
