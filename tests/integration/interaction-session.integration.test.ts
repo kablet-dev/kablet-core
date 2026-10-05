@@ -22,6 +22,8 @@ async function setup() {
   if (!roleAdminUrl) throw new Error('TEST_ROLE_ADMIN_URL is required for trusted migration bootstrap');
   const managerPool = new pg.Pool({ connectionString: `${base}/postgres`, max: 1 });
   const database = name();
+  let migrated: ReturnType<typeof createDb> | undefined;
+  let runtime: ReturnType<typeof createDb> | undefined;
   try {
     await managerPool.query(`create database "${database}" owner "kablet_test_manager"`);
     await managerPool.query(`grant connect, create on database "${database}" to "${bootstrapUser}"`);
@@ -31,7 +33,7 @@ async function setup() {
       await target.query('grant usage, create on schema public to kablet_privacy_owner');
     } finally { await target.end(); }
     const bootstrapUrl = `postgresql://${encodeURIComponent(bootstrapUser)}:${encodeURIComponent(bootstrapPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`;
-    const migrated = createDb(bootstrapUrl);
+    migrated = createDb(bootstrapUrl);
     const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1, connectionTimeoutMillis: 5000, query_timeout: 10000 });
     try {
       await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
@@ -43,20 +45,30 @@ async function setup() {
     await migrated.db.execute(sql`grant usage on schema public to kablet_dev`);
     await migrated.db.execute(sql`grant select, insert, update, delete on organizations, businesses, visitor_identities, visitor_sessions, visitor_state_revisions, visitor_states, interaction_sessions to kablet_dev`);
     await migrated.pool.end();
+    migrated = undefined;
   } catch (error) {
+    if (runtime) await runtime.pool.end();
+    if (migrated) await migrated.pool.end();
     await managerPool.query(`drop database if exists "${database}"`);
     await managerPool.end();
     throw error;
   }
-  if (!process.env.TEST_APP_PASSWORD) throw new Error('TEST_APP_PASSWORD is required for restricted runtime verification');
-  const runtimeUrl = `postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`;
-  const runtime = createDb(runtimeUrl);
-  await runtime.db.transaction(async tx => {
-    await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`);
-    await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Interaction Test Org')`);
-    await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Interaction Test Business')`);
-  });
-  return { database, managerPool, runtime };
+  try {
+    if (!process.env.TEST_APP_PASSWORD) throw new Error('TEST_APP_PASSWORD is required for restricted runtime verification');
+    const runtimeUrl = `postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`;
+    runtime = createDb(runtimeUrl);
+    await runtime.db.transaction(async tx => {
+      await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`);
+      await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Interaction Test Org')`);
+      await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Interaction Test Business')`);
+    });
+    return { database, managerPool, runtime };
+  } catch (error) {
+    if (runtime) await runtime.pool.end();
+    await managerPool.query(`drop database if exists "${database}"`);
+    await managerPool.end();
+    throw error;
+  }
 }
 async function cleanup(resource: Awaited<ReturnType<typeof setup>>) { await resource.runtime.pool.end(); await resource.managerPool.query(`drop database "${resource.database}"`); await resource.managerPool.end(); }
 

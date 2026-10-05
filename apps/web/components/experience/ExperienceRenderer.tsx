@@ -5,10 +5,11 @@ import { OfferingList } from './OfferingList';
 import { SafeFallback } from './SafeFallback';
 import { TimeWindowRequest } from './TimeWindowRequest';
 import { QualificationQuestion } from './QualificationQuestion';
+import { ContactRequest } from './ContactRequest';
 
 type RendererProps = { component: ExperienceComponent };
 type Renderer = (props: RendererProps) => React.ReactNode;
-const registry: Record<Exclude<ExperienceComponent['type'], 'qualification-question'>, Renderer> = {
+const registry: Record<Exclude<ExperienceComponent['type'], 'qualification-question' | 'contact-request'>, Renderer> = {
   'intent-clarification': IntentClarification,
   'offering-list': OfferingList,
   'time-window-request': TimeWindowRequest,
@@ -19,6 +20,7 @@ const registry: Record<Exclude<ExperienceComponent['type'], 'qualification-quest
 export function ExperienceRenderer({ experience, selectedQualification, onQualificationSelect }: { experience: ExperienceModel; selectedQualification?: string | null; onQualificationSelect?: (value: string) => void }) {
   return <div className="experience-content">{experience.components.map((component, index) => {
     if (component.type === 'qualification-question') return <QualificationQuestion key={`${component.type}-${index}`} component={component} selected={selectedQualification ?? null} onSelect={onQualificationSelect ?? (() => undefined)} />;
+    if (component.type === 'contact-request') return <ContactRequest key={`${component.type}-${index}`} component={component} />;
     const Component = registry[component.type];
     return <Component key={`${component.type}-${index}`} component={component} />;
   })}</div>;

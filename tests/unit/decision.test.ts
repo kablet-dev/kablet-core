@@ -16,4 +16,21 @@ describe('baseline Decision policy', () => {
   it('returns no_safe_decision when the selected revision is no longer eligible', () => {
     expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent, selectedOffering: { offeringId: refs[0].offeringId, publishedRevisionId: refs[0].offeringRevisionId, status: 'selected', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: [] })).toMatchObject({ type: 'no_safe_decision' });
   });
+  it('returns offer_next_step only after the required contact and consent are satisfied', () => {
+    const state = { ...emptyVisitorState, intent, qualification: [{ questionKey: 'context_timeline', answer: 'immediate', sourceObservationId: intent.sourceObservationId }], contact: { status: 'provided' as const, channels: ['email' as const], sourceContactRecordId: refs[0].offeringId, sourceObservationId: intent.sourceObservationId }, consent: { status: 'granted' as const, purpose: 'follow_up', version: '1', sourceObservationId: intent.sourceObservationId } };
+    expect(evaluateBaselineDecision({ state, eligibleOfferingRefs: refs, contactRequirement: { fields: ['name'], channels: ['email'], consentPurpose: 'follow_up', consentVersion: '1' } })).toMatchObject({ type: 'offer_next_step' });
+  });
+  it('keeps contact readiness gated by matching consent purpose and version', () => {
+    const contact = { status: 'provided' as const, channels: ['email' as const], sourceContactRecordId: refs[0].offeringId, sourceObservationId: intent.sourceObservationId };
+    const requirement = { fields: ['name'], channels: ['email'], consentPurpose: 'follow_up', consentVersion: '1' } as const;
+    const base = { ...emptyVisitorState, intent, qualification: [{ questionKey: 'context_timeline', answer: 'immediate', sourceObservationId: intent.sourceObservationId }], contact };
+    expect(evaluateBaselineDecision({ state: base, eligibleOfferingRefs: refs, contactRequirement: requirement }).type).toBe('request_contact');
+    expect(evaluateBaselineDecision({ state: { ...base, consent: { status: 'granted' as const, purpose: 'marketing', version: '1', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: refs, contactRequirement: requirement }).type).toBe('request_contact');
+    expect(evaluateBaselineDecision({ state: { ...base, consent: { status: 'granted' as const, purpose: 'follow_up', version: '2', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: refs, contactRequirement: requirement }).type).toBe('request_contact');
+    expect(evaluateBaselineDecision({ state: { ...base, consent: { status: 'withdrawn' as const, purpose: 'follow_up', version: '1', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: refs, contactRequirement: requirement }).type).toBe('request_contact');
+  });
+  it('preserves no_safe_decision precedence over complete contact readiness', () => {
+    const state = { ...emptyVisitorState, intent, qualification: [{ questionKey: 'context_timeline', answer: 'immediate', sourceObservationId: intent.sourceObservationId }], contact: { status: 'provided' as const, channels: ['email' as const], sourceContactRecordId: refs[0].offeringId, sourceObservationId: intent.sourceObservationId }, consent: { status: 'granted' as const, purpose: 'follow_up', version: '1', sourceObservationId: intent.sourceObservationId } };
+    expect(evaluateBaselineDecision({ state, eligibleOfferingRefs: [], qualificationRequirements: [{ key: 'context_timeline', prompt: 'Timeframe?', options: [{ value: 'immediate', label: 'Soon' }] }], contactRequirement: { fields: ['name'], channels: ['email'], consentPurpose: 'follow_up', consentVersion: '1' } })).toMatchObject({ type: 'no_safe_decision' });
+  });
 });

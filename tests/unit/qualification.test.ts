@@ -26,6 +26,18 @@ describe('qualification foundation', () => {
     expect(emptyVisitorState.qualification).toEqual([]);
   });
 
+  it('keeps contact separate from consent and removes readiness on withdrawal', () => {
+    const contact = observationSchema.parse({ id: ids[0], organizationId: ids[0], businessId: ids[1], visitorIdentityId: ids[2], sessionId: ids[2], kind: 'contact.submitted', value: { type: 'contact', contactRecordId: ids[1], channels: ['email'] }, idempotencyKey: 'contact', observedAt: new Date(), sourceType: 'visitor', sourceReference: 'test', correctionOfObservationId: null });
+    const grant = observationSchema.parse({ id: ids[1], organizationId: ids[0], businessId: ids[1], visitorIdentityId: ids[2], sessionId: ids[2], kind: 'consent.granted', value: { type: 'consent', purpose: 'follow_up', version: '1' }, idempotencyKey: 'grant', observedAt: new Date(), sourceType: 'visitor', sourceReference: 'test', correctionOfObservationId: null });
+    const withdrawal = observationSchema.parse({ id: ids[0].replace(/1$/, '4'), organizationId: ids[0], businessId: ids[1], visitorIdentityId: ids[2], sessionId: ids[2], kind: 'consent.withdrawn', value: { type: 'consent', purpose: 'follow_up', version: '1' }, idempotencyKey: 'withdraw', observedAt: new Date(), sourceType: 'visitor', sourceReference: 'test', correctionOfObservationId: null });
+    const ready = reduceVisitorStateFromEvidence([contact, grant]);
+    const withdrawn = reduceVisitorStateFromEvidence([contact, grant, withdrawal]);
+    expect(ready.contact?.sourceContactRecordId).toBe(ids[1]);
+    expect(ready.consent?.status).toBe('granted');
+    expect(withdrawn.contact?.sourceContactRecordId).toBe(ids[1]);
+    expect(withdrawn.consent?.status).toBe('withdrawn');
+  });
+
   it('rejects unbounded or malformed qualification values', () => {
     expect(() => qualificationQuestionSchema.parse({ key: 'not valid', prompt: 'x', options: [{ value: 'a', label: 'A' }] })).toThrow();
     expect(() => answer(ids[2], 'immediate', 'ok')).not.toThrow();

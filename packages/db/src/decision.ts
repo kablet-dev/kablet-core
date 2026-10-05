@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import type { Database } from './index.js';
+import type { Database, DatabaseTransaction } from './index.js';
 import { decisionPolicyOutputSchema, evaluateBaselineDecision, visitorStateSchema } from '@kablet/domain';
 import type { DecisionPolicyInput } from '@kablet/domain';
 import { z } from 'zod';
 
-type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+type Tx = DatabaseTransaction;
 const uuid = /^[0-9a-f-]{36}$/i;
 const offeringReferenceRowSchema = z.object({ offering_id: z.string().uuid(), revision_id: z.string().uuid() });
 const safeIntegerSchema = z.union([z.string(), z.number()]).transform(value => {
@@ -20,18 +20,19 @@ function normalizeDecisionRow(row: unknown) {
   return { ...record, visitor_state_version: safeIntegerSchema.parse(record.visitor_state_version) };
 }
 
-async function tenant<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>) {
+async function tenant<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>, existingTx?: Tx) {
   if (!uuid.test(organizationId) || !uuid.test(businessId)) throw new Error('invalid tenant context');
-  return db.transaction(async tx => {
+  const run = async (tx: Tx) => {
     await tx.execute(sql`select set_config('kablet.organization_id', ${organizationId}, true)`);
     const business = await tx.execute(sql`select 1 from businesses where id=${businessId}::uuid and organization_id=${organizationId}::uuid and active`);
     if (!business.rows[0]) throw new Error('business does not belong to organization');
     await tx.execute(sql`select set_config('kablet.business_id', ${businessId}, true)`);
     return fn(tx);
-  });
+  };
+  return existingTx ? run(existingTx) : db.transaction(run);
 }
 
-export function createDecisionRepository(db: Database['db']) {
+export function createDecisionRepository(db: Database['db'], existingTx?: Tx) {
   return {
     async create(input: { organizationId: string; businessId: string; visitorIdentityId: string; sessionId: string; idempotencyKey: string; policyId: string; policyVersion: string; contractVersion?: 'decision.v1'; policyInput: DecisionPolicyInput }) {
       return tenant(db, input.organizationId, input.businessId, async tx => {
@@ -63,7 +64,7 @@ export function createDecisionRepository(db: Database['db']) {
             : [];
         for (const ref of relevantRefs) await tx.execute(sql`insert into visitor_decision_business_truth_refs (decision_id,organization_id,business_id,offering_id,offering_revision_id) values (${decisionId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${ref.offeringId}::uuid,${ref.offeringRevisionId}::uuid)`);
         return { idempotent: false, decision: { ...normalizeDecisionRow(inserted.rows[0]), rationale: result.rationale } };
-      });
+      }, existingTx);
     },
   };
 }

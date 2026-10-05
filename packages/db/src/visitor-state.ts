@@ -10,20 +10,22 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
+import type { DatabaseTransaction } from './index.js';
+type Tx = DatabaseTransaction;
 
-async function context<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>) {
+async function context<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>, existingTx?: Tx) {
   if (!/^[0-9a-f-]{36}$/i.test(organizationId) || !/^[0-9a-f-]{36}$/i.test(businessId)) throw new Error('invalid tenant context');
-  return db.transaction(async tx => {
+  const run = async (tx: Tx) => {
     await tx.execute(sql`select set_config('kablet.organization_id', ${organizationId}, true)`);
     const business = await tx.execute(sql`select 1 from businesses where id=${businessId}::uuid and organization_id=${organizationId}::uuid and active`);
     if (!business.rows[0]) throw new Error('business does not belong to organization');
     await tx.execute(sql`select set_config('kablet.business_id', ${businessId}, true)`);
     return fn(tx);
-  });
+  };
+  return existingTx ? run(existingTx) : db.transaction(run);
 }
 
-export function createVisitorStateRepository(db: Database['db']) {
+export function createVisitorStateRepository(db: Database['db'], existingTx?: Tx) {
   return {
     async createVisitor(organizationId: string, businessId: string, retentionExpiresAt: Date) {
       return context(db, organizationId, businessId, async tx => {
@@ -32,10 +34,10 @@ export function createVisitorStateRepository(db: Database['db']) {
         await tx.execute(sql`insert into visitor_state_revisions (id,organization_id,business_id,visitor_identity_id,version,state) values (${revisionId}::uuid,${organizationId}::uuid,${businessId}::uuid,${visitorId}::uuid,0,${JSON.stringify(emptyVisitorState)}::jsonb)`);
         await tx.execute(sql`insert into visitor_states (visitor_identity_id,organization_id,business_id,current_revision_id,version) values (${visitorId}::uuid,${organizationId}::uuid,${businessId}::uuid,${revisionId}::uuid,0)`);
         return visitorId;
-      });
+      }, existingTx);
     },
     async createSession(organizationId: string, businessId: string, visitorId: string) {
-      return context(db, organizationId, businessId, async tx => { const id = randomUUID(); await tx.execute(sql`insert into visitor_sessions (id,organization_id,business_id,visitor_identity_id) values (${id}::uuid,${organizationId}::uuid,${businessId}::uuid,${visitorId}::uuid)`); return id; });
+      return context(db, organizationId, businessId, async tx => { const id = randomUUID(); await tx.execute(sql`insert into visitor_sessions (id,organization_id,business_id,visitor_identity_id) values (${id}::uuid,${organizationId}::uuid,${businessId}::uuid,${visitorId}::uuid)`); return id; }, existingTx);
     },
     async getCurrentState(organizationId: string, businessId: string, visitorId: string) {
       return context(db, organizationId, businessId, async tx => {
@@ -43,7 +45,7 @@ export function createVisitorStateRepository(db: Database['db']) {
         if (!result.rows[0]) throw new Error('visitor state not found');
         const row = result.rows[0];
         return { version: Number(row.version), revisionId: String(row.current_revision_id), state: visitorStateSchema.parse(row.state) };
-      });
+      }, existingTx);
     },
     async ingest(organizationId: string, input: unknown) {
       const observation = observationSchema.parse(input);
@@ -81,10 +83,10 @@ export function createVisitorStateRepository(db: Database['db']) {
         const updated = await tx.execute(sql`update visitor_states set current_revision_id=${revisionId}::uuid,version=${version},updated_at=now() where visitor_identity_id=${observation.visitorIdentityId}::uuid and version=${actualVersion} returning version`);
         if (updated.rows.length !== 1) throw new Error('visitor state concurrency conflict');
         return { idempotent: false, revisionId };
-      });
+      }, existingTx);
     },
     async anonymize(organizationId: string, visitorId: string, businessId: string) {
-      return context(db, organizationId, businessId, async tx => (await tx.execute(sql`select public.kablet_visitor_privacy_delete(${organizationId}::uuid,${visitorId}::uuid) as deleted`)).rows[0].deleted);
+      return context(db, organizationId, businessId, async tx => (await tx.execute(sql`select public.kablet_visitor_privacy_delete(${organizationId}::uuid,${visitorId}::uuid) as deleted`)).rows[0].deleted, existingTx);
     },
   };
 }

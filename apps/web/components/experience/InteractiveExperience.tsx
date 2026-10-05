@@ -18,6 +18,9 @@ export function InteractiveExperience() {
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<Intent>('request_information');
   const [selectedQualification, setSelectedQualification] = useState<string | null>(null);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactConsent, setContactConsent] = useState(false);
   const [busy, setBusy] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
 
@@ -53,9 +56,11 @@ export function InteractiveExperience() {
     setFailure(null);
     try {
       const qualification = experience.components.find(component => component.type === 'qualification-question');
-      const endpoint = qualification ? '/api/interaction/qualification' : '/api/interaction/intent';
-      const body = qualification ? { questionKey: qualification.questionKey, answer: selectedQualification, idempotencyKey: stableKey } : { intent: selected, idempotencyKey: stableKey };
+      const contact = experience.decisionType === 'request_contact';
+      const endpoint = qualification ? '/api/interaction/qualification' : contact ? '/api/interaction/contact' : '/api/interaction/intent';
+      const body = qualification ? { questionKey: qualification.questionKey, answer: selectedQualification, idempotencyKey: stableKey } : contact ? { name: contactName, email: contactEmail, consent: contactConsent, idempotencyKey: stableKey } : { intent: selected, idempotencyKey: stableKey };
       if (qualification && !selectedQualification) { setBusy(false); return; }
+      if (contact && (!contactName || !contactEmail || !contactConsent)) { setBusy(false); return; }
       const response = await fetch(endpoint, {
         method: 'POST',
         credentials: 'same-origin',
@@ -104,6 +109,7 @@ export function InteractiveExperience() {
         </button>
       </div>}
       {experience?.decisionType === 'request_qualification' && <button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !selectedQualification}>{busy ? 'Working...' : 'Continue'}</button>}
+      {experience?.decisionType === 'request_contact' && <div className='intent-panel'><input aria-label='Name' value={contactName} onChange={event => setContactName(event.target.value)} placeholder='Your name' /><input aria-label='Email' value={contactEmail} onChange={event => setContactEmail(event.target.value)} placeholder='you@example.com' type='email' /><label><input type='checkbox' checked={contactConsent} onChange={event => setContactConsent(event.target.checked)} /> I agree to be contacted about this request.</label><button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !contactName || !contactEmail || !contactConsent}>{busy ? 'Working...' : 'Continue'}</button></div>}
     </div>
   );
 }

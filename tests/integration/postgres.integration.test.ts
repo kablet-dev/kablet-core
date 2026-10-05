@@ -30,19 +30,25 @@ function postgresCause(error: unknown): { code?: string; message?: string } | un
 
 async function provision() {
   const managerPool = new pg.Pool({ connectionString: `${baseConnection}/postgres`, max: 1 });
-  const identity = await managerPool.query('select current_user, current_database()');
-  if (identity.rows[0].current_user !== 'kablet_test_manager' || identity.rows[0].current_database !== 'postgres') throw new Error('Unsafe test-manager identity');
   const name = databaseName();
-  await managerPool.query(`CREATE DATABASE "${name}" OWNER "kablet_test_manager"`);
-  if (!bootstrapUser || !bootstrapPassword) throw new Error('TEST_BOOTSTRAP_USER and TEST_BOOTSTRAP_PASSWORD are required for trusted migration bootstrap');
-  await managerPool.query(`GRANT CONNECT, CREATE ON DATABASE "${name}" TO "${bootstrapUser}"`);
-  const managerTarget = new pg.Pool({ connectionString: `${baseConnection}/${name}`, max: 1 });
   try {
-    await managerTarget.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${bootstrapUser}"`);
-    await managerTarget.query('GRANT USAGE, CREATE ON SCHEMA public TO kablet_privacy_owner');
-  } finally { await managerTarget.end(); }
-  const bootstrapConnection = `postgresql://${encodeURIComponent(bootstrapUser)}:${encodeURIComponent(bootstrapPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${name}`;
-  return { name, managerPool, url: bootstrapConnection };
+    const identity = await managerPool.query('select current_user, current_database()');
+    if (identity.rows[0].current_user !== 'kablet_test_manager' || identity.rows[0].current_database !== 'postgres') throw new Error('Unsafe test-manager identity');
+    await managerPool.query(`CREATE DATABASE "${name}" OWNER "kablet_test_manager"`);
+    if (!bootstrapUser || !bootstrapPassword) throw new Error('TEST_BOOTSTRAP_USER and TEST_BOOTSTRAP_PASSWORD are required for trusted migration bootstrap');
+    await managerPool.query(`GRANT CONNECT, CREATE ON DATABASE "${name}" TO "${bootstrapUser}"`);
+    const managerTarget = new pg.Pool({ connectionString: `${baseConnection}/${name}`, max: 1 });
+    try {
+      await managerTarget.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${bootstrapUser}"`);
+      await managerTarget.query('GRANT USAGE, CREATE ON SCHEMA public TO kablet_privacy_owner');
+    } finally { await managerTarget.end(); }
+    const bootstrapConnection = `postgresql://${encodeURIComponent(bootstrapUser)}:${encodeURIComponent(bootstrapPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${name}`;
+    return { name, managerPool, url: bootstrapConnection };
+  } catch (error) {
+    await managerPool.query(`DROP DATABASE IF EXISTS "${name}"`);
+    await managerPool.end();
+    throw error;
+  }
 }
 
 async function dispose(resource: Awaited<ReturnType<typeof provision>>) {
@@ -76,6 +82,13 @@ describe('disposable PostgreSQL integration', () => {
           await roleAdmin.end();
         }
         if ((await resource.managerPool.query("select pg_has_role('kablet_test_bootstrap', 'kablet_privacy_owner', 'SET') as can_set")).rows[0].can_set) throw new Error('bootstrap privacy-owner SET access remains after trusted post-migration revocation');
+        const contactSecurity = await db.execute(sql`select c.relname, c.relrowsecurity, c.relforcerowsecurity, has_table_privilege('kablet_dev', c.oid, 'SELECT') as runtime_select, has_table_privilege('kablet_dev', c.oid, 'INSERT') as runtime_insert, has_table_privilege('kablet_dev', c.oid, 'UPDATE') as runtime_update, has_table_privilege('kablet_dev', c.oid, 'DELETE') as runtime_delete from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('visitor_contact_records','visitor_consents') order by c.relname`);
+        expect(contactSecurity.rows).toHaveLength(2);
+        for (const row of contactSecurity.rows) expect(row).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true, runtime_select: true, runtime_insert: true, runtime_update: false, runtime_delete: false });
+        const immutableFunction = await db.execute(sql`select has_function_privilege('public', 'public.kablet_visitor_immutable()', 'EXECUTE') as public_execute, has_function_privilege('kablet_test_bootstrap', 'public.kablet_visitor_immutable()', 'EXECUTE') as bootstrap_execute`);
+        expect(immutableFunction.rows[0]).toMatchObject({ public_execute: false, bootstrap_execute: false });
+        const contactTriggers = await db.execute(sql`select c.relname, count(t.oid)::int as trigger_count from pg_class c join pg_namespace n on n.oid=c.relnamespace left join pg_trigger t on t.tgrelid=c.oid and not t.tgisinternal and t.tgname in ('visitor_contact_records_immutable','visitor_consents_immutable') where n.nspname='public' and c.relname in ('visitor_contact_records','visitor_consents') group by c.relname order by case c.relname when 'visitor_contact_records' then 1 when 'visitor_consents' then 2 end`);
+        expect(contactTriggers.rows).toEqual([{ relname: 'visitor_contact_records', trigger_count: 1 }, { relname: 'visitor_consents', trigger_count: 1 }]);
         expect((await db.execute(sql`insert into infrastructure_ledger default values returning id`)).rows).toHaveLength(1);
         await expect(db.transaction(async tx => { await tx.execute(sql`insert into infrastructure_ledger default values`); throw new Error('rollback-check'); })).rejects.toThrow('rollback-check');
       }

@@ -1,0 +1,2 @@
+import type { ExperienceComponent } from '@kablet/domain';
+export function ContactRequest({ component }: { component: ExperienceComponent }) { if (component.type !== 'contact-request') return null; return <section className="experience-card"><span className="eyebrow">One useful next step</span><h2>How can we follow up?</h2><p>Share your details and choose to allow follow-up about this request.</p></section>; }

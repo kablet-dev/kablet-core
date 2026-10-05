@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { qualificationQuestionSchema, visitorStateSchema, type VisitorState } from './visitor-state';
+import { contactRequirementSchema, qualificationQuestionSchema, visitorStateSchema, type VisitorState } from './visitor-state';
 
-export const decisionTypeSchema = z.enum(['clarify_intent', 'present_offering', 'request_qualification', 'request_time_window', 'offer_next_step', 'no_safe_decision']);
+export const decisionTypeSchema = z.enum(['clarify_intent', 'present_offering', 'request_qualification', 'request_contact', 'request_time_window', 'offer_next_step', 'no_safe_decision']);
 export type DecisionType = z.infer<typeof decisionTypeSchema>;
 export const decisionRationaleSchema = z.object({ code: z.enum(['intent_missing', 'intent_known', 'offering_selected', 'selected_offering_unpublished', 'qualification_missing', 'time_window_missing', 'eligible_offering_available', 'no_eligible_business_truth', 'insufficient_authoritative_truth']), source: z.enum(['visitor_state', 'business_truth', 'policy']) });
 export type DecisionRationale = z.infer<typeof decisionRationaleSchema>;
-export const decisionPolicyInputSchema = z.object({ state: z.lazy(() => visitorStateSchema), eligibleOfferingRefs: z.array(z.object({ offeringId: z.string().uuid(), offeringRevisionId: z.string().uuid() })), qualificationRequirements: z.array(qualificationQuestionSchema).max(20).default([]), permittedNextStep: z.literal(false).default(false) });
-export type DecisionPolicyInput = { state: VisitorState; eligibleOfferingRefs: Array<{ offeringId: string; offeringRevisionId: string }>; qualificationRequirements?: Array<z.infer<typeof qualificationQuestionSchema>>; permittedNextStep?: false };
+export const decisionPolicyInputSchema = z.object({ state: z.lazy(() => visitorStateSchema), eligibleOfferingRefs: z.array(z.object({ offeringId: z.string().uuid(), offeringRevisionId: z.string().uuid() })), qualificationRequirements: z.array(qualificationQuestionSchema).max(20).default([]), contactRequirement: contactRequirementSchema.nullable().default(null), permittedNextStep: z.literal(false).default(false) });
+export type DecisionPolicyInput = { state: VisitorState; eligibleOfferingRefs: Array<{ offeringId: string; offeringRevisionId: string }>; qualificationRequirements?: Array<z.infer<typeof qualificationQuestionSchema>>; contactRequirement?: z.infer<typeof contactRequirementSchema> | null; permittedNextStep?: false };
 export const decisionPolicyOutputSchema = z.object({ type: decisionTypeSchema, rationale: z.array(decisionRationaleSchema), qualificationQuestion: qualificationQuestionSchema.nullable().default(null) });
 export type DecisionPolicyOutput = z.infer<typeof decisionPolicyOutputSchema>;
 export const experienceInputContractVersion = 'experience-input.v1' as const;
@@ -19,6 +19,9 @@ export function evaluateBaselineDecision(input: DecisionPolicyInput): DecisionPo
   if (!state.intent || state.intent.status === 'withdrawn' || state.intent.status === 'invalidated') return { type: 'clarify_intent', qualificationQuestion: null, rationale: [{ code: 'intent_missing', source: 'visitor_state' }] };
   const missingQualification = (input.qualificationRequirements ?? []).find(question => !state.qualification.some(answer => answer.questionKey === question.key));
   if (missingQualification) return { type: 'request_qualification', qualificationQuestion: missingQualification, rationale: [{ code: 'qualification_missing', source: 'visitor_state' }] };
+  const contactRequirement = input.contactRequirement;
+  if (contactRequirement && (!state.contact || !state.consent || state.consent.status !== 'granted' || state.consent.purpose !== contactRequirement.consentPurpose || state.consent.version !== contactRequirement.consentVersion)) return { type: 'request_contact', qualificationQuestion: null, rationale: [{ code: 'qualification_missing', source: 'visitor_state' }] };
+  if (contactRequirement) return { type: 'offer_next_step', qualificationQuestion: null, rationale: [{ code: 'intent_known', source: 'visitor_state' }, { code: 'eligible_offering_available', source: 'business_truth' }] };
   if (state.selectedOffering?.status === 'selected' && !input.eligibleOfferingRefs.some(ref => ref.offeringId === state.selectedOffering?.offeringId && ref.offeringRevisionId === state.selectedOffering?.publishedRevisionId)) {
     return input.eligibleOfferingRefs.length ? { type: 'present_offering', qualificationQuestion: null, rationale: [{ code: 'selected_offering_unpublished', source: 'visitor_state' }, { code: 'eligible_offering_available', source: 'business_truth' }] } : { type: 'no_safe_decision', qualificationQuestion: null, rationale: [{ code: 'selected_offering_unpublished', source: 'visitor_state' }, { code: 'no_eligible_business_truth', source: 'business_truth' }] };
   }
