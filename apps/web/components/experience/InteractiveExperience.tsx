@@ -17,6 +17,7 @@ export function InteractiveExperience() {
   const [experience, setExperience] = useState<ExperienceModel | null>(null);
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<Intent>('request_information');
+  const [selectedQualification, setSelectedQualification] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
 
@@ -51,16 +52,21 @@ export function InteractiveExperience() {
     setBusy(true);
     setFailure(null);
     try {
-      const response = await fetch('/api/interaction/intent', {
+      const qualification = experience.components.find(component => component.type === 'qualification-question');
+      const endpoint = qualification ? '/api/interaction/qualification' : '/api/interaction/intent';
+      const body = qualification ? { questionKey: qualification.questionKey, answer: selectedQualification, idempotencyKey: stableKey } : { intent: selected, idempotencyKey: stableKey };
+      if (qualification && !selectedQualification) { setBusy(false); return; }
+      const response = await fetch(endpoint, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent: selected, idempotencyKey: stableKey }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error('intent failed');
       const payload = await response.json();
       setExperience(payload.experience);
       setSubmissionKey(null);
+      setSelectedQualification(null);
     } catch {
       setFailure('intent');
     } finally {
@@ -81,8 +87,8 @@ export function InteractiveExperience() {
           <button type='button' disabled={busy} onClick={() => failure === 'start' ? void start() : void submit()}>Retry</button>
         </div>
       )}
-      {experience && <ExperienceRenderer experience={experience} />}
-      <div className='intent-panel'>
+      {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} />}
+      {experience?.decisionType !== 'request_qualification' && <div className='intent-panel'>
         <span className='eyebrow'>Your direction</span>
         <h2>What would be most useful?</h2>
         <div className='intent-options'>
@@ -96,7 +102,8 @@ export function InteractiveExperience() {
         <button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !experience}>
           {busy ? 'Working...' : 'Continue'}
         </button>
-      </div>
+      </div>}
+      {experience?.decisionType === 'request_qualification' && <button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !selectedQualification}>{busy ? 'Working...' : 'Continue'}</button>}
     </div>
   );
 }

@@ -8,6 +8,7 @@ export const expressIntentRequestSchema = z.object({
   intent: interactionIntentSchema,
   idempotencyKey: z.string().trim().min(1).max(200),
 }).strict();
+export const expressQualificationRequestSchema = z.object({ questionKey: z.string().trim().regex(/^[a-z][a-z0-9_.-]{1,63}$/), answer: z.string().trim().regex(/^[a-z0-9][a-z0-9_.-]{0,63}$/), idempotencyKey: z.string().trim().min(1).max(200) }).strict();
 export const interactionExperienceResponseSchema = z.object({
   contractVersion: z.literal('interaction-response.v1'),
   experience: experienceModelSchema,
@@ -18,3 +19,4 @@ export const safeInteractionErrorSchema = z.object({
   message: z.string().min(1).max(200),
 }).strict();
 export type ExpressIntentRequest = z.infer<typeof expressIntentRequestSchema>;
+export type ExpressQualificationRequest = z.infer<typeof expressQualificationRequestSchema>;

@@ -11,6 +11,7 @@ export const demoExperienceInput: ExperienceInput = {
   decisionType: 'clarify_intent',
   visitorStateRevisionId: '10000000-0000-4000-8000-000000000006',
   businessTruthRefs: [],
+  qualificationQuestion: null,
   rationale: [{ code: 'intent_missing', source: 'visitor_state' }],
 };
 

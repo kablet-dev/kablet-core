@@ -90,6 +90,24 @@ function decisionInput(f: Awaited<ReturnType<typeof fixture>>, key: string, poli
 }
 
 describe('Decision Foundation PostgreSQL integration', () => {
+  it('persists request_qualification while rejecting unsupported decision types', async () => {
+    const r = await setup();
+    try {
+      const f = await referencedFixture(r);
+      const decision = createDecisionRepository(r.app.db);
+      const result = await decision.create({ ...decisionInput(f, 'qualification-decision-1'), policyInput: { state: { schemaVersion: 1, intent: { value: 'explore_offerings', status: 'stated', sourceObservationId: '33333333-3333-4333-8333-333333333333' }, selectedOffering: null, timeWindow: null, qualification: [] }, eligibleOfferingRefs: [{ offeringId: f.offering, offeringRevisionId: f.revision }], qualificationRequirements: [{ key: 'context_timeline', prompt: 'What timeframe are you considering?', options: [{ value: 'immediate', label: 'Soon' }] }] } });
+      expect(result.decision).toMatchObject({ decision_type: 'request_qualification' });
+      const client = await r.app.pool.connect();
+      try {
+        await client.query('begin');
+        await client.query('select set_config($1,$2,true), set_config($3,$4,true)', ['kablet.organization_id', org, 'kablet.business_id', f.business]);
+        const current = await client.query('select current_revision_id, version from visitor_states where visitor_identity_id=$1', [f.visitor]);
+        await expect(client.query('insert into visitor_decisions (id,organization_id,business_id,visitor_identity_id,session_id,decision_type,status,contract_version,policy_id,policy_version,visitor_state_revision_id,visitor_state_version,idempotency_key,input_fingerprint) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)', [randomUUID(), org, f.business, f.visitor, f.session, 'unsupported', 'accepted', 'decision.v1', 'test', '1', current.rows[0].current_revision_id, current.rows[0].version, 'unsupported-type', 'test'])).rejects.toMatchObject({ code: '23514' });
+        await client.query('rollback');
+      } finally { client.release(); }
+    } finally { await cleanup(r); }
+  }, 90000);
+
   it('creates current-revision decisions and resolves exact replay', async () => {
     const r = await setup();
     try {

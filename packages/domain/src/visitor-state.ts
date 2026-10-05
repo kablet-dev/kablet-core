@@ -1,17 +1,21 @@
 import { z } from 'zod';
 
-export const observationKindSchema = z.enum(['intent.expressed','intent.confirmed','intent.withdrawn','offering.selected','offering.deselected','time_window.stated','time_window.corrected','time_window.withdrawn','observation.invalidated']);
+export const qualificationKeySchema = z.string().trim().regex(/^[a-z][a-z0-9_.-]{1,63}$/, 'invalid qualification question key');
+export const qualificationAnswerSchema = z.string().trim().regex(/^[a-z0-9][a-z0-9_.-]{0,63}$/, 'invalid qualification answer');
+export const qualificationQuestionSchema = z.object({ key: qualificationKeySchema, prompt: z.string().trim().min(1).max(300), options: z.array(z.object({ value: qualificationAnswerSchema, label: z.string().trim().min(1).max(120) }).strict()).min(1).max(10) }).strict();
+export const observationKindSchema = z.enum(['intent.expressed','intent.confirmed','intent.withdrawn','offering.selected','offering.deselected','time_window.stated','time_window.corrected','time_window.withdrawn','qualification.answered','observation.invalidated']);
 export const observationValueSchema = z.union([
   z.object({ type: z.literal('intent'), value: z.enum(['explore_offerings','request_information','select_offering']) }),
   z.object({ type: z.literal('offering'), offeringId: z.string().uuid(), publishedRevisionId: z.string().uuid() }),
   z.object({ type: z.literal('time_window'), start: z.coerce.date(), end: z.coerce.date() }).refine(v => v.end > v.start, 'time window must end after it starts'),
+  z.object({ type: z.literal('qualification'), questionKey: qualificationKeySchema, answer: qualificationAnswerSchema }),
   z.object({ type: z.literal('none') }),
 ]);
 export const observationSchema = z.object({ id: z.string().uuid(), organizationId: z.string().uuid(), businessId: z.string().uuid(), visitorIdentityId: z.string().uuid(), sessionId: z.string().uuid(), expectedVersion: z.number().int().nonnegative().optional(), kind: observationKindSchema, value: observationValueSchema, idempotencyKey: z.string().trim().min(1).max(200), observedAt: z.coerce.date(), sourceType: z.enum(['visitor','trusted_system']), sourceReference: z.string().trim().min(1).max(500), correctionOfObservationId: z.string().uuid().nullable().default(null) });
 export type Observation = z.infer<typeof observationSchema>;
-export const visitorStateSchema = z.object({ schemaVersion: z.literal(1), intent: z.object({ value: z.string(), status: z.enum(['stated','confirmed','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable(), selectedOffering: z.object({ offeringId: z.string().uuid(), publishedRevisionId: z.string().uuid(), status: z.enum(['selected','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable(), timeWindow: z.object({ start: z.coerce.date(), end: z.coerce.date(), status: z.enum(['stated','corrected','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable() });
+export const visitorStateSchema = z.object({ schemaVersion: z.literal(1), intent: z.object({ value: z.string(), status: z.enum(['stated','confirmed','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable(), selectedOffering: z.object({ offeringId: z.string().uuid(), publishedRevisionId: z.string().uuid(), status: z.enum(['selected','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable(), timeWindow: z.object({ start: z.coerce.date(), end: z.coerce.date(), status: z.enum(['stated','corrected','withdrawn','invalidated']), sourceObservationId: z.string().uuid() }).nullable(), qualification: z.array(z.object({ questionKey: qualificationKeySchema, answer: qualificationAnswerSchema, sourceObservationId: z.string().uuid() }).strict()).max(50).default([]) });
 export type VisitorState = z.infer<typeof visitorStateSchema>;
-export const emptyVisitorState: VisitorState = { schemaVersion: 1, intent: null, selectedOffering: null, timeWindow: null };
+export const emptyVisitorState: VisitorState = { schemaVersion: 1, intent: null, selectedOffering: null, timeWindow: null, qualification: [] };
 
 export function reduceVisitorStateFromEvidence(observations: Observation[]): VisitorState {
   const ordered = [...observations].sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime() || a.id.localeCompare(b.id));
@@ -33,6 +37,7 @@ export function reduceVisitorState(previous: VisitorState, observation: Observat
   if (observation.kind === 'offering.selected' && observation.value.type === 'offering') return { ...state, selectedOffering: { offeringId: observation.value.offeringId, publishedRevisionId: observation.value.publishedRevisionId, status: 'selected', sourceObservationId: observation.id } };
   if (observation.kind === 'offering.deselected') return { ...state, selectedOffering: state.selectedOffering ? { ...state.selectedOffering, status: 'withdrawn', sourceObservationId: observation.id } : null };
   if ((observation.kind === 'time_window.stated' || observation.kind === 'time_window.corrected') && observation.value.type === 'time_window') return { ...state, timeWindow: { ...observation.value, status: observation.kind === 'time_window.corrected' ? 'corrected' : 'stated', sourceObservationId: observation.id } };
+  if (observation.kind === 'qualification.answered' && observation.value.type === 'qualification') { const value = observation.value; return { ...state, qualification: [...state.qualification.filter(item => item.questionKey !== value.questionKey), { questionKey: value.questionKey, answer: value.answer, sourceObservationId: observation.id }].sort((a, b) => a.questionKey.localeCompare(b.questionKey)) }; }
   if (observation.kind === 'time_window.withdrawn') return { ...state, timeWindow: state.timeWindow ? { ...state.timeWindow, status: 'withdrawn', sourceObservationId: observation.id } : null };
   if (observation.kind === 'observation.invalidated') {
     const target = observation.correctionOfObservationId;
@@ -42,6 +47,7 @@ export function reduceVisitorState(previous: VisitorState, observation: Observat
       intent: state.intent?.sourceObservationId === target ? { ...state.intent, status: 'invalidated', sourceObservationId: observation.id } : state.intent,
       selectedOffering: state.selectedOffering?.sourceObservationId === target ? { ...state.selectedOffering, status: 'invalidated', sourceObservationId: observation.id } : state.selectedOffering,
       timeWindow: state.timeWindow?.sourceObservationId === target ? { ...state.timeWindow, status: 'invalidated', sourceObservationId: observation.id } : state.timeWindow,
+      qualification: state.qualification.filter(item => item.sourceObservationId !== target),
     };
   }
   throw new Error('unsupported observation/value combination');

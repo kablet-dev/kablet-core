@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -35,7 +35,17 @@ async function disposable() {
     await migrated.db.execute(sql`grant select, insert, update, delete on organizations, businesses, visitor_identities, visitor_sessions, visitor_observations, visitor_state_revisions, visitor_states, visitor_decisions, visitor_decision_business_truth_refs, interaction_sessions, business_offerings, business_offering_revisions, offering_publications to kablet_dev`);
     await migrated.pool.end();
     const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${name}`);
-    await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Orchestration Org')`); await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Orchestration Business')`); });
+    await runtime.db.transaction(async tx => {
+      const offering = randomUUID();
+      const revision = randomUUID();
+      await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`);
+      await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Orchestration Org')`);
+      await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Orchestration Business')`);
+      await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`);
+      await tx.execute(sql`insert into business_offerings(id,business_id,name) values (${offering}::uuid,${business}::uuid,'Orchestration Offering')`);
+      await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${revision}::uuid,${offering}::uuid,1,'Orchestration Offering','A controlled integration fixture','unknown','public','approved','owner_input','integration-fixture',now(),'test')`);
+      await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offering}::uuid,${revision}::uuid)`);
+    });
     return { name, managerPool, runtime };
   } catch (error) { await managerPool.query(`drop database if exists "${name}"`); await managerPool.end(); throw error; }
 }
@@ -85,6 +95,25 @@ describe('real interaction orchestration', () => {
       expect(recovered.contractVersion).toBe('experience.v1');
       const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid)::int as revisions, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select version from visitor_states where visitor_identity_id=${started.visitorId}::uuid) as version`); });
       expect(counts.rows[0]).toMatchObject({ observations: 1, revisions: 2, decisions: 2, version: '1' });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('advances the same adaptive canvas from intent to qualification answer', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const qualification = await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'qualification-intent' });
+      expect(qualification.decisionType).toBe('request_qualification');
+      const question = qualification.components.find(component => component.type === 'qualification-question');
+      expect(question?.type).toBe('qualification-question');
+      const answered = await service.submitQualification(started.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'qualification-answer' });
+      expect(answered.contractVersion).toBe('experience.v1');
+      const replay = await service.submitQualification(started.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'qualification-answer' });
+      expect(replay).toEqual(answered);
+      await expect(service.submitQualification(started.handle, { questionKey: 'context_timeline', answer: 'exploring', idempotencyKey: 'qualification-answer' })).rejects.toThrow('observation idempotency key conflicts with a different input');
+      const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_observations where visitor_identity_id=${started.visitorId}::uuid)::int as observations, (select count(*) from visitor_state_revisions where visitor_identity_id=${started.visitorId}::uuid)::int as revisions, (select version from visitor_states where visitor_identity_id=${started.visitorId}::uuid) as version, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions`); });
+      expect(counts.rows[0]).toMatchObject({ observations: 2, revisions: 3, decisions: 3, version: '2' });
     } finally { await cleanup(resource); }
   }, 90000);
 });

@@ -26,6 +26,7 @@ const timeWindowRequestSchema = z.object({
   heading: z.string().min(1),
   body: z.string().min(1),
 });
+const qualificationQuestionComponentSchema = z.object({ type: z.literal('qualification-question'), questionKey: z.string(), heading: z.string().min(1), body: z.string().min(1), options: z.array(z.object({ value: z.string(), label: z.string() })).min(1) });
 const nextStepInformationSchema = z.object({
   type: z.literal('next-step-information'),
   heading: z.string().min(1),
@@ -41,6 +42,7 @@ export const experienceComponentSchema = z.discriminatedUnion('type', [
   intentClarificationSchema,
   offeringListSchema,
   timeWindowRequestSchema,
+  qualificationQuestionComponentSchema,
   nextStepInformationSchema,
   safeFallbackSchema,
 ]);
@@ -66,6 +68,8 @@ export function decisionToExperience(input: unknown, offerings: unknown[] = []):
         return renderableOfferings.length > 0
           ? [{ type: 'offering-list', heading: 'Options to explore', body: 'These options have been prepared for this experience.', offerings: renderableOfferings }]
           : [{ type: 'safe-fallback', heading: 'Let’s clarify what you need', body: 'There is not enough current business information to present an option safely yet.' }];
+      case 'request_qualification':
+        return decision.qualificationQuestion ? [{ type: 'qualification-question', questionKey: decision.qualificationQuestion.key, heading: decision.qualificationQuestion.prompt, body: 'Choose the answer that best matches what you are looking for.', options: decision.qualificationQuestion.options }] : [{ type: 'safe-fallback', heading: 'Let’s take this one step at a time', body: 'This question is not available right now.' }];
       case 'request_time_window':
         return [{ type: 'time-window-request', heading: 'When would suit you?', body: 'Share a preferred time window so the next step can be considered safely.' }];
       case 'offer_next_step':

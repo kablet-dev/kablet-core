@@ -4,6 +4,12 @@ import type { Database } from './index.js';
 import { emptyVisitorState, observationSchema, reduceVisitorStateFromEvidence, visitorStateSchema } from '@kablet/domain';
 import type { Observation } from '@kablet/domain';
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+
 type Tx = Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 
 async function context<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>) {
@@ -46,7 +52,7 @@ export function createVisitorStateRepository(db: Database['db']) {
         const duplicate = await tx.execute(sql`select id, kind, value from visitor_observations where organization_id=${organizationId}::uuid and visitor_identity_id=${observation.visitorIdentityId}::uuid and idempotency_key=${observation.idempotencyKey}`);
         if (duplicate.rows[0]) {
           const sameKind = duplicate.rows[0].kind === observation.kind;
-          const sameValue = JSON.stringify(duplicate.rows[0].value) === JSON.stringify(observation.value);
+          const sameValue = canonicalJson(duplicate.rows[0].value) === canonicalJson(observation.value);
           if (!sameKind || !sameValue) throw new Error('observation idempotency key conflicts with a different input');
           return { idempotent: true, revisionId: null };
         }
