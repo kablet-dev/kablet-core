@@ -14,3 +14,4 @@ export * from './visitor-state';
 export * from './decision';
 export * from './experience';
 export * from './interaction';
+export * from './action';
