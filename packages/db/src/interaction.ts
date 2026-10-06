@@ -7,23 +7,28 @@ const uuid = /^[0-9a-f-]{36}$/i;
 function hashHandle(handle: string): Buffer { return createHash('sha256').update(handle, 'utf8').digest(); }
 function assertUuid(value: string): void { if (!uuid.test(value)) throw new Error('invalid interaction context'); }
 
-async function scoped<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+async function scoped<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: Tx) => Promise<T>, existingTx?: Tx): Promise<T> {
   assertUuid(organizationId); assertUuid(businessId);
-  return db.transaction(async tx => {
+  const run = async (tx: Tx) => {
     await tx.execute(sql`select set_config('kablet.organization_id', ${organizationId}, true)`);
     const business = await tx.execute(sql`select 1 from businesses where id=${businessId}::uuid and organization_id=${organizationId}::uuid and active`);
     if (!business.rows[0]) throw new Error('business does not belong to organization');
     await tx.execute(sql`select set_config('kablet.business_id', ${businessId}, true)`);
     return fn(tx);
-  });
+  };
+  return existingTx ? run(existingTx) : db.transaction(run);
 }
 
 export function createInteractionSessionRepository(db: Database['db']) {
   return {
-    async create(organizationId: string, businessId: string, visitorIdentityId: string, visitorSessionId: string, expiresAt: Date) {
+    async createWithId(organizationId: string, businessId: string, visitorIdentityId: string, visitorSessionId: string, expiresAt: Date, existingTx?: Tx) {
       const handle = randomBytes(32).toString('base64url');
-      await scoped(db, organizationId, businessId, async tx => { await tx.execute(sql`insert into interaction_sessions (id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${randomUUID()}::uuid,${hashHandle(handle)},${organizationId}::uuid,${businessId}::uuid,${visitorIdentityId}::uuid,${visitorSessionId}::uuid,${expiresAt})`); });
-      return handle;
+      const id = randomUUID();
+      await scoped(db, organizationId, businessId, async tx => { await tx.execute(sql`insert into interaction_sessions (id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${id}::uuid,${hashHandle(handle)},${organizationId}::uuid,${businessId}::uuid,${visitorIdentityId}::uuid,${visitorSessionId}::uuid,${expiresAt})`); }, existingTx);
+      return { handle, id };
+    },
+    async create(organizationId: string, businessId: string, visitorIdentityId: string, visitorSessionId: string, expiresAt: Date) {
+      return (await this.createWithId(organizationId, businessId, visitorIdentityId, visitorSessionId, expiresAt)).handle;
     },
     async resolve(organizationId: string, businessId: string, handle: string) {
       return scoped(db, organizationId, businessId, async tx => {

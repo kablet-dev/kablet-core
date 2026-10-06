@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS acquisition_contexts (id uuid PRIMARY KEY, organization_id uuid NOT NULL, business_id uuid NOT NULL, visitor_identity_id uuid NOT NULL, visitor_session_id uuid NOT NULL, interaction_session_id uuid NOT NULL, captured_at timestamptz NOT NULL, landing_path varchar(2048) NOT NULL, referrer varchar(2048), utm_source varchar(200), utm_medium varchar(200), utm_campaign varchar(200), utm_content varchar(200), utm_term varchar(200), UNIQUE (organization_id,business_id,id), UNIQUE (organization_id,business_id,interaction_session_id), FOREIGN KEY (organization_id,business_id,visitor_identity_id) REFERENCES visitor_identities(organization_id,business_id,id) ON DELETE CASCADE, FOREIGN KEY (organization_id,business_id,visitor_session_id) REFERENCES visitor_sessions(organization_id,business_id,id) ON DELETE CASCADE, FOREIGN KEY (organization_id,business_id,interaction_session_id) REFERENCES interaction_sessions(organization_id,business_id,id) ON DELETE CASCADE);
+ALTER TABLE acquisition_contexts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE acquisition_contexts FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS acquisition_context_isolation ON acquisition_contexts;
+CREATE POLICY acquisition_context_isolation ON acquisition_contexts USING (organization_id=kablet_current_org() AND business_id=kablet_current_business()) WITH CHECK (organization_id=kablet_current_org() AND business_id=kablet_current_business());
+GRANT SELECT, INSERT ON acquisition_contexts TO kablet_dev;
+GRANT SELECT, DELETE ON interaction_sessions TO kablet_privacy_owner;
+GRANT SELECT, DELETE ON acquisition_contexts TO kablet_privacy_owner;
+SET LOCAL ROLE kablet_privacy_owner;
+GRANT EXECUTE ON FUNCTION kablet_visitor_immutable() TO kablet_test_bootstrap;
+RESET ROLE;
+CREATE TRIGGER acquisition_contexts_immutable BEFORE UPDATE OR DELETE ON acquisition_contexts FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
+SET LOCAL ROLE kablet_privacy_owner;
+REVOKE EXECUTE ON FUNCTION kablet_visitor_immutable() FROM kablet_test_bootstrap;
+CREATE OR REPLACE FUNCTION kablet_visitor_privacy_delete(p_organization_id uuid, p_visitor_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE deleted boolean;
+BEGIN
+  IF p_organization_id <> public.kablet_current_org() THEN RAISE EXCEPTION 'privacy tenant mismatch'; END IF;
+  INSERT INTO public.kablet_privacy_operations(transaction_id,organization_id,visitor_identity_id) VALUES (pg_catalog.txid_current(),p_organization_id,p_visitor_id);
+  DELETE FROM public.acquisition_contexts WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.action_outcomes WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.execution_attempts WHERE organization_id=p_organization_id AND action_request_id IN (SELECT id FROM public.action_requests WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id);
+  DELETE FROM public.action_requests WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_decision_business_truth_refs r USING public.visitor_decisions d WHERE d.id=r.decision_id AND d.organization_id=p_organization_id AND d.visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_decisions WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_consents WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_contact_records WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.interaction_sessions WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_states WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_observations WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_state_revisions WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_sessions WHERE organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  DELETE FROM public.visitor_identities WHERE organization_id=p_organization_id AND id=p_visitor_id RETURNING true INTO deleted;
+  DELETE FROM public.kablet_privacy_operations WHERE transaction_id=pg_catalog.txid_current() AND organization_id=p_organization_id AND visitor_identity_id=p_visitor_id;
+  RETURN COALESCE(deleted,false);
+END $$;
+RESET ROLE;

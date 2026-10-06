@@ -8,3 +8,4 @@ export * from './visitor-state.js';
 export * from './decision.js';
 export * from './interaction.js';
 export * from './action-outcome.js';
+export * from './acquisition.js';

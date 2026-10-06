@@ -15,3 +15,4 @@ export * from './decision';
 export * from './experience';
 export * from './interaction';
 export * from './action';
+export * from './acquisition';

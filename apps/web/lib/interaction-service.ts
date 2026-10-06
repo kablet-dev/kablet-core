@@ -2,13 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressQualificationRequestSchema, observationSchema, qualificationQuestionSchema, type ExperienceModel, type InteractionIntent } from '@kablet/domain';
-import { createBusinessTruthRepository, createDecisionRepository, createInteractionSessionRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
+import { createAcquisitionRepository, createBusinessTruthRepository, createDecisionRepository, createInteractionSessionRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
+import { acquisitionContextSchema } from '@kablet/domain';
 
 const intentValues: Record<InteractionIntent, 'explore_offerings' | 'request_information' | 'select_offering'> = { explore_offerings: 'explore_offerings', request_information: 'request_information', select_offering: 'select_offering' };
 const defaultQualificationRequirements = [qualificationQuestionSchema.parse({ key: 'context_timeline', prompt: 'What kind of timeframe are you considering?', options: [{ value: 'immediate', label: 'As soon as possible' }, { value: 'this_week', label: 'This week' }, { value: 'exploring', label: 'I am still exploring' }] })];
 const contactRequirement = { fields: ['name', 'email'] as ('name' | 'email' | 'phone')[], channels: ['email'] as ('email' | 'phone')[], consentPurpose: 'follow_up', consentVersion: '1' };
 export class InteractionExpiredError extends Error { constructor() { super('interaction expired or revoked'); this.name = 'InteractionExpiredError'; } }
 
+export type InteractionAcquisitionInput = { landingPath: string; referrer: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null };
 export function createInteractionService(input: { db: Database['db']; organizationId: string; businessId: string; decisionRepository?: ReturnType<typeof createDecisionRepository>; qualificationRequirements?: typeof defaultQualificationRequirements }) {
   const visitors = createVisitorStateRepository(input.db);
   const interactions = createInteractionSessionRepository(input.db);
@@ -26,11 +28,16 @@ export function createInteractionService(input: { db: Database['db']; organizati
     return decisionToExperience(experienceInput, eligible);
   }
   return {
-    async start(expiresAt: Date) {
-      const visitorId = await visitors.createVisitor(input.organizationId, input.businessId, expiresAt);
-      const sessionId = await visitors.createSession(input.organizationId, input.businessId, visitorId);
-      const handle = await interactions.create(input.organizationId, input.businessId, visitorId, sessionId, expiresAt);
-      return { handle, visitorId, sessionId, experience: await render(visitorId, sessionId, `interaction-start:${visitorId}`) };
+    async start(expiresAt: Date, acquisition: InteractionAcquisitionInput = { landingPath: '/', referrer: null, utmSource: null, utmMedium: null, utmCampaign: null, utmContent: null, utmTerm: null }) {
+      return input.db.transaction(async tx => {
+        const transactionVisitors = createVisitorStateRepository(input.db, tx);
+        const visitorId = await transactionVisitors.createVisitor(input.organizationId, input.businessId, expiresAt);
+        const sessionId = await transactionVisitors.createSession(input.organizationId, input.businessId, visitorId);
+        const interaction = await interactions.createWithId(input.organizationId, input.businessId, visitorId, sessionId, expiresAt, tx);
+        const context = acquisitionContextSchema.parse({ contractVersion: 'acquisition-context.v1', id: randomUUID(), organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId: visitorId, visitorSessionId: sessionId, interactionSessionId: interaction.id, capturedAt: new Date(), ...acquisition });
+        await createAcquisitionRepository(input.db, tx).insert(context);
+        return { handle: interaction.handle, visitorId, sessionId, experience: await render(visitorId, sessionId, `interaction-start:${visitorId}`, tx) };
+      });
     },
     async expressIntent(handle: string, request: unknown): Promise<ExperienceModel> {
       const parsed = expressIntentRequestSchema.parse(request);
