@@ -47,7 +47,7 @@ export function createVisitorStateRepository(db: Database['db'], existingTx?: Tx
         return { version: Number(row.version), revisionId: String(row.current_revision_id), state: visitorStateSchema.parse(row.state) };
       }, existingTx);
     },
-    async ingest(organizationId: string, input: unknown) {
+    async ingest(organizationId: string, input: unknown, existingTx?: Tx) {
       const observation = observationSchema.parse(input);
       if (observation.organizationId !== organizationId) throw new Error('observation organization mismatch');
       return context(db, organizationId, observation.businessId, async tx => {

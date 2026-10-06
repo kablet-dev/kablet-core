@@ -32,9 +32,9 @@ export function createInteractionSessionRepository(db: Database['db']) {
     },
     async resolve(organizationId: string, businessId: string, handle: string) {
       return scoped(db, organizationId, businessId, async tx => {
-        const result = await tx.execute(sql`select visitor_identity_id, visitor_session_id from interaction_sessions where handle_hash=${hashHandle(handle)} and status='active' and expires_at > now()`);
+        const result = await tx.execute(sql`select id, visitor_identity_id, visitor_session_id from interaction_sessions where handle_hash=${hashHandle(handle)} and status='active' and expires_at > now()`);
         if (!result.rows[0]) return null;
-        return { visitorIdentityId: String(result.rows[0].visitor_identity_id), visitorSessionId: String(result.rows[0].visitor_session_id) };
+        return { interactionSessionId: String(result.rows[0].id), visitorIdentityId: String(result.rows[0].visitor_identity_id), visitorSessionId: String(result.rows[0].visitor_session_id) };
       });
     },
     async revoke(organizationId: string, businessId: string, handle: string) {

@@ -13,6 +13,7 @@
     { "idx": 8, "version": "7", "when": 1759968000000, "tag": "0008_qualification_decisions", "breakpoints": true },
     { "idx": 9, "version": "7", "when": 1760054400000, "tag": "0009_contact_consent", "breakpoints": true },
     { "idx": 10, "version": "7", "when": 1760140800000, "tag": "0010_action_execution_outcomes", "breakpoints": true },
-    { "idx": 11, "version": "7", "when": 1760227200000, "tag": "0011_acquisition_context", "breakpoints": true }
+    { "idx": 11, "version": "7", "when": 1760227200000, "tag": "0011_acquisition_context", "breakpoints": true },
+    { "idx": 12, "version": "7", "when": 1760313600000, "tag": "0012_experience_exposure_interaction_facts", "breakpoints": true }
   ]
 }

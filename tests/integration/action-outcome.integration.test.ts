@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createDb } from '@kablet/db';
+import { createDb, createMeasurementRepository } from '@kablet/db';
 import { createActionService } from '../../apps/web/lib/action-service';
 import { controlledLeadAdapter } from '../../apps/web/lib/lead-adapter';
 import { loadTestManagerConfig } from '@kablet/config';
@@ -148,6 +148,7 @@ describe('Action and Outcome PostgreSQL integration', () => {
         await tx.execute(sql`insert into visitor_state_revisions(id,organization_id,business_id,visitor_identity_id,version,state) values (${revision}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,0,'{"schemaVersion":1,"intent":"request_information","selectedOffering":null,"timeWindow":null,"qualification":[],"contact":{"ready":true},"consent":{"ready":true}}'::jsonb)`);
         await tx.execute(sql`insert into visitor_states(visitor_identity_id,organization_id,business_id,current_revision_id,version) values (${visitor}::uuid,${org}::uuid,${business}::uuid,${revision}::uuid,0)`);
         await tx.execute(sql`insert into visitor_decisions(id,organization_id,business_id,visitor_identity_id,session_id,decision_type,status,contract_version,policy_id,policy_version,visitor_state_revision_id,visitor_state_version,idempotency_key,input_fingerprint) values (${action}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'offer_next_step','accepted','decision.v1','baseline','1',${revision}::uuid,0,'concurrent-decision','no-pii')`);
+        await createMeasurementRepository(resource.runtime.db, tx).insertExposure({ contractVersion: 'experience-exposure.v1', id: 'a1000000-0000-4000-8000-000000000013', organizationId: org, businessId: business, visitorIdentityId: visitor, visitorSessionId: session, interactionSessionId: decision, decisionId: action, exposureKind: 'server_response', exposedAt: new Date('2026-01-01T00:00:00Z') });
         await tx.execute(sql`insert into visitor_contact_records(id,organization_id,business_id,visitor_identity_id,session_id,name,email,source_observation_id,idempotency_key) values (${contact}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'Private Name','private@example.test',${revision}::uuid,'concurrent-contact')`);
         await tx.execute(sql`insert into visitor_consents(id,organization_id,business_id,visitor_identity_id,session_id,purpose,version,status,source_observation_id,idempotency_key) values (${consent}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'follow_up','1','granted',${revision}::uuid,'concurrent-consent')`);
       });

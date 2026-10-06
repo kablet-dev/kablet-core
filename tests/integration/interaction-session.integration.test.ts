@@ -81,7 +81,9 @@ describe('durable anonymous interaction sessions', () => {
       const session = await visitors.createSession(org, business, visitor);
       const sessions = createInteractionSessionRepository(resource.runtime.db);
       const handle = await sessions.create(org, business, visitor, session, new Date(Date.now() + 60_000));
-      await expect(sessions.resolve(org, business, handle)).resolves.toEqual({ visitorIdentityId: visitor, visitorSessionId: session });
+      const interactionSession = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select id from interaction_sessions where visitor_identity_id=${visitor}::uuid and visitor_session_id=${session}::uuid`); });
+      expect(interactionSession.rows).toHaveLength(1);
+      await expect(sessions.resolve(org, business, handle)).resolves.toEqual({ visitorIdentityId: visitor, visitorSessionId: session, interactionSessionId: String(interactionSession.rows[0].id) });
       const raw = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true)`); await tx.execute(sql`select set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select handle_hash from interaction_sessions`); });
       expect(raw.rows[0].handle_hash.toString()).not.toContain(handle);
       expect(await sessions.revoke(org, business, handle)).toBe(true);

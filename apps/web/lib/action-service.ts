@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { capabilitySchema, evaluateActionEligibility, stableExternalOperationId, transitionAction, type ActionAdapter, type Capability } from '@kablet/domain';
-import { createActionOutcomeRepository, type Database } from '@kablet/db';
+import { createActionOutcomeRepository, createMeasurementRepository, type Database } from '@kablet/db';
 import { controlledLeadAdapter, type ControlledLeadInput } from './lead-adapter';
 
 export function createControlledLeadCapability(organizationId: string, businessId: string): Capability { return capabilitySchema.parse({ contractVersion: 'capability.v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', organizationId, businessId, actionType: 'lead.delivery', adapterKey: controlledLeadAdapter.adapterKey, status: 'active', inputSchemaVersion: '1', outputSchemaVersion: '1', authorization: { visitorInitiated: true, requiresBusinessAuthorization: true, requiresConfirmation: true } }); }
@@ -16,7 +16,7 @@ export function createActionService(db: Database['db'], organizationId: string, 
     const prepared = await db.transaction(async tx => {
       await tx.execute(sql`select set_config('kablet.organization_id',${organizationId},true),set_config('kablet.business_id',${businessId},true)`);
       const hash = createHash('sha256').update(input.handle).digest('hex');
-      const result = await tx.execute(sql`select d.id,d.visitor_identity_id,d.session_id,d.visitor_state_revision_id,s.current_revision_id,c.id as contact_record_id,c.name,c.email,co.purpose,co.version from visitor_decisions d join visitor_states s on s.visitor_identity_id=d.visitor_identity_id and s.business_id=d.business_id join visitor_contact_records c on c.visitor_identity_id=d.visitor_identity_id and c.business_id=d.business_id join visitor_consents co on co.visitor_identity_id=d.visitor_identity_id and co.business_id=d.business_id and co.status='granted' join interaction_sessions i on i.visitor_identity_id=d.visitor_identity_id and i.visitor_session_id=d.session_id where d.id=${input.decisionId}::uuid and d.organization_id=${organizationId}::uuid and d.business_id=${businessId}::uuid and d.decision_type='offer_next_step' and i.handle_hash=decode(${hash},'hex') and i.status='active' and i.expires_at>now() and co.purpose='follow_up' and co.version='1'`);
+      const result = await tx.execute(sql`select d.id,d.visitor_identity_id,d.session_id,d.visitor_state_revision_id,s.current_revision_id,c.id as contact_record_id,c.name,c.email,co.purpose,co.version,i.id as interaction_session_id,(select e.id from experience_exposures e where e.organization_id=d.organization_id and e.business_id=d.business_id and e.interaction_session_id=i.id order by e.exposure_sequence desc limit 1) as exposure_id from visitor_decisions d join visitor_states s on s.visitor_identity_id=d.visitor_identity_id and s.business_id=d.business_id join visitor_contact_records c on c.visitor_identity_id=d.visitor_identity_id and c.business_id=d.business_id join visitor_consents co on co.visitor_identity_id=d.visitor_identity_id and co.business_id=d.business_id and co.status='granted' join interaction_sessions i on i.visitor_identity_id=d.visitor_identity_id and i.visitor_session_id=d.session_id where d.id=${input.decisionId}::uuid and d.organization_id=${organizationId}::uuid and d.business_id=${businessId}::uuid and d.decision_type='offer_next_step' and i.handle_hash=decode(${hash},'hex') and i.status='active' and i.expires_at>now() and co.purpose='follow_up' and co.version='1'`);
       if (!result.rows[0]) throw new Error('action is not eligible');
       const current = result.rows[0];
       assertCapabilityTenantOwnership(capability, organizationId, businessId);
@@ -24,6 +24,8 @@ export function createActionService(db: Database['db'], organizationId: string, 
       if (!eligible.eligible) throw new Error(eligible.reason);
       const repository = createActionOutcomeRepository(db, tx);
       const request = await repository.createRequest({ organizationId, businessId, visitorIdentityId: String(current.visitor_identity_id), sessionId: String(current.session_id), decisionId: String(current.id), capabilityId: capability.capabilityId, capabilityVersion: capability.capabilityVersion, idempotencyKey: input.idempotencyKey, input: { contactRecordId: String(current.contact_record_id) }, status: 'execution_pending' });
+      if (!current.exposure_id) throw new Error('interaction exposure not found');
+      await createMeasurementRepository(db, tx).insertFact({ contractVersion: 'interaction-fact.v1', id: randomUUID(), organizationId, businessId, visitorIdentityId: String(current.visitor_identity_id), visitorSessionId: String(current.session_id), interactionSessionId: String(current.interaction_session_id), decisionId: String(current.id), exposureId: String(current.exposure_id), interactionKind: 'action_confirmed', occurredAt: new Date(), idempotencyKey: input.idempotencyKey, actionRequestId: request.request.requestId });
       if (!request.created) {
         const existing = await tx.execute(sql`select o.id as outcome_id,o.status as outcome_status,e.status as attempt_status,e.external_operation_id from execution_attempts e left join action_outcomes o on o.execution_id=e.id where e.action_request_id=${request.request.requestId}::uuid order by e.attempt_number desc limit 1`);
         const row = existing.rows[0];
