@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createDb, createMeasurementRepository } from '@kablet/db';
+import { createConversionRepository, createDb, createMeasurementRepository } from '@kablet/db';
 import { createActionService } from '../../apps/web/lib/action-service';
 import { controlledLeadAdapter } from '../../apps/web/lib/lead-adapter';
 import { loadTestManagerConfig } from '@kablet/config';
@@ -165,6 +165,45 @@ describe('Action and Outcome PostgreSQL integration', () => {
       expect(new Set(results.map(result => result.actionRequestId)).size).toBe(1);
       const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(*) from action_requests)::int as requests,(select count(*) from execution_attempts)::int as attempts,(select count(*) from action_outcomes)::int as outcomes`); });
       expect(counts.rows[0]).toMatchObject({ requests: 1, attempts: 1, outcomes: 1 });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('isolates conversion failure and repairs it on verified replay without redispatch', async () => {
+    const resource = await setup();
+    try {
+      const handle = 'conversion-repair-handle';
+      const handleHash = Buffer.from((await import('node:crypto')).createHash('sha256').update(handle).digest('hex'), 'hex');
+      await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Conversion Repair Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Conversion Repair Business')`);
+        await tx.execute(sql`insert into visitor_identities(id,organization_id,business_id,retention_expires_at) values (${visitor}::uuid,${org}::uuid,${business}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into visitor_sessions(id,organization_id,business_id,visitor_identity_id) values (${session}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid)`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${decision}::uuid,${handleHash},${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,now()+interval '1 hour')`);
+        await tx.execute(sql`insert into visitor_state_revisions(id,organization_id,business_id,visitor_identity_id,version,state) values (${revision}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,0,'{"schemaVersion":1,"intent":"request_information","selectedOffering":null,"timeWindow":null,"qualification":[],"contact":{"ready":true},"consent":{"ready":true}}'::jsonb)`);
+        await tx.execute(sql`insert into visitor_states(visitor_identity_id,organization_id,business_id,current_revision_id,version) values (${visitor}::uuid,${org}::uuid,${business}::uuid,${revision}::uuid,0)`);
+        await tx.execute(sql`insert into visitor_decisions(id,organization_id,business_id,visitor_identity_id,session_id,decision_type,status,contract_version,policy_id,policy_version,visitor_state_revision_id,visitor_state_version,idempotency_key,input_fingerprint) values (${action}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'offer_next_step','accepted','decision.v1','baseline','1',${revision}::uuid,0,'conversion-repair-decision','no-pii')`);
+        await createMeasurementRepository(resource.runtime.db, tx).insertExposure({ contractVersion: 'experience-exposure.v1', id: 'a1000000-0000-4000-8000-000000000014', organizationId: org, businessId: business, visitorIdentityId: visitor, visitorSessionId: session, interactionSessionId: decision, decisionId: action, exposureKind: 'server_response', exposedAt: new Date('2026-01-01T00:00:00Z') });
+        await tx.execute(sql`insert into visitor_contact_records(id,organization_id,business_id,visitor_identity_id,session_id,name,email,source_observation_id,idempotency_key) values (${contact}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'Repair Name','repair@example.test',${revision}::uuid,'conversion-repair-contact')`);
+        await tx.execute(sql`insert into visitor_consents(id,organization_id,business_id,visitor_identity_id,session_id,purpose,version,status,source_observation_id,idempotency_key) values (${consent}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'follow_up','1','granted',${revision}::uuid,'conversion-repair-consent')`);
+        await createConversionRepository(resource.runtime.db, tx).createDefinition({ id: 'a1000000-0000-4000-8000-000000000015', organizationId: org, businessId: business, definitionKey: 'lead', definitionVersion: 'v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', outcomeType: 'lead.delivered', active: true });
+      });
+      let dispatches = 0;
+      const adapter = { adapterKey: 'controlled.lead.v1', capabilityVersion: '1', validateInput: (input: unknown) => controlledLeadAdapter.validateInput(input), execute: async (_input: { name: string; email: string; consentPurpose: string; consentVersion: string }, context: { externalOperationId: string }) => { dispatches += 1; return { externalOperationId: context.externalOperationId, receiptReference: 'controlled-lead:conversion-repair' }; }, verify: async () => ({ status: 'verified' as const, evidenceType: 'controlled_receipt', evidenceReference: 'controlled-lead:conversion-repair' }) };
+      let failConversion = true;
+      const realConversion = createConversionRepository(resource.runtime.db);
+      const conversionRepository = { classifyVerifiedOutcome: async (organizationId: string, businessId: string, outcomeId: string) => { if (failConversion) { failConversion = false; throw new Error('injected conversion classification failure'); } return realConversion.classifyVerifiedOutcome(organizationId, businessId, outcomeId); } };
+      const service = createActionService(resource.runtime.db, org, business, { adapter, conversionRepository });
+      const first = await service.confirm({ handle, decisionId: action, idempotencyKey: 'conversion-repair-confirmation', visitorConfirmed: true });
+      expect(first.status).toBe('verified');
+      const afterFirst = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(*) from action_outcomes where status='verified')::int as outcomes,(select count(*) from execution_attempts where status='succeeded')::int as attempts,(select count(*) from conversion_facts)::int as facts`); });
+      expect(afterFirst.rows[0]).toMatchObject({ outcomes: 1, attempts: 1, facts: 0 });
+      failConversion = false;
+      const replay = await service.confirm({ handle, decisionId: action, idempotencyKey: 'conversion-repair-confirmation', visitorConfirmed: true });
+      expect(replay.status).toBe('verified');
+      expect(dispatches).toBe(1);
+      const afterReplay = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(*) from action_requests)::int as requests,(select count(*) from execution_attempts)::int as attempts,(select count(*) from action_outcomes where status='verified')::int as outcomes,(select count(*) from conversion_facts)::int as facts`); });
+      expect(afterReplay.rows[0]).toMatchObject({ requests: 1, attempts: 1, outcomes: 1, facts: 1 });
     } finally { await cleanup(resource); }
   }, 90000);
 });

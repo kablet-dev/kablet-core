@@ -11,3 +11,4 @@ export * from './action-outcome.js';
 export * from './acquisition.js';
 export * from './measurement.js';
 export * from './attribution.js';
+export * from './conversion.js';

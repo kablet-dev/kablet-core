@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { capabilitySchema, evaluateActionEligibility, stableExternalOperationId, transitionAction, type ActionAdapter, type Capability } from '@kablet/domain';
-import { createActionOutcomeRepository, createAttributionRepository, createMeasurementRepository, type Database } from '@kablet/db';
+import { createActionOutcomeRepository, createAttributionRepository, createConversionRepository, createMeasurementRepository, type Database } from '@kablet/db';
 import { controlledLeadAdapter, type ControlledLeadInput } from './lead-adapter';
 
 export function createControlledLeadCapability(organizationId: string, businessId: string): Capability { return capabilitySchema.parse({ contractVersion: 'capability.v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', organizationId, businessId, actionType: 'lead.delivery', adapterKey: controlledLeadAdapter.adapterKey, status: 'active', inputSchemaVersion: '1', outputSchemaVersion: '1', authorization: { visitorInitiated: true, requiresBusinessAuthorization: true, requiresConfirmation: true } }); }
 export function assertCapabilityTenantOwnership(capability: Capability, organizationId: string, businessId: string): void { if (capability.organizationId !== organizationId || capability.businessId !== businessId) throw new Error('capability_not_authorized'); }
-type Options = { adapter?: ActionAdapter<ControlledLeadInput>; capability?: Capability };
+type ConversionRepository = Pick<ReturnType<typeof createConversionRepository>, 'classifyVerifiedOutcome'>;
+type Options = { adapter?: ActionAdapter<ControlledLeadInput>; capability?: Capability; conversionRepository?: ConversionRepository };
 
 export function createActionService(db: Database['db'], organizationId: string, businessId: string, options: Options = {}) {
   const adapter = options.adapter ?? controlledLeadAdapter;
@@ -39,7 +40,7 @@ export function createActionService(db: Database['db'], organizationId: string, 
       return { status: 'prepared' as const, request: request.request, attempt, operationId, contact: { name: String(current.name), email: String(current.email), consentPurpose: String(current.purpose), consentVersion: String(current.version) } };
     });
     if (prepared.status !== 'prepared') {
-      if (prepared.status === 'verified') { try { await createAttributionRepository(db).attributeVerifiedOutcome(organizationId, businessId, prepared.outcomeId); } catch { /* attribution is derived and retryable */ } }
+      if (prepared.status === 'verified') { try { await createAttributionRepository(db).attributeVerifiedOutcome(organizationId, businessId, prepared.outcomeId); } catch { /* attribution is derived and retryable */ } try { await (options.conversionRepository ?? createConversionRepository(db)).classifyVerifiedOutcome(organizationId, businessId, prepared.outcomeId); } catch { /* conversion is derived and retryable */ } }
       return prepared;
     }
     const request = prepared.request;
@@ -57,6 +58,7 @@ export function createActionService(db: Database['db'], organizationId: string, 
       await repository.updateRequest({ organizationId, businessId, requestId: request.requestId, status: 'succeeded' });
       const outcome = await repository.createOutcome({ organizationId, businessId, visitorIdentityId: request.visitorIdentityId, sessionId: request.sessionId, decisionId: request.decisionId, actionRequestId: request.requestId, executionId: attempt.executionId, outcomeType: 'lead.delivered', status: 'verified', evidenceType: verification.evidenceType, evidenceReference: verification.evidenceReference, value: null, occurredAt: new Date() });
       try { await createAttributionRepository(db).attributeVerifiedOutcome(organizationId, businessId, outcome.outcomeId); } catch { /* attribution is derived and retryable */ }
+      try { await (options.conversionRepository ?? createConversionRepository(db)).classifyVerifiedOutcome(organizationId, businessId, outcome.outcomeId); } catch { /* conversion is derived and retryable */ }
       return { status: 'verified' as const, actionRequestId: request.requestId, outcomeId: outcome.outcomeId, outcome };
     } catch (error) { await repository.updateAttempt({ organizationId, businessId, executionId: attempt.executionId, status: 'unknown', adapterRequestId: null, failureCode: error instanceof Error ? error.name : 'external_unknown' }); return { status: 'unknown' as const, actionRequestId: request.requestId, externalOperationId: prepared.operationId }; }
   } };
