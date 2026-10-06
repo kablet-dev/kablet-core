@@ -21,6 +21,7 @@ export function InteractiveExperience() {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactConsent, setContactConsent] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [busy, setBusy] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
 
@@ -79,6 +80,16 @@ export function InteractiveExperience() {
     }
   }
 
+  async function confirmAction() {
+    if (!experience || actionBusy) return;
+    setActionBusy(true);
+    try {
+      const response = await fetch('/api/interaction/action', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: experience.decisionId, confirmed: true, idempotencyKey: crypto.randomUUID() }) });
+      if (!response.ok) throw new Error('action failed');
+      setExperience({ ...experience, components: [{ type: 'next-step-information', heading: 'Request received', body: 'Your request was securely delivered.' }] });
+    } catch { setFailure('intent'); } finally { setActionBusy(false); }
+  }
+
   return (
     <div className='interactive-panel'>
       <div className='interactive-status'>
@@ -93,6 +104,7 @@ export function InteractiveExperience() {
         </div>
       )}
       {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} />}
+      {experience?.decisionType === 'offer_next_step' && <button className='intent-submit' type='button' disabled={actionBusy} onClick={() => void confirmAction()}>{actionBusy ? 'Sending...' : 'Continue securely'}</button>}
       {experience?.decisionType !== 'request_qualification' && <div className='intent-panel'>
         <span className='eyebrow'>Your direction</span>
         <h2>What would be most useful?</h2>

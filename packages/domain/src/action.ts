@@ -123,3 +123,12 @@ export function evaluateActionEligibility(input: ActionEligibilityInput): Action
 export function canRetryUnknownExecution(status: ExecutionAttempt['status'], reconciled: boolean): boolean {
   return status === 'unknown' && reconciled;
 }
+
+export type UnknownReconciliation = 'succeeded' | 'not_executed' | 'still_unknown';
+export type UnknownReconciliationResult = { status: 'resolve_existing' | 'retry_allowed' | 'blocked'; redeliver: false | true };
+export function reconcileUnknownExecution(status: ExecutionAttempt['status'], result: UnknownReconciliation): UnknownReconciliationResult {
+  if (status !== 'unknown') throw new Error('only unknown executions can be reconciled');
+  if (result === 'succeeded') return { status: 'resolve_existing', redeliver: false };
+  if (result === 'not_executed') return { status: 'retry_allowed', redeliver: true };
+  return { status: 'blocked', redeliver: false };
+}

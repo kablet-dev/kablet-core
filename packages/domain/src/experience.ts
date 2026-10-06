@@ -33,6 +33,7 @@ const nextStepInformationSchema = z.object({
   heading: z.string().min(1),
   body: z.string().min(1),
 });
+const actionConfirmationSchema = z.object({ type: z.literal('action-confirmation'), heading: z.string().min(1), body: z.string().min(1), label: z.string().min(1) });
 const safeFallbackSchema = z.object({
   type: z.literal('safe-fallback'),
   heading: z.string().min(1),
@@ -46,6 +47,7 @@ export const experienceComponentSchema = z.discriminatedUnion('type', [
   qualificationQuestionComponentSchema,
   contactRequestComponentSchema,
   nextStepInformationSchema,
+  actionConfirmationSchema,
   safeFallbackSchema,
 ]);
 export type ExperienceComponent = z.infer<typeof experienceComponentSchema>;
@@ -77,7 +79,7 @@ export function decisionToExperience(input: unknown, offerings: unknown[] = []):
       case 'request_time_window':
         return [{ type: 'time-window-request', heading: 'When would suit you?', body: 'Share a preferred time window so the next step can be considered safely.' }];
       case 'offer_next_step':
-        return [{ type: 'next-step-information', heading: 'Here is the next step', body: 'Review the information above and continue when you are ready. No action has been taken.' }];
+        return [{ type: 'action-confirmation', heading: 'Ready for the next step?', body: 'Confirm and we will securely send your request using the information you provided.', label: 'Continue securely' }];
       case 'no_safe_decision':
         return [{ type: 'safe-fallback', heading: 'Let’s take this one step at a time', body: 'We do not have enough authoritative information to recommend a next step yet.' }];
     }
