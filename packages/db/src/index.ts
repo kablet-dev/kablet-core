@@ -12,3 +12,4 @@ export * from './acquisition.js';
 export * from './measurement.js';
 export * from './attribution.js';
 export * from './conversion.js';
+export * from './measurement-query.js';

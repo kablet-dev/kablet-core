@@ -20,3 +20,4 @@ export * from './exposure';
 export * from './interaction-fact';
 export * from './attribution';
 export * from './conversion';
+export * from './measurement';

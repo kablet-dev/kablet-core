@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createConversionRepository, createDb, createMeasurementRepository } from '@kablet/db';
+import { createConversionRepository, createDb, createMeasurementQueryRepository, createMeasurementRepository } from '@kablet/db';
 import { createActionService } from '../../apps/web/lib/action-service';
+import { createInteractionService } from '../../apps/web/lib/interaction-service';
 import { controlledLeadAdapter } from '../../apps/web/lib/lead-adapter';
 import { loadTestManagerConfig } from '@kablet/config';
 import { describe, expect, it } from 'vitest';
@@ -28,6 +29,8 @@ const consent = 'a1000000-0000-4000-8000-000000000009';
 const action = 'a1000000-0000-4000-8000-000000000010';
 const execution = 'a1000000-0000-4000-8000-000000000011';
 const outcome = 'a1000000-0000-4000-8000-000000000012';
+const offering = 'a1000000-0000-4000-8000-000000000017';
+const offeringRevision = 'a1000000-0000-4000-8000-000000000018';
 
 function name() { return `kablet_test_${randomBytes(16).toString('hex')}`; }
 async function setup() {
@@ -44,7 +47,7 @@ async function setup() {
     const migrated = createDb(`postgresql://${encodeURIComponent(bootstrapUser)}:${encodeURIComponent(bootstrapPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
     const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1 });
     try { await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false'); await migrate(migrated.db, { migrationsFolder }); } finally { await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await roleAdmin.end(); }
-    await migrated.db.execute(sql`grant select,insert,update,delete on organizations,businesses,visitor_identities,visitor_sessions,visitor_state_revisions,visitor_states,visitor_decisions,visitor_contact_records,visitor_consents to kablet_dev`);
+    await migrated.db.execute(sql`grant select, insert, update, delete on organizations, businesses, visitor_identities, visitor_sessions, visitor_observations, visitor_state_revisions, visitor_states, visitor_decisions, visitor_decision_business_truth_refs, interaction_sessions, business_offerings, business_offering_revisions, offering_publications, visitor_contact_records, visitor_consents to kablet_dev`);
     await migrated.pool.end();
     runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
     return { database, managerPool, runtime };
@@ -204,6 +207,52 @@ describe('Action and Outcome PostgreSQL integration', () => {
       expect(dispatches).toBe(1);
       const afterReplay = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(*) from action_requests)::int as requests,(select count(*) from execution_attempts)::int as attempts,(select count(*) from action_outcomes where status='verified')::int as outcomes,(select count(*) from conversion_facts)::int as facts`); });
       expect(afterReplay.rows[0]).toMatchObject({ requests: 1, attempts: 1, outcomes: 1, facts: 1 });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('proves the end-to-end action-confirmation conversion rate', async () => {
+    const resource = await setup();
+    try {
+      await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Measurement Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Measurement Business')`);
+        await tx.execute(sql`insert into business_offerings(id,business_id,name) values (${offering}::uuid,${business}::uuid,'Measurement Offering')`);
+        await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${offeringRevision}::uuid,${offering}::uuid,1,'Measurement Offering','A controlled measurement fixture','unknown','public','approved','owner_input','integration-fixture',now(),'test')`);
+        await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offering}::uuid,${offeringRevision}::uuid)`);
+      });
+      const definition = await createConversionRepository(resource.runtime.db).createDefinition({ id: 'a1000000-0000-4000-8000-000000000016', organizationId: org, businessId: business, definitionKey: 'lead', definitionVersion: 'v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', outcomeType: 'lead.delivered', active: true });
+      const interaction = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const first = await interaction.start(new Date(Date.now() + 3600000));
+      const second = await interaction.start(new Date(Date.now() + 3600000));
+      await interaction.expressIntent(first.handle, { intent: 'request_information', idempotencyKey: 'measurement-intent-one' });
+      await interaction.expressIntent(second.handle, { intent: 'request_information', idempotencyKey: 'measurement-intent-two' });
+      await interaction.submitQualification(first.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'measurement-qualification-one' });
+      await interaction.submitQualification(second.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'measurement-qualification-two' });
+      await interaction.submitContact(first.handle, { name: 'Measurement One', email: 'measurement-one@example.test', consent: true, idempotencyKey: 'measurement-contact-one' });
+      await interaction.submitContact(second.handle, { name: 'Measurement Two', email: 'measurement-two@example.test', consent: true, idempotencyKey: 'measurement-contact-two' });
+      const decisions = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select visitor_identity_id,id from visitor_decisions where organization_id=${org}::uuid and business_id=${business}::uuid and decision_type='offer_next_step' order by id`); });
+      expect(decisions.rows).toHaveLength(2);
+      const firstDecision = String(decisions.rows.find(row => String(row.visitor_identity_id) === first.visitorId)!.id);
+      const secondDecision = String(decisions.rows.find(row => String(row.visitor_identity_id) === second.visitorId)!.id);
+      let dispatches = 0;
+      const adapter = { adapterKey: 'controlled.lead.v1', capabilityVersion: '1', validateInput: (input: unknown) => controlledLeadAdapter.validateInput(input), execute: async (_input: { name: string; email: string; consentPurpose: string; consentVersion: string }, context: { externalOperationId: string }) => { dispatches += 1; return { externalOperationId: context.externalOperationId, receiptReference: `measurement:${dispatches}` }; }, verify: async (receipt: { receiptReference: string }) => receipt.receiptReference.endsWith(':1') ? { status: 'verified' as const, evidenceType: 'controlled_receipt', evidenceReference: receipt.receiptReference } : { status: 'rejected' as const, evidenceType: 'controlled_receipt', evidenceReference: receipt.receiptReference } };
+      const service = createActionService(resource.runtime.db, org, business, { adapter });
+      const windowStart = new Date(Date.now() - 60000); const windowEnd = new Date(Date.now() + 60000);
+      const converting = await service.confirm({ handle: first.handle, decisionId: firstDecision, idempotencyKey: 'measurement-confirm-one', visitorConfirmed: true });
+      const nonConverting = await service.confirm({ handle: second.handle, decisionId: secondDecision, idempotencyKey: 'measurement-confirm-two', visitorConfirmed: true });
+      expect(converting.status).toBe('verified');
+      expect(nonConverting.status).toBe('failed');
+      expect(dispatches).toBe(2);
+      const facts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(distinct action_request_id) from interaction_facts where interaction_kind='action_confirmed')::int as confirmations,(select count(*) from action_outcomes where status='verified')::int as verified_outcomes,(select count(*) from outcome_attributions)::int as attributions,(select count(*) from conversion_facts)::int as conversions`); });
+      expect(facts.rows[0]).toMatchObject({ confirmations: 2, verified_outcomes: 1, attributions: 1, conversions: 1 });
+      const measurement = await createMeasurementQueryRepository(resource.runtime.db).conversion({ contractVersion: 'conversion-measurement.v1', organizationId: org, businessId: business, conversionDefinitionId: definition.id, windowStart, windowEnd });
+      expect(measurement).toMatchObject({ organizationId: org, businessId: business, conversionDefinitionId: definition.id, denominatorKind: 'action_confirmation', eligibleActionConfirmationCount: 2, conversionCount: 1, conversionRate: 0.5, attributedConversionCount: 1, unattributedConversionCount: 0, windowStart, windowEnd });
+      const replay = await service.confirm({ handle: first.handle, decisionId: firstDecision, idempotencyKey: 'measurement-confirm-one', visitorConfirmed: true });
+      expect(replay.status).toBe('verified');
+      expect(dispatches).toBe(2);
+      const afterReplay = await createMeasurementQueryRepository(resource.runtime.db).conversion({ contractVersion: 'conversion-measurement.v1', organizationId: org, businessId: business, conversionDefinitionId: definition.id, windowStart, windowEnd });
+      expect(afterReplay).toMatchObject({ eligibleActionConfirmationCount: 2, conversionCount: 1, conversionRate: 0.5 });
     } finally { await cleanup(resource); }
   }, 90000);
 });
