@@ -13,6 +13,10 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: Aria
 .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; color: var(--muted); font-size: .82rem; }
 .hero-meta span { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: rgba(255,255,255,.5); }
 .experience-card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 18px 50px rgba(23,33,27,.08); padding: clamp(24px, 5vw, 48px); }
+.experience-content { display: grid; gap: 18px; }
+.experience-card:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,107,85,.12), 0 18px 50px rgba(23,33,27,.08); }
+.action-confirmation { border-color: #b8d5c1; background: linear-gradient(145deg, #fff 0%, #f1f8f2 100%); }
+.action-status { color: var(--accent); font-weight: 700; }
 .experience-card h2 { margin: 0 0 12px; font-size: 1.7rem; }
 .experience-card p { color: var(--muted); line-height: 1.7; }
 .demo-note { margin-top: 20px; color: var(--muted); font-size: .85rem; }
@@ -41,5 +45,6 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: Aria
 .intent-option.selected { border-color: var(--accent); background: white; box-shadow: 0 0 0 2px rgba(29,107,85,.12); }
 .intent-submit { margin-top: 18px; border: 0; border-radius: 999px; padding: 13px 20px; background: var(--ink); color: white; cursor: pointer; font: inherit; font-weight: 700; }
 .intent-submit:disabled { cursor: wait; opacity: .55; }
+.intent-submit:focus-visible, .intent-option:focus-visible, .interactive-error button:focus-visible { outline: 3px solid #df8b5b; outline-offset: 3px; }
 .interactive-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e4baba; border-radius: 14px; padding: 14px; color: #8b3d3d; }
 .interactive-error button { border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ExperienceModel } from '@kablet/domain';
 import { ExperienceRenderer } from './ExperienceRenderer';
+import type { ActionPresentationStatus } from './ActionConfirmation';
 
 const intents = [
   { value: 'explore_offerings', label: 'Explore your services' },
@@ -11,7 +12,7 @@ const intents = [
 ] as const;
 
 type Intent = (typeof intents)[number]['value'];
-type Failure = 'start' | 'intent' | null;
+type Failure = 'start' | 'intent' | 'action' | null;
 
 export function InteractiveExperience() {
   const [experience, setExperience] = useState<ExperienceModel | null>(null);
@@ -22,6 +23,8 @@ export function InteractiveExperience() {
   const [contactEmail, setContactEmail] = useState('');
   const [contactConsent, setContactConsent] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const [actionStatus, setActionStatus] = useState<ActionPresentationStatus>('idle');
+  const [actionKey, setActionKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
 
@@ -83,11 +86,18 @@ export function InteractiveExperience() {
   async function confirmAction() {
     if (!experience || actionBusy) return;
     setActionBusy(true);
+    setActionStatus('pending');
+    setFailure(null);
+    const stableKey = actionKey ?? crypto.randomUUID();
+    setActionKey(stableKey);
     try {
-      const response = await fetch('/api/interaction/action', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: experience.decisionId, confirmed: true, idempotencyKey: crypto.randomUUID() }) });
+      const response = await fetch('/api/interaction/action', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: experience.decisionId, confirmed: true, idempotencyKey: stableKey }) });
       if (!response.ok) throw new Error('action failed');
-      setExperience({ ...experience, components: [{ type: 'next-step-information', heading: 'Request received', body: 'Your request was securely delivered.' }] });
-    } catch { setFailure('intent'); } finally { setActionBusy(false); }
+      const payload = await response.json() as { status?: string };
+      setActionStatus(payload.status === 'verified' ? 'verified' : payload.status === 'failed' ? 'failed' : payload.status === 'unknown' ? 'unknown' : 'idle');
+      if (payload.status === 'failed' || payload.status === 'unknown') setFailure('action');
+      else setActionKey(null);
+    } catch { setActionStatus('unknown'); setFailure('action'); } finally { setActionBusy(false); }
   }
 
   return (
@@ -99,12 +109,11 @@ export function InteractiveExperience() {
         <div className='interactive-error' role='alert'>
           {failure === 'start'
             ? 'We could not start this interaction. Please try again.'
-            : 'We could not update this experience. Please retry.'}
-          <button type='button' disabled={busy} onClick={() => failure === 'start' ? void start() : void submit()}>Retry</button>
+            : failure === 'action' ? 'We could not complete the authorized next step. Please retry.' : 'We could not update this experience. Please retry.'}
+          <button type='button' disabled={busy || actionBusy} onClick={() => failure === 'start' ? void start() : failure === 'action' ? void confirmAction() : void submit()}>Retry</button>
         </div>
       )}
-      {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} />}
-      {experience?.decisionType === 'offer_next_step' && <button className='intent-submit' type='button' disabled={actionBusy} onClick={() => void confirmAction()}>{actionBusy ? 'Sending...' : 'Continue securely'}</button>}
+      {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} actionStatus={actionStatus} onConfirmAction={() => void confirmAction()} />}
       {experience?.decisionType !== 'request_qualification' && <div className='intent-panel'>
         <span className='eyebrow'>Your direction</span>
         <h2>What would be most useful?</h2>
