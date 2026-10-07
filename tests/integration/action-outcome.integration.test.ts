@@ -9,6 +9,7 @@ import { createInteractionService } from '../../apps/web/lib/interaction-service
 import { controlledLeadAdapter } from '../../apps/web/lib/lead-adapter';
 import { loadTestManagerConfig } from '@kablet/config';
 import { describe, expect, it } from 'vitest';
+import { seedBaselineIntentPolicy } from './intent-policy-fixture';
 
 const manager = loadTestManagerConfig();
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
@@ -221,6 +222,7 @@ describe('Action and Outcome PostgreSQL integration', () => {
         await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${offeringRevision}::uuid,${offering}::uuid,1,'Measurement Offering','A controlled measurement fixture','unknown','public','approved','owner_input','integration-fixture',now(),'test')`);
         await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offering}::uuid,${offeringRevision}::uuid)`);
       });
+      await seedBaselineIntentPolicy(resource.runtime.db, org, business);
       const definition = await createConversionRepository(resource.runtime.db).createDefinition({ id: 'a1000000-0000-4000-8000-000000000016', organizationId: org, businessId: business, definitionKey: 'lead', definitionVersion: 'v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', outcomeType: 'lead.delivered', active: true });
       const interaction = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
       const first = await interaction.start(new Date(Date.now() + 3600000));

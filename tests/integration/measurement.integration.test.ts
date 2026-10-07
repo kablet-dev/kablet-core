@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { loadTestManagerConfig } from '@kablet/config';
 import { createDb, createMeasurementRepository } from '@kablet/db';
 import { createInteractionService } from '../../apps/web/lib/interaction-service';
+import { seedBaselineIntentPolicy } from './intent-policy-fixture';
 
 const manager = loadTestManagerConfig();
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
@@ -63,6 +64,7 @@ async function tenant(resource: Awaited<ReturnType<typeof provision>>) {
     await tx.execute(sql`insert into organizations (id,name) values (${organizationId}::uuid,'Measurement Org')`);
     await tx.execute(sql`insert into businesses (id,organization_id,name) values (${businessId}::uuid,${organizationId}::uuid,'Measurement Business')`);
   });
+  await seedBaselineIntentPolicy(resource.runtime.db, organizationId, businessId);
   return { organizationId, businessId };
 }
 

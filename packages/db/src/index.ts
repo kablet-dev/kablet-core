@@ -13,3 +13,4 @@ export * from './measurement.js';
 export * from './attribution.js';
 export * from './conversion.js';
 export * from './measurement-query.js';
+export * from './intent-policy.js';

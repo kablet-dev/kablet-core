@@ -2,26 +2,28 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressQualificationRequestSchema, observationSchema, qualificationQuestionSchema, type ExperienceModel, type InteractionIntent } from '@kablet/domain';
-import { createAcquisitionRepository, createBusinessTruthRepository, createDecisionRepository, createInteractionSessionRepository, createMeasurementRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
+import { createAcquisitionRepository, createBusinessTruthRepository, createDecisionRepository, createIntentPolicyRepository, createInteractionSessionRepository, createMeasurementRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
 import { acquisitionContextSchema } from '@kablet/domain';
 
 const intentValues: Record<InteractionIntent, 'explore_offerings' | 'request_information' | 'select_offering'> = { explore_offerings: 'explore_offerings', request_information: 'request_information', select_offering: 'select_offering' };
-const defaultQualificationRequirements = [qualificationQuestionSchema.parse({ key: 'context_timeline', prompt: 'What kind of timeframe are you considering?', options: [{ value: 'immediate', label: 'As soon as possible' }, { value: 'this_week', label: 'This week' }, { value: 'exploring', label: 'I am still exploring' }] })];
 const contactRequirement = { fields: ['name', 'email'] as ('name' | 'email' | 'phone')[], channels: ['email'] as ('email' | 'phone')[], consentPurpose: 'follow_up', consentVersion: '1' };
 export class InteractionExpiredError extends Error { constructor() { super('interaction expired or revoked'); this.name = 'InteractionExpiredError'; } }
 
 export type InteractionAcquisitionInput = { landingPath: string; referrer: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null };
-export function createInteractionService(input: { db: Database['db']; organizationId: string; businessId: string; decisionRepository?: ReturnType<typeof createDecisionRepository>; qualificationRequirements?: typeof defaultQualificationRequirements }) {
+export function createInteractionService(input: { db: Database['db']; organizationId: string; businessId: string; decisionRepository?: ReturnType<typeof createDecisionRepository> }) {
   const visitors = createVisitorStateRepository(input.db);
   const interactions = createInteractionSessionRepository(input.db);
   const decisions = input.decisionRepository ?? createDecisionRepository(input.db);
   async function render(visitorIdentityId: string, sessionId: string, interactionSessionId: string, idempotencyKey: string, transaction?: DatabaseTransaction): Promise<{ experience: ExperienceModel; exposureId: string }> {
     const stateRepository = createVisitorStateRepository(input.db, transaction);
     const truthRepository = createBusinessTruthRepository(input.db, transaction);
+    const policyRepository = createIntentPolicyRepository(input.db, transaction);
     const decisionRepository = transaction && !input.decisionRepository ? createDecisionRepository(input.db, transaction) : decisions;
     const current = await stateRepository.getCurrentState(input.organizationId, input.businessId, visitorIdentityId);
     const eligible = await truthRepository.listPublicOfferings(input.organizationId, input.businessId);
-    const decision = await decisionRepository.create({ organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId, sessionId, idempotencyKey, policyId: 'baseline', policyVersion: '1', policyInput: { state: current.state, eligibleOfferingRefs: eligible.map(ref => ({ offeringId: ref.offeringId, offeringRevisionId: ref.offeringRevisionId })), qualificationRequirements: input.qualificationRequirements ?? defaultQualificationRequirements, contactRequirement, permittedNextStep: false } });
+    const policy = await policyRepository.getCurrent(input.organizationId, input.businessId, 'baseline');
+    const qualificationRequirements = policyRepository.qualificationRequirementsForIntent(policy, current.state.intent?.status === 'stated' || current.state.intent?.status === 'confirmed' ? (current.state.intent.value as InteractionIntent) : null);
+    const decision = await decisionRepository.create({ organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId, sessionId, idempotencyKey, policyId: 'baseline', policyVersion: policy.contractVersion, intentPolicyRevisionId: policy.id, policyInput: { state: current.state, eligibleOfferingRefs: eligible.map(ref => ({ offeringId: ref.offeringId, offeringRevisionId: ref.offeringRevisionId })), qualificationRequirements, contactRequirement, permittedNextStep: false } });
     const decisionRow = decision.decision as Record<string, unknown>;
     const qualificationQuestion = decisionRow.qualification_question_key ? { key: String(decisionRow.qualification_question_key), prompt: String(decisionRow.qualification_question_prompt), options: qualificationQuestionSchema.shape.options.parse(decisionRow.qualification_question_options) } : null;
     const experienceInput = experienceInputSchema.parse({ contractVersion: 'experience-input.v1', decisionId: String(decisionRow.id), decisionContractVersion: 'decision.v1', organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId, sessionId, decisionType: String(decisionRow.decision_type), visitorStateRevisionId: String(decisionRow.visitor_state_revision_id), businessTruthRefs: eligible.map(ref => ({ offeringId: ref.offeringId, offeringRevisionId: ref.offeringRevisionId })), qualificationQuestion, rationale: Array.isArray(decisionRow.rationale) ? decisionRow.rationale : [] });
@@ -64,9 +66,12 @@ export function createInteractionService(input: { db: Database['db']; organizati
       const parsed = expressQualificationRequestSchema.parse(request);
       const session = await interactions.resolve(input.organizationId, input.businessId, handle);
       if (!session) throw new InteractionExpiredError();
-      const question = (input.qualificationRequirements ?? defaultQualificationRequirements).find(item => item.key === parsed.questionKey);
-      if (!question || !question.options.some(option => option.value === parsed.answer)) throw new Error('qualification answer is not permitted');
       const prior = await createMeasurementRepository(input.db).getLatestExposure(input.organizationId, input.businessId, session.interactionSessionId); if (!prior) throw new Error('interaction exposure not found');
+      const priorDecision = await decisions.getById(input.organizationId, input.businessId, prior.decisionId);
+      if (!priorDecision?.intent_policy_revision_id) throw new Error('qualification decision policy revision not found');
+      const policy = await createIntentPolicyRepository(input.db).getById(input.organizationId, input.businessId, String(priorDecision.intent_policy_revision_id));
+      const question = policy.qualificationRequirements.find(item => item.key === parsed.questionKey);
+      if (!question || !question.options.some(option => option.value === parsed.answer)) throw new Error('qualification answer is not permitted');
       return input.db.transaction(async tx => {
         const transactionVisitors = createVisitorStateRepository(input.db, tx);
         const current = await transactionVisitors.getCurrentState(input.organizationId, input.businessId, session.visitorIdentityId);

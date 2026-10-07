@@ -7,6 +7,7 @@ import { createDb, createDecisionRepository, createVisitorStateRepository } from
 import { loadTestManagerConfig } from '@kablet/config';
 import { createInteractionService } from '../../apps/web/lib/interaction-service';
 import { describe, expect, it } from 'vitest';
+import { seedBaselineIntentPolicy } from './intent-policy-fixture';
 
 const manager = loadTestManagerConfig();
 const bootstrapUser = process.env.TEST_BOOTSTRAP_USER;
@@ -49,6 +50,7 @@ async function disposable() {
       await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${revision}::uuid,${offering}::uuid,1,'Orchestration Offering','A controlled integration fixture','unknown','public','approved','owner_input','integration-fixture',now(),'test')`);
       await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offering}::uuid,${revision}::uuid)`);
     });
+    await seedBaselineIntentPolicy(runtime.db, org, business);
     return { name, managerPool, runtime };
   } catch (error) {
     if (runtime) await runtime.pool.end();
