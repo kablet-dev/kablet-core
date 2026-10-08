@@ -227,6 +227,8 @@ describe('Action and Outcome PostgreSQL integration', () => {
       const interaction = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
       const first = await interaction.start(new Date(Date.now() + 3600000));
       const second = await interaction.start(new Date(Date.now() + 3600000));
+      await interaction.selectOffering(first.handle, { offeringId: offering, offeringRevisionId: offeringRevision, idempotencyKey: 'measurement-selection-one' });
+      await interaction.selectOffering(second.handle, { offeringId: offering, offeringRevisionId: offeringRevision, idempotencyKey: 'measurement-selection-two' });
       await interaction.expressIntent(first.handle, { intent: 'request_information', idempotencyKey: 'measurement-intent-one' });
       await interaction.expressIntent(second.handle, { intent: 'request_information', idempotencyKey: 'measurement-intent-two' });
       await interaction.submitQualification(first.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'measurement-qualification-one' });
