@@ -14,3 +14,4 @@ export * from './attribution.js';
 export * from './conversion.js';
 export * from './measurement-query.js';
 export * from './intent-policy.js';
+export * from './ai-intent.js';

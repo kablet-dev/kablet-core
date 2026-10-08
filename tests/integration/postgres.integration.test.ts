@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createBusinessTruthRepository, createDb } from '@kablet/db';
+import { createAiIntentRepository, createBusinessTruthRepository, createDb } from '@kablet/db';
 import { loadTestManagerConfig } from '@kablet/config';
 import { describe, expect, it } from 'vitest';
 
@@ -224,10 +224,10 @@ describe('disposable PostgreSQL integration', () => {
       });
       await bootstrap.db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
-        await tx.execute(sql`insert into ai_intent_invocations(id,organization_id,business_id,visitor_identity_id,visitor_session_id,idempotency_key,input_fingerprint,status,interpreter_version,reserved_units,daily_period_id,monthly_period_id) values (${invocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'ai-1',decode('0102','hex'),'claimed','test-adapter',10,${daily}::uuid,${monthly}::uuid),(${unknownInvocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'ai-unknown',decode('0304','hex'),'claimed','test-adapter',7,${daily}::uuid,${monthly}::uuid)`);
+        await tx.execute(sql`insert into ai_intent_invocations(id,organization_id,business_id,visitor_identity_id,visitor_session_id,interaction_session_id,idempotency_key,input_fingerprint,status,interpreter_version,reserved_units,daily_period_id,monthly_period_id) values (${invocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,${interaction}::uuid,'ai-1',decode('0102','hex'),'claimed','test-adapter',10,${daily}::uuid,${monthly}::uuid),(${unknownInvocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,${interaction}::uuid,'ai-unknown',decode('0304','hex'),'claimed','test-adapter',7,${daily}::uuid,${monthly}::uuid)`);
       });
-      const visible = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,status,reserved_units from ai_intent_invocations where id=${invocation}::uuid`); });
-      expect(visible.rows).toEqual([{ id: invocation, status: 'claimed', reserved_units: '10' }]);
+      const visible = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,interaction_session_id,status,reserved_units from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(visible.rows).toEqual([{ id: invocation, interaction_session_id: interaction, status: 'claimed', reserved_units: '10' }]);
       const hidden = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`select count(*)::int as count from ai_intent_invocations where id=${invocation}::uuid`); });
       expect(hidden.rows[0].count).toBe(0);
       const crossBusinessUpdate = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`update ai_intent_invocations set reserved_units=1 where id=${invocation}::uuid`); });
@@ -238,8 +238,16 @@ describe('disposable PostgreSQL integration', () => {
         await expect(runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(statement); })).rejects.toThrow();
       }
       await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set status='succeeded',normalized_intent='unclear',reason_code='ambiguous',consumed_units=4,completed_at=now() where id=${invocation}::uuid`); });
+      const afterSucceeded = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select interaction_session_id,status from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(afterSucceeded.rows[0]).toMatchObject({ interaction_session_id: interaction, status: 'succeeded' });
       await expect(runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set consumed_units=5 where id=${invocation}::uuid`); })).rejects.toThrow();
+      const replayIdentity = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select interaction_session_id,idempotency_key,input_fingerprint,interpreter_version from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(replayIdentity.rows[0]).toMatchObject({ interaction_session_id: interaction, idempotency_key: 'ai-1', interpreter_version: 'test-adapter' });
+      const terminalReplay = await createAiIntentRepository(runtime.db).claim({ organizationId: org, businessId: business, interactionSessionId: replayIdentity.rows[0].interaction_session_id, idempotencyKey: replayIdentity.rows[0].idempotency_key, inputFingerprint: Uint8Array.from(replayIdentity.rows[0].input_fingerprint), interpreterVersion: replayIdentity.rows[0].interpreter_version, reservationUnits: 10 });
+      expect(terminalReplay).toMatchObject({ outcome: 'replay', invocationId: invocation, status: 'succeeded', reservedUnits: 10 });
       await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set status='unknown',uncertain_units=7,completed_at=now() where id=${unknownInvocation}::uuid`); });
+      const unknownReplay = await createAiIntentRepository(runtime.db).claim({ organizationId: org, businessId: business, interactionSessionId: interaction, idempotencyKey: 'ai-unknown', inputFingerprint: Uint8Array.from([3, 4]), interpreterVersion: 'test-adapter', reservationUnits: 7 });
+      expect(unknownReplay).toMatchObject({ outcome: 'replay', invocationId: unknownInvocation, status: 'unknown', reservedUnits: 7 });
       const beforePrivacy = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select visitor_identity_id,visitor_session_id,interaction_session_id,input_fingerprint,reserved_units,uncertain_units from ai_intent_invocations where id=${unknownInvocation}::uuid`); });
       expect(beforePrivacy.rows[0].visitor_identity_id).toBe(visitor);
       await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`select public.kablet_visitor_privacy_delete(${org}::uuid,${visitor}::uuid)`); });
@@ -248,6 +256,7 @@ describe('disposable PostgreSQL integration', () => {
       for (const row of afterPrivacy.rows) expect(row).toMatchObject({ visitor_identity_id: null, visitor_session_id: null, interaction_session_id: null, input_fingerprint: null, daily_period_id: daily, monthly_period_id: monthly });
       expect(afterPrivacy.rows.find(row => row.id === invocation)).toMatchObject({ reserved_units: '10', consumed_units: '4', released_units: '0', uncertain_units: '0', status: 'succeeded' });
       expect(afterPrivacy.rows.find(row => row.id === unknownInvocation)).toMatchObject({ reserved_units: '7', consumed_units: '0', released_units: '0', uncertain_units: '7', status: 'unknown' });
+      await expect(createAiIntentRepository(runtime.db).claim({ organizationId: org, businessId: business, interactionSessionId: interaction, idempotencyKey: 'ai-unknown', inputFingerprint: Uint8Array.from([3, 4]), interpreterVersion: 'test-adapter', reservationUnits: 7 })).resolves.toMatchObject({ outcome: 'session_invalid' });
       const businessBView = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`select count(*)::int as count from ai_intent_invocations where id in (${invocation}::uuid,${unknownInvocation}::uuid)`); });
       expect(businessBView.rows[0].count).toBe(0);
       await expect(bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${randomUUID()}::uuid,${org}::uuid,${business}::uuid,'daily',current_date,current_date+1,-1)`); })).rejects.toThrow();
@@ -256,5 +265,108 @@ describe('disposable PostgreSQL integration', () => {
     } finally {
       await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource);
     }
+  }, 90000);
+
+  it('atomically claims, replays, conflicts, and enforces persisted period budgets', async () => {
+    let resource: Awaited<ReturnType<typeof provision>> | undefined;
+    let bootstrapPool: pg.Pool | undefined;
+    let runtimePool: pg.Pool | undefined;
+    try {
+      resource = await provision();
+      const bootstrap = createDb(resource.url); bootstrapPool = bootstrap.pool;
+      if (!roleAdminUrl || !process.env.TEST_APP_PASSWORD) throw new Error('TEST_ROLE_ADMIN_URL and TEST_APP_PASSWORD are required for AI claim coverage');
+      const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1 });
+      try { await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false'); await migrate(bootstrap.db, { migrationsFolder }); }
+      finally { await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await roleAdmin.end(); }
+      await bootstrap.db.execute(sql`grant usage on schema public to kablet_dev`);
+      await bootstrap.db.execute(sql`grant select,insert,update,delete on organizations,businesses,visitor_identities,visitor_sessions,interaction_sessions,ai_intent_accounting_periods,ai_intent_invocations to kablet_dev`);
+      const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${resource.name}`); runtimePool = runtime.pool;
+      const org = randomUUID(), business = randomUUID(), visitor = randomUUID(), visitorSession = randomUUID(), interactionSession = randomUUID(), secondInteractionSession = randomUUID(), daily = randomUUID(), monthly = randomUUID();
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Claim Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Claim Business')`);
+        await tx.execute(sql`insert into visitor_identities(id,organization_id,business_id,retention_expires_at) values (${visitor}::uuid,${org}::uuid,${business}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into visitor_sessions(id,organization_id,business_id,visitor_identity_id) values (${visitorSession}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid)`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${interactionSession}::uuid,decode('11223344556677889900aabbccddeeff','hex'),${org}::uuid,${business}::uuid,${visitor}::uuid,${visitorSession}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${secondInteractionSession}::uuid,decode('ffeeddccbbaa00998877665544332211','hex'),${org}::uuid,${business}::uuid,${visitor}::uuid,${visitorSession}::uuid,now()+interval '1 day')`);
+      });
+      await bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${daily}::uuid,${org}::uuid,${business}::uuid,'daily',current_date,current_date+1,10),(${monthly}::uuid,${org}::uuid,${business}::uuid,'monthly',date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month')::date,10)`); });
+      const repository = createAiIntentRepository(runtime.db);
+      const base = { organizationId: org, businessId: business, interactionSessionId: interactionSession, idempotencyKey: 'claim-1', inputFingerprint: Uint8Array.from([1, 2, 3]), interpreterVersion: 'test', reservationUnits: 6 };
+      await bootstrap.db.execute(sql`create or replace function public.test_ai_claim_insert_failure() returns trigger language plpgsql as $$ begin if NEW.idempotency_key='rollback-after-reservation' then raise exception 'test-only invocation insertion failure'; end if; return NEW; end $$`);
+      await bootstrap.db.execute(sql`create trigger test_ai_claim_insert_failure before insert on ai_intent_invocations for each row execute function public.test_ai_claim_insert_failure()`);
+      const beforeRollback = await bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select reserved_units from ai_intent_accounting_periods where id=${daily}::uuid)::int as daily_reserved,(select reserved_units from ai_intent_accounting_periods where id=${monthly}::uuid)::int as monthly_reserved,(select count(*) from ai_intent_invocations)::int as invocations`); });
+      let rollbackError: unknown;
+      try { await repository.claim({ ...base, idempotencyKey: 'rollback-after-reservation', inputFingerprint: Uint8Array.from([8]), reservationUnits: 1 }); } catch (error) { rollbackError = error; }
+      expect(rollbackError).toBeTruthy();
+      const rollbackCause = postgresCause(rollbackError);
+      expect(rollbackCause?.code).toBe('P0001');
+      expect(rollbackCause?.message).toContain('test-only invocation insertion failure');
+      const afterRollback = await bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select reserved_units from ai_intent_accounting_periods where id=${daily}::uuid)::int as daily_reserved,(select reserved_units from ai_intent_accounting_periods where id=${monthly}::uuid)::int as monthly_reserved,(select count(*) from ai_intent_invocations)::int as invocations`); });
+      expect(afterRollback.rows[0]).toEqual(beforeRollback.rows[0]);
+      await bootstrap.db.execute(sql`drop trigger test_ai_claim_insert_failure on ai_intent_invocations`);
+      await bootstrap.db.execute(sql`drop function public.test_ai_claim_insert_failure()`);
+      const created = await repository.claim(base);
+      expect(created.outcome).toBe('created');
+      const replay = await repository.claim(base);
+      expect(replay).toMatchObject({ outcome: 'replay', invocationId: (created as { invocationId: string }).invocationId, reservedUnits: 6 });
+      await expect(repository.claim({ ...base, inputFingerprint: Uint8Array.from([9]) })).resolves.toMatchObject({ outcome: 'idempotency_conflict' });
+      const independentClaim = async (claimInput: typeof base) => { const connection = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${resource!.name}`); try { return await createAiIntentRepository(connection.db).claim(claimInput); } finally { await connection.pool.end(); } };
+      const identicalClaims = await Promise.all(Array.from({ length: 10 }, () => independentClaim({ ...base, idempotencyKey: 'concurrent-identical', inputFingerprint: Uint8Array.from([5]), reservationUnits: 1 })));
+      expect(identicalClaims.filter(result => result.outcome === 'created')).toHaveLength(1);
+      expect(identicalClaims.filter(result => result.outcome === 'replay')).toHaveLength(9);
+      const conflictingClaims = await Promise.all(Array.from({ length: 10 }, (_, index) => independentClaim({ ...base, idempotencyKey: 'concurrent-conflict', inputFingerprint: Uint8Array.from([index + 20]), reservationUnits: 1 })));
+      expect(conflictingClaims.filter(result => result.outcome === 'created')).toHaveLength(1);
+      expect(conflictingClaims.filter(result => result.outcome === 'idempotency_conflict')).toHaveLength(9);
+      const finalUnitClaims = await Promise.all(Array.from({ length: 10 }, (_, index) => independentClaim({ ...base, interactionSessionId: index % 2 === 0 ? interactionSession : secondInteractionSession, idempotencyKey: `final-unit-${index}`, inputFingerprint: Uint8Array.from([50 + index]), reservationUnits: 1 })));
+      expect(finalUnitClaims.filter(result => result.outcome === 'created')).toHaveLength(2);
+      expect(finalUnitClaims.filter(result => result.outcome === 'budget_exhausted')).toHaveLength(8);
+      await expect(repository.claim({ ...base, idempotencyKey: 'claim-2', inputFingerprint: Uint8Array.from([4]), reservationUnits: 5 })).resolves.toMatchObject({ outcome: 'budget_exhausted' });
+      const persisted = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select count(*)::int as invocations,(select reserved_units from ai_intent_accounting_periods where id=${daily}::uuid)::int as daily_reserved,(select reserved_units from ai_intent_accounting_periods where id=${monthly}::uuid)::int as monthly_reserved from ai_intent_invocations`); });
+      expect(persisted.rows[0]).toMatchObject({ invocations: 5, daily_reserved: 10, monthly_reserved: 10 });
+    } finally { await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource); }
+  }, 90000);
+
+  it('uses the injected UTC claim clock for daily and monthly rollover attribution', async () => {
+    let resource: Awaited<ReturnType<typeof provision>> | undefined;
+    let bootstrapPool: pg.Pool | undefined;
+    let runtimePool: pg.Pool | undefined;
+    try {
+      resource = await provision();
+      const bootstrap = createDb(resource.url); bootstrapPool = bootstrap.pool;
+      if (!roleAdminUrl || !process.env.TEST_APP_PASSWORD) throw new Error('TEST_ROLE_ADMIN_URL and TEST_APP_PASSWORD are required for rollover coverage');
+      const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1 });
+      try { await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false'); await migrate(bootstrap.db, { migrationsFolder }); }
+      finally { await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await roleAdmin.end(); }
+      await bootstrap.db.execute(sql`grant usage on schema public to kablet_dev`);
+      await bootstrap.db.execute(sql`grant select,insert,update,delete on organizations,businesses,visitor_identities,visitor_sessions,interaction_sessions,ai_intent_accounting_periods,ai_intent_invocations to kablet_dev`);
+      const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${resource.name}`); runtimePool = runtime.pool;
+      const org = randomUUID(), business = randomUUID(), visitor = randomUUID(), visitorSession = randomUUID(), interactionSession = randomUUID();
+      const daily080 = randomUUID(), daily090 = randomUUID(), daily310 = randomUUID(), daily110 = randomUUID(), monthly10 = randomUUID(), monthly11 = randomUUID();
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Rollover Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Rollover Business')`);
+        await tx.execute(sql`insert into visitor_identities(id,organization_id,business_id,retention_expires_at) values (${visitor}::uuid,${org}::uuid,${business}::uuid,'2026-12-01T00:00:00Z')`);
+        await tx.execute(sql`insert into visitor_sessions(id,organization_id,business_id,visitor_identity_id,last_seen_at) values (${visitorSession}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,'2026-10-08T23:59:59Z')`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${interactionSession}::uuid,decode('1234567890abcdef1234567890abcdef','hex'),${org}::uuid,${business}::uuid,${visitor}::uuid,${visitorSession}::uuid,'2026-12-01T00:00:00Z')`);
+        await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${daily080}::uuid,${org}::uuid,${business}::uuid,'daily','2026-10-08','2026-10-09',100),(${daily090}::uuid,${org}::uuid,${business}::uuid,'daily','2026-10-09','2026-10-10',100),(${daily310}::uuid,${org}::uuid,${business}::uuid,'daily','2026-10-31','2026-11-01',100),(${daily110}::uuid,${org}::uuid,${business}::uuid,'daily','2026-11-01','2026-11-02',100),(${monthly10}::uuid,${org}::uuid,${business}::uuid,'monthly','2026-10-01','2026-11-01',100),(${monthly11}::uuid,${org}::uuid,${business}::uuid,'monthly','2026-11-01','2026-12-01',100)`);
+      });
+      const repository = createAiIntentRepository(runtime.db, () => new Date('2026-10-08T23:59:59Z'));
+      const common = { organizationId: org, businessId: business, interactionSessionId: interactionSession, interpreterVersion: 'rollover-test', reservationUnits: 3 };
+      const dayBefore = await repository.claim({ ...common, idempotencyKey: 'utc-day-before', inputFingerprint: Uint8Array.from([1]), });
+      const dayAfter = await createAiIntentRepository(runtime.db, () => new Date('2026-10-09T00:00:01Z')).claim({ ...common, idempotencyKey: 'utc-day-after', inputFingerprint: Uint8Array.from([2]) });
+      const monthBefore = await createAiIntentRepository(runtime.db, () => new Date('2026-10-31T23:59:59Z')).claim({ ...common, idempotencyKey: 'utc-month-before', inputFingerprint: Uint8Array.from([3]) });
+      const monthAfter = await createAiIntentRepository(runtime.db, () => new Date('2026-11-01T00:00:01Z')).claim({ ...common, idempotencyKey: 'utc-month-after', inputFingerprint: Uint8Array.from([4]) });
+      expect(dayBefore.outcome).toBe('created'); expect(dayAfter.outcome).toBe('created'); expect(monthBefore.outcome).toBe('created'); expect(monthAfter.outcome).toBe('created');
+      const rows = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,daily_period_id,monthly_period_id,claimed_at from ai_intent_invocations where id in (${(dayBefore as { invocationId: string }).invocationId}::uuid,${(dayAfter as { invocationId: string }).invocationId}::uuid,${(monthBefore as { invocationId: string }).invocationId}::uuid,${(monthAfter as { invocationId: string }).invocationId}::uuid) order by claimed_at`); });
+      expect(rows.rows.map(row => row.daily_period_id)).toEqual([daily080, daily090, daily310, daily110]);
+      expect(rows.rows.map(row => row.monthly_period_id)).toEqual([monthly10, monthly10, monthly10, monthly11]);
+      const counters = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,reserved_units from ai_intent_accounting_periods where id in (${daily080}::uuid,${daily090}::uuid,${daily310}::uuid,${daily110}::uuid,${monthly10}::uuid,${monthly11}::uuid) order by id`); });
+      expect(counters.rows.filter(row => [daily080, daily090, daily310, daily110].includes(row.id)).every(row => row.reserved_units === '3')).toBe(true);
+      expect(counters.rows.find(row => row.id === monthly10)?.reserved_units).toBe('9');
+      expect(counters.rows.find(row => row.id === monthly11)?.reserved_units).toBe('3');
+    } finally { await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource); }
   }, 90000);
 });
