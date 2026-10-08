@@ -32,6 +32,13 @@ test('completes the browser conversion journey with durable lineage', async ({ p
   if (!startPayload.experience) {
     throw new Error(`interaction start returned no experience; consoleErrors=${JSON.stringify(consoleErrors)}; failedRequests=${JSON.stringify(failedRequests)}`);
   }
+  const initialDecisionId = (startPayload.experience as { decisionId?: string }).decisionId;
+  const resumeResponsePromise = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/interaction/resume');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const resumeResponse = await resumeResponsePromise;
+  expect(resumeResponse.ok()).toBeTruthy();
+  const resumedPayload = await resumeResponse.json() as { experience?: { decisionId?: string } };
+  expect(resumedPayload.experience?.decisionId).toBe(initialDecisionId);
   await expect(page.getByText('What would be most useful?')).toBeVisible();
   await page.getByRole('button', { name: 'Explore your services' }).click();
   const intentResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/intent');
@@ -44,12 +51,35 @@ test('completes the browser conversion journey with durable lineage', async ({ p
     throw new Error(`interaction intent failed (${intentResponse.status()}): ${redactedBody.slice(0, 1000)}; consoleErrors=${JSON.stringify(consoleErrors)}; failedRequests=${JSON.stringify(failedRequests)}`);
   }
   await expect(page.getByRole('button', { name: 'Choose this option' })).toBeVisible();
+  const selectionResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/offering');
   await page.getByRole('button', { name: 'Choose this option' }).click();
+  const selectionResponse = await selectionResponsePromise;
+  expect(selectionResponse.ok()).toBeTruthy();
+  const selectedPayload = await selectionResponse.json() as { experience?: { decisionId?: string } };
+  const selectedDecisionId = selectedPayload.experience?.decisionId;
+  expect(selectedDecisionId).toBeTruthy();
+  const selectionResumePromise = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/interaction/resume');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const selectionResume = await selectionResumePromise;
+  expect(selectionResume.ok()).toBeTruthy();
+  expect((await selectionResume.json() as { experience?: { decisionId?: string } }).experience?.decisionId).toBe(selectedDecisionId);
   await expect(page.getByLabel('Name')).toBeVisible();
   await page.getByLabel('Name').fill('Browser Visitor');
   await page.getByLabel('Email').fill('browser@example.test');
   await page.getByLabel('I agree to be contacted about this request.').check();
+  const contactResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/contact');
   await page.getByRole('button', { name: 'Continue' }).last().click();
+  const contactResponse = await contactResponsePromise;
+  expect(contactResponse.ok()).toBeTruthy();
+  const contactPayload = await contactResponse.json() as { experience?: { decisionId?: string } };
+  const actionDecisionId = contactPayload.experience?.decisionId;
+  expect(actionDecisionId).toBeTruthy();
+  await expect(page.getByRole('button', { name: 'Continue securely' })).toBeVisible();
+  const actionResumePromise = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/interaction/resume');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const actionResume = await actionResumePromise;
+  expect(actionResume.ok()).toBeTruthy();
+  expect((await actionResume.json() as { experience?: { decisionId?: string } }).experience?.decisionId).toBe(actionDecisionId);
   await expect(page.getByRole('button', { name: 'Continue securely' })).toBeVisible();
   const actionResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/action');
   await page.getByRole('button', { name: 'Continue securely' }).click();
@@ -72,6 +102,10 @@ test('completes the browser conversion journey with durable lineage', async ({ p
       await connection.query('begin');
       await connection.query("select set_config('kablet.organization_id',$1,true),set_config('kablet.business_id',$2,true)", [state.organizationId, state.businessId]);
       const result = await connection.query(`select
+      (select count(*) from visitor_identities where organization_id=$1 and business_id=$2) as visitors,
+      (select count(*) from interaction_sessions where organization_id=$1 and business_id=$2) as sessions,
+      (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2) as decisions,
+      (select count(*) from experience_exposures where organization_id=$1 and business_id=$2) as exposures,
       (select count(*) from visitor_observations where organization_id=$1 and business_id=$2 and kind='offering.selected') as selections,
       (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2 and decision_type='offer_next_step') as next_steps,
       (select count(*) from interaction_facts where organization_id=$1 and business_id=$2 and interaction_kind='action_confirmed') as confirmations,
@@ -79,7 +113,7 @@ test('completes the browser conversion journey with durable lineage', async ({ p
       (select count(*) from execution_attempts where organization_id=$1 and business_id=$2) as attempts,
       (select count(*) from action_outcomes where organization_id=$1 and business_id=$2 and status='verified') as outcomes,
       (select count(*) from conversion_facts where organization_id=$1 and business_id=$2) as conversions`, [state.organizationId, state.businessId]);
-      expect(result.rows[0]).toMatchObject({ selections: '1', next_steps: '1', confirmations: '1', requests: '1', attempts: '1', outcomes: '1', conversions: '1' });
+      expect(result.rows[0]).toMatchObject({ visitors: '1', sessions: '1', decisions: '4', exposures: '4', selections: '1', next_steps: '1', confirmations: '1', requests: '1', attempts: '1', outcomes: '1', conversions: '1' });
       await connection.query('commit');
     } catch (error) { await connection.query('rollback').catch(() => undefined); throw error; } finally { connection.release(); }
   } finally { await pool.end(); }

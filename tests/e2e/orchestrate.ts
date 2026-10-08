@@ -37,12 +37,17 @@ function pnpmLauncher(): { command: string; prefix: string[] } {
 
 async function terminate(child: ReturnType<typeof spawn>) {
   if (child.exitCode !== null) return;
+  const exited = new Promise<void>((resolve, reject) => {
+    if (child.exitCode !== null) { resolve(); return; }
+    const timer = setTimeout(() => reject(new Error('owned web server did not exit after termination')), 15000);
+    child.once('exit', () => { clearTimeout(timer); resolve(); });
+  });
   if (process.platform === 'win32' && child.pid) {
     await run('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], process.env);
   } else {
     child.kill('SIGTERM');
   }
-  await new Promise<void>(resolve => child.once('exit', () => resolve()));
+  await exited;
 }
 
 async function databaseExists(database: string): Promise<boolean> {

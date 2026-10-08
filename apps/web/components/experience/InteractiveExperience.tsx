@@ -12,7 +12,7 @@ const intents = [
 ] as const;
 
 type Intent = (typeof intents)[number]['value'];
-type Failure = 'start' | 'intent' | 'action' | null;
+type Failure = 'start' | 'resume' | 'intent' | 'action' | null;
 
 export function InteractiveExperience() {
   const [experience, setExperience] = useState<ExperienceModel | null>(null);
@@ -50,7 +50,28 @@ export function InteractiveExperience() {
     }
   }, []);
 
-  useEffect(() => { void start(); }, [start]);
+  const resume = useCallback(async () => {
+    setBusy(true);
+    setFailure(null);
+    try {
+      const response = await fetch('/api/interaction/resume', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+      if (response.status === 401) {
+        await start();
+        return;
+      }
+      if (!response.ok) throw new Error('resume failed');
+      const payload = await response.json();
+      if (!payload?.experience) throw new Error('resume returned no experience');
+      setExperience(payload.experience);
+      setSubmissionKey(null);
+    } catch {
+      setFailure('resume');
+    } finally {
+      setBusy(false);
+    }
+  }, [start]);
+
+  useEffect(() => { void resume(); }, [resume]);
 
   async function submit() {
     if (!experience || busy) return;
@@ -120,8 +141,9 @@ export function InteractiveExperience() {
         <div className='interactive-error' role='alert'>
           {failure === 'start'
             ? 'We could not start this interaction. Please try again.'
+            : failure === 'resume' ? 'We could not resume this interaction. Please try again.'
             : failure === 'action' ? 'We could not complete the authorized next step. Please retry.' : 'We could not update this experience. Please retry.'}
-          <button type='button' disabled={busy || actionBusy} onClick={() => failure === 'start' ? void start() : failure === 'action' ? void confirmAction() : void submit()}>Retry</button>
+          <button type='button' disabled={busy || actionBusy} onClick={() => failure === 'start' ? void start() : failure === 'resume' ? void resume() : failure === 'action' ? void confirmAction() : void submit()}>Retry</button>
         </div>
       )}
       {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} onOfferingSelect={(offeringId, offeringRevisionId) => void selectOffering(offeringId, offeringRevisionId)} actionStatus={actionStatus} onConfirmAction={() => void confirmAction()} />}

@@ -36,6 +36,26 @@ export function createInteractionService(input: { db: Database['db']; organizati
     await createMeasurementRepository(input.db, transaction).insertFact({ contractVersion: 'interaction-fact.v1', id: randomUUID(), organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId: session.visitorIdentityId, visitorSessionId: session.visitorSessionId, interactionSessionId: session.interactionSessionId, decisionId: (await createMeasurementRepository(input.db, transaction).getExposure(priorExposureId, input.organizationId, input.businessId))!.decisionId, exposureId: priorExposureId, interactionKind: kind, occurredAt: new Date(), idempotencyKey, actionRequestId: null });
   }
   return {
+    async resume(handle: string): Promise<ExperienceModel> {
+      const session = await interactions.resolve(input.organizationId, input.businessId, handle);
+      if (!session) throw new InteractionExpiredError();
+      return input.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
+        const exposure = await tx.execute(sql`select e.*, d.visitor_identity_id as decision_visitor_identity_id, d.session_id as decision_session_id, d.visitor_state_revision_id, d.visitor_state_version, d.decision_type, d.intent_policy_revision_id, d.qualification_question_key, d.qualification_question_prompt, d.qualification_question_options from experience_exposures e join visitor_decisions d on d.id=e.decision_id and d.organization_id=e.organization_id and d.business_id=e.business_id where e.organization_id=${input.organizationId}::uuid and e.business_id=${input.businessId}::uuid and e.interaction_session_id=${session.interactionSessionId}::uuid order by e.exposure_sequence desc limit 1`);
+        const row = exposure.rows[0] as Record<string, unknown> | undefined;
+        if (!row || String(row.decision_visitor_identity_id) !== session.visitorIdentityId || String(row.decision_session_id) !== session.visitorSessionId) throw new Error('interaction decision lineage is inconsistent');
+        if (!row.intent_policy_revision_id) throw new Error('interaction policy lineage is missing');
+        const policy = await createIntentPolicyRepository(input.db, tx).getById(input.organizationId, input.businessId, String(row.intent_policy_revision_id));
+        if (!policy) throw new Error('interaction policy revision not found');
+        if (String(row.decision_type) === 'request_qualification' && (!row.qualification_question_key || !policy.qualificationRequirements.some(item => item.key === String(row.qualification_question_key)))) throw new Error('interaction policy lineage is inconsistent');
+        const state = await tx.execute(sql`select s.current_revision_id, s.version from visitor_states s where s.organization_id=${input.organizationId}::uuid and s.business_id=${input.businessId}::uuid and s.visitor_identity_id=${session.visitorIdentityId}::uuid`);
+        if (!state.rows[0] || String(state.rows[0].current_revision_id) !== String(row.visitor_state_revision_id) || Number(state.rows[0].version) !== Number(row.visitor_state_version)) throw new Error('interaction decision is stale');
+        const refs = await tx.execute(sql`select offering_id, offering_revision_id from visitor_decision_business_truth_refs where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and decision_id=${row.decision_id}::uuid`);
+        const offerings = await createBusinessTruthRepository(input.db, tx).getOfferingsByReferences(input.organizationId, input.businessId, refs.rows.map(ref => ({ offeringId: String(ref.offering_id), offeringRevisionId: String(ref.offering_revision_id) })), tx);
+        const qualificationQuestion = row.qualification_question_key ? { key: String(row.qualification_question_key), prompt: String(row.qualification_question_prompt), options: qualificationQuestionSchema.shape.options.parse(row.qualification_question_options) } : null;
+        return decisionToExperience(experienceInputSchema.parse({ contractVersion: 'experience-input.v1', decisionId: String(row.decision_id), decisionContractVersion: 'decision.v1', organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId: session.visitorIdentityId, sessionId: session.visitorSessionId, decisionType: String(row.decision_type), visitorStateRevisionId: String(row.visitor_state_revision_id), businessTruthRefs: refs.rows.map(ref => ({ offeringId: String(ref.offering_id), offeringRevisionId: String(ref.offering_revision_id) })), qualificationQuestion, rationale: [] }), offerings);
+      });
+    },
     async start(expiresAt: Date, acquisition: InteractionAcquisitionInput = { landingPath: '/', referrer: null, utmSource: null, utmMedium: null, utmCampaign: null, utmContent: null, utmTerm: null }) {
       return input.db.transaction(async tx => {
         const transactionVisitors = createVisitorStateRepository(input.db, tx);

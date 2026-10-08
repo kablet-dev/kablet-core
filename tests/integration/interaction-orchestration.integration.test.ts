@@ -3,9 +3,10 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { sql } from 'drizzle-orm';
-import { createDb, createDecisionRepository, createVisitorStateRepository } from '@kablet/db';
+import { createDb, createDecisionRepository, createIntentPolicyRepository, createInteractionSessionRepository, createVisitorStateRepository } from '@kablet/db';
 import { loadTestManagerConfig } from '@kablet/config';
 import { createInteractionService } from '../../apps/web/lib/interaction-service';
+import { createActionService } from '../../apps/web/lib/action-service';
 import { describe, expect, it } from 'vitest';
 import { seedBaselineIntentPolicy } from './intent-policy-fixture';
 
@@ -63,6 +64,87 @@ async function disposable() {
 async function cleanup(resource: Awaited<ReturnType<typeof disposable>>) { await resource.runtime.pool.end(); await resource.managerPool.query(`drop database "${resource.name}"`); await resource.managerPool.end(); }
 
 describe('real interaction orchestration', () => {
+  it('resumes the latest authoritative experience without creating durable records', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const before = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_identities where id=${started.visitorId}::uuid)::int as visitors, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select count(*) from experience_exposures where visitor_identity_id=${started.visitorId}::uuid)::int as exposures`); });
+      const resumed = await service.resume(started.handle);
+      expect(resumed.decisionId).toBe(started.experience.decisionId);
+      const after = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from visitor_identities where id=${started.visitorId}::uuid)::int as visitors, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions, (select count(*) from experience_exposures where visitor_identity_id=${started.visitorId}::uuid)::int as exposures`); });
+      expect(after.rows[0]).toEqual(before.rows[0]);
+      await expect(service.resume(started.handle)).resolves.toMatchObject({ decisionId: started.experience.decisionId });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('preserves the Decision policy revision when a newer policy is published', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const first = await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'resume-history-intent' });
+      const policy = createIntentPolicyRepository(resource.runtime.db);
+      const newer = await policy.createRevision({ organizationId: org, businessId: business, policyKey: 'baseline', qualificationRequirements: [{ key: 'context_timeline', prompt: 'A newer prompt', options: [{ value: 'immediate', label: 'Now' }] }], intentRules: [{ intent: 'explore_offerings', qualificationRequirementKeys: [] }, { intent: 'request_information', qualificationRequirementKeys: ['context_timeline'] }, { intent: 'select_offering', qualificationRequirementKeys: [] }] });
+      await policy.publish(org, business, 'baseline', newer.id);
+      const resumed = await service.resume(started.handle);
+      expect(resumed).toEqual(first);
+      expect(resumed.components[0]).toMatchObject({ type: 'qualification-question', heading: 'What kind of timeframe are you considering?' });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('rejects expired and revoked sessions through the resume service', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const expired = await service.start(new Date(Date.now() - 1));
+      await expect(service.resume(expired.handle)).rejects.toThrow('interaction expired or revoked');
+      const active = await service.start(new Date(Date.now() + 60_000));
+      await expect(createInteractionSessionRepository(resource.runtime.db).revoke(org, business, active.handle)).resolves.toBe(true);
+      await expect(service.resume(active.handle)).rejects.toThrow('interaction expired or revoked');
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('prevents resume after visitor privacy deletion', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      await expect(createVisitorStateRepository(resource.runtime.db).anonymize(org, started.visitorId, business)).resolves.toBe(true);
+      await expect(service.resume(started.handle)).rejects.toThrow('interaction expired or revoked');
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('fails closed when a valid session has no persisted Exposure', async () => {
+    const resource = await disposable();
+    try {
+      const visitors = createVisitorStateRepository(resource.runtime.db);
+      const visitor = await visitors.createVisitor(org, business, new Date(Date.now() + 60_000));
+      const session = await visitors.createSession(org, business, visitor);
+      const interaction = await createInteractionSessionRepository(resource.runtime.db).createWithId(org, business, visitor, session, new Date(Date.now() + 60_000));
+      await expect(createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business }).resume(interaction.handle)).rejects.toThrow('interaction decision lineage is inconsistent');
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('does not allow a resumed Decision to authorize an Action after state becomes stale', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const offering = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select p.offering_id, p.revision_id from offering_publications p limit 1`); });
+      await service.selectOffering(started.handle, { offeringId: String(offering.rows[0].offering_id), offeringRevisionId: String(offering.rows[0].revision_id), idempotencyKey: 'resume-action-selection' });
+      await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'resume-action-intent' });
+      await service.submitQualification(started.handle, { questionKey: 'context_timeline', answer: 'immediate', idempotencyKey: 'resume-action-qualification' });
+      const final = await service.submitContact(started.handle, { name: 'Resume Visitor', email: 'resume@example.test', consent: true, idempotencyKey: 'resume-action-contact' });
+      expect(final.decisionType).toBe('offer_next_step');
+      await expect(service.resume(started.handle)).resolves.toMatchObject({ decisionId: final.decisionId });
+      await service.expressIntent(started.handle, { intent: 'request_information', idempotencyKey: 'resume-action-stale' });
+      await expect(createActionService(resource.runtime.db, org, business).confirm({ handle: started.handle, decisionId: final.decisionId, idempotencyKey: 'resume-action-confirm', visitorConfirmed: true })).rejects.toThrow('stale_decision');
+      const lineage = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`); return tx.execute(sql`select (select count(*) from action_requests where visitor_identity_id=${started.visitorId}::uuid)::int as requests, (select count(*) from execution_attempts where action_request_id in (select id from action_requests where visitor_identity_id=${started.visitorId}::uuid))::int as attempts, (select count(*) from action_outcomes where visitor_identity_id=${started.visitorId}::uuid)::int as outcomes`); });
+      expect(lineage.rows[0]).toEqual({ requests: 0, attempts: 0, outcomes: 0 });
+    } finally { await cleanup(resource); }
+  }, 90000);
+
   it('bootstraps, persists intent state, creates a Decision and returns experience.v1', async () => {
     const resource = await disposable();
     try {

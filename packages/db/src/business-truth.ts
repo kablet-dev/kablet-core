@@ -43,5 +43,19 @@ export function createBusinessTruthRepository(db: Database['db'], existingTx?: T
         return result.rows.map(row => ({ offeringId: String(row.offering_id), offeringRevisionId: String(row.offering_revision_id), name: String(row.name), description: String(row.description), priceLabel: row.pricing_kind === 'fixed' && row.currency !== null && row.amount_minor !== null ? `${String(row.currency)} ${String(row.amount_minor)}` : 'Price available on request' }));
       }, existingTx);
     },
+    async getOfferingsByReferences(organizationId: string, businessId: string, references: Array<{ offeringId: string; offeringRevisionId: string }>, existingTx?: Tx) {
+      if (references.length === 0) return [];
+      return withTenantContext(db, organizationId, async tx => {
+        await tx.execute(sql`select set_config('kablet.business_id', ${businessId}, true)`);
+        const result = await tx.execute(sql`
+          select r.offering_id, r.id as offering_revision_id, r.name, r.description,
+                 r.pricing_kind, r.currency, r.amount_minor
+          from business_offering_revisions r
+          join business_offerings o on o.id = r.offering_id and o.business_id = ${businessId}::uuid
+          where (${sql.join(references.map(reference => sql`(r.offering_id = ${reference.offeringId}::uuid and r.id = ${reference.offeringRevisionId}::uuid)`), sql` or `)})
+        `);
+        return result.rows.map(row => ({ offeringId: String(row.offering_id), offeringRevisionId: String(row.offering_revision_id), name: String(row.name), description: String(row.description), priceLabel: row.pricing_kind === 'fixed' && row.currency !== null && row.amount_minor !== null ? `${String(row.currency)} ${String(row.amount_minor)}` : 'Price available on request' }));
+      }, existingTx);
+    },
   };
 }
