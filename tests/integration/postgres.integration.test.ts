@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
@@ -89,6 +89,17 @@ describe('disposable PostgreSQL integration', () => {
         expect(immutableFunction.rows[0]).toMatchObject({ public_execute: false, bootstrap_execute: false });
         const contactTriggers = await db.execute(sql`select c.relname, count(t.oid)::int as trigger_count from pg_class c join pg_namespace n on n.oid=c.relnamespace left join pg_trigger t on t.tgrelid=c.oid and not t.tgisinternal and t.tgname in ('visitor_contact_records_immutable','visitor_consents_immutable') where n.nspname='public' and c.relname in ('visitor_contact_records','visitor_consents') group by c.relname order by case c.relname when 'visitor_contact_records' then 1 when 'visitor_consents' then 2 end`);
         expect(contactTriggers.rows).toEqual([{ relname: 'visitor_contact_records', trigger_count: 1 }, { relname: 'visitor_consents', trigger_count: 1 }]);
+        const aiSecurity = await db.execute(sql`select c.relname,c.relrowsecurity,c.relforcerowsecurity,has_table_privilege('kablet_dev',c.oid,'SELECT') as runtime_select,has_table_privilege('kablet_dev',c.oid,'INSERT') as runtime_insert,has_table_privilege('kablet_dev',c.oid,'UPDATE') as runtime_update,has_table_privilege('kablet_dev',c.oid,'DELETE') as runtime_delete,case when c.relname='ai_intent_invocations' then has_column_privilege('kablet_privacy_owner',c.oid,'visitor_identity_id','UPDATE') else false end as privacy_identity_update,case when c.relname='ai_intent_invocations' then has_column_privilege('kablet_privacy_owner',c.oid,'input_fingerprint','UPDATE') else false end as privacy_fingerprint_update from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('ai_intent_accounting_periods','ai_intent_invocations') order by c.relname`);
+        expect(aiSecurity.rows).toHaveLength(2);
+        expect(aiSecurity.rows[0]).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true, runtime_select: true, runtime_insert: true, runtime_update: true, runtime_delete: false, privacy_identity_update: false, privacy_fingerprint_update: false });
+        expect(aiSecurity.rows[1]).toMatchObject({ relrowsecurity: true, relforcerowsecurity: true, runtime_select: true, runtime_insert: true, runtime_update: true, runtime_delete: false, privacy_identity_update: true, privacy_fingerprint_update: true });
+        const aiConstraints = await db.execute(sql`select table_name,constraint_name from information_schema.table_constraints where table_schema='public' and table_name in ('ai_intent_accounting_periods','ai_intent_invocations') and constraint_type in ('UNIQUE','FOREIGN KEY','CHECK')`);
+        expect(aiConstraints.rows.length).toBeGreaterThanOrEqual(8);
+        const aiFunctionSecurity = await db.execute(sql`select p.proname, r.rolname as owner, has_function_privilege('public', p.oid, 'EXECUTE') as public_execute, has_function_privilege('kablet_test_bootstrap', p.oid, 'EXECUTE') as bootstrap_execute from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_roles r on r.oid=p.proowner where n.nspname='public' and p.proname in ('kablet_ai_period_immutable','kablet_ai_invocation_transition','kablet_visitor_privacy_delete') order by p.proname`);
+        expect(aiFunctionSecurity.rows).toHaveLength(3);
+        for (const row of aiFunctionSecurity.rows) expect(row).toMatchObject({ owner: 'kablet_privacy_owner', public_execute: false, bootstrap_execute: false });
+        const aiTriggers = await db.execute(sql`select c.relname, count(t.oid)::int as trigger_count from pg_class c join pg_namespace n on n.oid=c.relnamespace left join pg_trigger t on t.tgrelid=c.oid and not t.tgisinternal and t.tgname in ('ai_intent_accounting_periods_immutable','ai_intent_invocations_transition') where n.nspname='public' and c.relname in ('ai_intent_accounting_periods','ai_intent_invocations') group by c.relname order by c.relname`);
+        expect(aiTriggers.rows).toEqual([{ relname: 'ai_intent_accounting_periods', trigger_count: 1 }, { relname: 'ai_intent_invocations', trigger_count: 1 }]);
         expect((await db.execute(sql`insert into infrastructure_ledger default values returning id`)).rows).toHaveLength(1);
         await expect(db.transaction(async tx => { await tx.execute(sql`insert into infrastructure_ledger default values`); throw new Error('rollback-check'); })).rejects.toThrow('rollback-check');
       }
@@ -176,4 +187,74 @@ describe('disposable PostgreSQL integration', () => {
       if (resource) await dispose(resource);
     }
   }, 30000);
+
+  it('proves AI invocation isolation, transition immutability, accounting constraints, and privacy anonymization', async () => {
+    let resource: Awaited<ReturnType<typeof provision>> | undefined;
+    let bootstrapPool: pg.Pool | undefined;
+    let runtimePool: pg.Pool | undefined;
+    try {
+      resource = await provision();
+      const bootstrap = createDb(resource.url); bootstrapPool = bootstrap.pool;
+      if (!roleAdminUrl || !process.env.TEST_APP_PASSWORD) throw new Error('TEST_ROLE_ADMIN_URL and TEST_APP_PASSWORD are required for AI runtime coverage');
+      const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1 });
+      try {
+        await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
+        await migrate(bootstrap.db, { migrationsFolder });
+      } finally { await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await roleAdmin.end(); }
+      await bootstrap.db.execute(sql`grant usage on schema public to kablet_dev`);
+      await bootstrap.db.execute(sql`grant select,insert,update,delete on organizations,businesses,visitor_identities,visitor_sessions,interaction_sessions,ai_intent_accounting_periods,ai_intent_invocations to kablet_dev`);
+      const runtimeUrl = `postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${resource.name}`;
+      const runtime = createDb(runtimeUrl); runtimePool = runtime.pool;
+      const org = randomUUID(), business = randomUUID(), otherBusiness = randomUUID(), visitor = randomUUID(), session = randomUUID(), interaction = randomUUID(), daily = randomUUID(), monthly = randomUUID(), otherDaily = randomUUID(), otherMonthly = randomUUID(), invocation = randomUUID(), unknownInvocation = randomUUID();
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'AI Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'AI Business'),(${otherBusiness}::uuid,${org}::uuid,'Other Business')`);
+        await tx.execute(sql`insert into visitor_identities(id,organization_id,business_id,retention_expires_at) values (${visitor}::uuid,${org}::uuid,${business}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into visitor_sessions(id,organization_id,business_id,visitor_identity_id) values (${session}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid)`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${interaction}::uuid,decode('00112233445566778899aabbccddeeff','hex'),${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,now()+interval '1 day')`);
+      });
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${daily}::uuid,${org}::uuid,${business}::uuid,'daily',current_date,current_date+1,100),(${monthly}::uuid,${org}::uuid,${business}::uuid,'monthly',date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month')::date,100)`);
+      });
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`);
+        await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${otherDaily}::uuid,${org}::uuid,${otherBusiness}::uuid,'daily',current_date,current_date+1,100),(${otherMonthly}::uuid,${org}::uuid,${otherBusiness}::uuid,'monthly',date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month')::date,100)`);
+      });
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into ai_intent_invocations(id,organization_id,business_id,visitor_identity_id,visitor_session_id,idempotency_key,input_fingerprint,status,interpreter_version,reserved_units,daily_period_id,monthly_period_id) values (${invocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'ai-1',decode('0102','hex'),'claimed','test-adapter',10,${daily}::uuid,${monthly}::uuid),(${unknownInvocation}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'ai-unknown',decode('0304','hex'),'claimed','test-adapter',7,${daily}::uuid,${monthly}::uuid)`);
+      });
+      const visible = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,status,reserved_units from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(visible.rows).toEqual([{ id: invocation, status: 'claimed', reserved_units: '10' }]);
+      const hidden = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`select count(*)::int as count from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(hidden.rows[0].count).toBe(0);
+      const crossBusinessUpdate = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`update ai_intent_invocations set reserved_units=1 where id=${invocation}::uuid`); });
+      expect(crossBusinessUpdate.rowCount).toBe(0);
+      const unchangedAfterCrossBusinessUpdate = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select reserved_units from ai_intent_invocations where id=${invocation}::uuid`); });
+      expect(unchangedAfterCrossBusinessUpdate.rows[0].reserved_units).toBe('10');
+      for (const statement of [sql`update ai_intent_invocations set idempotency_key='changed' where id=${invocation}::uuid`, sql`update ai_intent_invocations set input_fingerprint=decode('ff','hex') where id=${invocation}::uuid`, sql`update ai_intent_invocations set daily_period_id=${otherDaily}::uuid where id=${invocation}::uuid`, sql`update ai_intent_invocations set visitor_identity_id=null where id=${invocation}::uuid`]) {
+        await expect(runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(statement); })).rejects.toThrow();
+      }
+      await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set status='succeeded',normalized_intent='unclear',reason_code='ambiguous',consumed_units=4,completed_at=now() where id=${invocation}::uuid`); });
+      await expect(runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set consumed_units=5 where id=${invocation}::uuid`); })).rejects.toThrow();
+      await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_invocations set status='unknown',uncertain_units=7,completed_at=now() where id=${unknownInvocation}::uuid`); });
+      const beforePrivacy = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select visitor_identity_id,visitor_session_id,interaction_session_id,input_fingerprint,reserved_units,uncertain_units from ai_intent_invocations where id=${unknownInvocation}::uuid`); });
+      expect(beforePrivacy.rows[0].visitor_identity_id).toBe(visitor);
+      await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`select public.kablet_visitor_privacy_delete(${org}::uuid,${visitor}::uuid)`); });
+      const afterPrivacy = await bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select id,visitor_identity_id,visitor_session_id,interaction_session_id,input_fingerprint,reserved_units,consumed_units,released_units,uncertain_units,daily_period_id,monthly_period_id,status from ai_intent_invocations where id in (${invocation}::uuid,${unknownInvocation}::uuid) order by id`); });
+      expect(afterPrivacy.rows).toHaveLength(2);
+      for (const row of afterPrivacy.rows) expect(row).toMatchObject({ visitor_identity_id: null, visitor_session_id: null, interaction_session_id: null, input_fingerprint: null, daily_period_id: daily, monthly_period_id: monthly });
+      expect(afterPrivacy.rows.find(row => row.id === invocation)).toMatchObject({ reserved_units: '10', consumed_units: '4', released_units: '0', uncertain_units: '0', status: 'succeeded' });
+      expect(afterPrivacy.rows.find(row => row.id === unknownInvocation)).toMatchObject({ reserved_units: '7', consumed_units: '0', released_units: '0', uncertain_units: '7', status: 'unknown' });
+      const businessBView = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${otherBusiness},true)`); return tx.execute(sql`select count(*)::int as count from ai_intent_invocations where id in (${invocation}::uuid,${unknownInvocation}::uuid)`); });
+      expect(businessBView.rows[0].count).toBe(0);
+      await expect(bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${randomUUID()}::uuid,${org}::uuid,${business}::uuid,'daily',current_date,current_date+1,-1)`); })).rejects.toThrow();
+      await expect(bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update ai_intent_accounting_periods set period_start=period_start+1 where id=${daily}::uuid`); })).rejects.toThrow();
+      await expect(bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`delete from ai_intent_accounting_periods where id=${daily}::uuid`); })).rejects.toThrow();
+    } finally {
+      await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource);
+    }
+  }, 90000);
 });

@@ -17,6 +17,7 @@
     { "idx": 12, "version": "7", "when": 1760313600000, "tag": "0012_experience_exposure_interaction_facts", "breakpoints": true },
     { "idx": 13, "version": "7", "when": 1760400000000, "tag": "0013_outcome_attribution", "breakpoints": true },
     { "idx": 14, "version": "7", "when": 1760486400000, "tag": "0014_conversion_definitions_facts", "breakpoints": true },
-    { "idx": 15, "version": "7", "when": 1760572800000, "tag": "0015_business_intent_policy", "breakpoints": true }
+    { "idx": 15, "version": "7", "when": 1760572800000, "tag": "0015_business_intent_policy", "breakpoints": true },
+    { "idx": 16, "version": "7", "when": 1760659200000, "tag": "0016_ai_intent_invocations", "breakpoints": true }
   ]
 }
