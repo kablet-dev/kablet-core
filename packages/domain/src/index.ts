@@ -22,3 +22,4 @@ export * from './attribution';
 export * from './conversion';
 export * from './measurement';
 export * from './intent-policy';
+export * from './intent-interpretation';
