@@ -13,6 +13,21 @@ describe('baseline Decision policy', () => {
     expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent }, eligibleOfferingRefs: refs })).toMatchObject({ type: 'present_offering' });
     expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent, selectedOffering: { offeringId: refs[0].offeringId, publishedRevisionId: refs[0].offeringRevisionId, status: 'selected', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: refs })).toMatchObject({ type: 'request_time_window' });
   });
+  it('presents exploratory offerings before contact when no qualification applies', () => {
+    expect(evaluateBaselineDecision({
+      state: { ...emptyVisitorState, intent },
+      eligibleOfferingRefs: refs,
+      qualificationRequirements: [],
+      contactRequirement: { fields: ['name'], channels: ['email'], consentPurpose: 'follow_up', consentVersion: '1' },
+    })).toMatchObject({ type: 'present_offering' });
+  });
+  it('keeps qualification and contact gates authoritative for request_information', () => {
+    const informationIntent = { ...intent, value: 'request_information' as const };
+    const requirement = { key: 'context_timeline', prompt: 'What timeframe?', options: [{ value: 'immediate', label: 'Immediately' }] };
+    const contactRequirement = { fields: ['name'], channels: ['email'] as const, consentPurpose: 'follow_up', consentVersion: '1' };
+    expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent: informationIntent }, eligibleOfferingRefs: refs, qualificationRequirements: [requirement], contactRequirement })).toMatchObject({ type: 'request_qualification' });
+    expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent: informationIntent, qualification: [{ questionKey: 'context_timeline', answer: 'immediate', sourceObservationId: intent.sourceObservationId }] }, eligibleOfferingRefs: refs, qualificationRequirements: [requirement], contactRequirement })).toMatchObject({ type: 'request_contact' });
+  });
   it('returns no_safe_decision when the selected revision is no longer eligible', () => {
     expect(evaluateBaselineDecision({ state: { ...emptyVisitorState, intent, selectedOffering: { offeringId: refs[0].offeringId, publishedRevisionId: refs[0].offeringRevisionId, status: 'selected', sourceObservationId: intent.sourceObservationId } }, eligibleOfferingRefs: [] })).toMatchObject({ type: 'no_safe_decision' });
   });

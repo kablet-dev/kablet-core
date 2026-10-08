@@ -76,6 +76,41 @@ describe('real interaction orchestration', () => {
     } finally { await cleanup(resource); }
   }, 90000);
 
+  it('composes materially different server-authorized experiences for two intents', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const exploreVisitor = await service.start(new Date(Date.now() + 60_000));
+      const informationVisitor = await service.start(new Date(Date.now() + 60_000));
+      const explore = await service.expressIntent(exploreVisitor.handle, { intent: 'explore_offerings', idempotencyKey: 'composition-explore' });
+      const information = await service.expressIntent(informationVisitor.handle, { intent: 'request_information', idempotencyKey: 'composition-information' });
+
+      expect(explore.decisionType).toBe('present_offering');
+      expect(explore.components.some(component => component.type === 'offering-list')).toBe(true);
+      expect(explore.components.some(component => component.type === 'qualification-question')).toBe(false);
+      expect(information.decisionType).toBe('request_qualification');
+      const question = information.components.find(component => component.type === 'qualification-question');
+      expect(question).toMatchObject({ type: 'qualification-question', questionKey: 'context_timeline', heading: 'What kind of timeframe are you considering?' });
+      expect(information.components.some(component => component.type === 'offering-list')).toBe(false);
+
+      const lineage = await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`);
+        const decisions = await tx.execute(sql`select visitor_identity_id, decision_type, intent_policy_revision_id, qualification_question_key, qualification_question_prompt from visitor_decisions where visitor_identity_id in (${exploreVisitor.visitorId}::uuid, ${informationVisitor.visitorId}::uuid) and visitor_state_version = 1 order by visitor_identity_id`);
+        const exposures = await tx.execute(sql`select d.visitor_identity_id, count(*)::int as exposure_count from visitor_decisions d join experience_exposures e on e.decision_id = d.id where d.visitor_identity_id in (${exploreVisitor.visitorId}::uuid, ${informationVisitor.visitorId}::uuid) and d.visitor_state_version = 1 group by d.visitor_identity_id`);
+        const observations = await tx.execute(sql`select visitor_identity_id, value->>'value' as intent from visitor_observations where kind = 'intent.expressed' and visitor_identity_id in (${exploreVisitor.visitorId}::uuid, ${informationVisitor.visitorId}::uuid) order by visitor_identity_id`);
+        return { decisions, exposures, observations };
+      });
+      expect(lineage.decisions.rows).toHaveLength(2);
+      expect(lineage.exposures.rows).toHaveLength(2);
+      expect(lineage.observations.rows).toHaveLength(2);
+      const decisions = lineage.decisions.rows;
+      expect(decisions[0].intent_policy_revision_id).toBe(decisions[1].intent_policy_revision_id);
+      expect(decisions.map(row => row.decision_type).sort()).toEqual(['present_offering', 'request_qualification']);
+      expect(decisions.find(row => row.decision_type === 'request_qualification')).toMatchObject({ qualification_question_key: 'context_timeline', qualification_question_prompt: 'What kind of timeframe are you considering?' });
+      expect(lineage.observations.rows.map(row => row.intent).sort()).toEqual(['explore_offerings', 'request_information']);
+    } finally { await cleanup(resource); }
+  }, 90000);
+
   it('replays exactly and rejects changed input for the same idempotency key', async () => {
     const resource = await disposable();
     try {
