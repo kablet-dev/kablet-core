@@ -100,6 +100,17 @@ export function InteractiveExperience() {
     } catch { setActionStatus('unknown'); setFailure('action'); } finally { setActionBusy(false); }
   }
 
+  async function selectOffering(offeringId: string, offeringRevisionId: string) {
+    if (!experience || busy) return;
+    const stableKey = submissionKey ?? crypto.randomUUID();
+    setSubmissionKey(stableKey); setBusy(true); setFailure(null);
+    try {
+      const response = await fetch('/api/interaction/offering', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offeringId, offeringRevisionId, idempotencyKey: stableKey }) });
+      if (!response.ok) throw new Error('offering selection failed');
+      const payload = await response.json(); setExperience(payload.experience); setSubmissionKey(null);
+    } catch { setFailure('intent'); } finally { setBusy(false); }
+  }
+
   return (
     <div className='interactive-panel'>
       <div className='interactive-status'>
@@ -113,7 +124,7 @@ export function InteractiveExperience() {
           <button type='button' disabled={busy || actionBusy} onClick={() => failure === 'start' ? void start() : failure === 'action' ? void confirmAction() : void submit()}>Retry</button>
         </div>
       )}
-      {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} actionStatus={actionStatus} onConfirmAction={() => void confirmAction()} />}
+      {experience && <ExperienceRenderer experience={experience} selectedQualification={selectedQualification} onQualificationSelect={setSelectedQualification} onOfferingSelect={(offeringId, offeringRevisionId) => void selectOffering(offeringId, offeringRevisionId)} actionStatus={actionStatus} onConfirmAction={() => void confirmAction()} />}
       {experience?.decisionType !== 'request_qualification' && <div className='intent-panel'>
         <span className='eyebrow'>Your direction</span>
         <h2>What would be most useful?</h2>

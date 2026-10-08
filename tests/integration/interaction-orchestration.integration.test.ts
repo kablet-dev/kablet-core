@@ -76,6 +76,39 @@ describe('real interaction orchestration', () => {
     } finally { await cleanup(resource); }
   }, 90000);
 
+  it('selects an eligible offering through the authoritative interaction path', async () => {
+    const resource = await disposable();
+    try {
+      const secondOffering = randomUUID();
+      const secondRevision = randomUUID();
+      await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`);
+        await tx.execute(sql`insert into business_offerings(id,business_id,name) values (${secondOffering}::uuid,${business}::uuid,'Second Orchestration Offering')`);
+        await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${secondRevision}::uuid,${secondOffering}::uuid,1,'Second Orchestration Offering','A second eligible integration fixture','unknown','public','approved','owner_input','integration-fixture',now(),'test')`);
+        await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${secondOffering}::uuid,${secondRevision}::uuid)`);
+      });
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const offered = await service.expressIntent(started.handle, { intent: 'explore_offerings', idempotencyKey: 'selection-intent' });
+      const offerings = offered.components.find(component => component.type === 'offering-list')?.offerings ?? [];
+      const offering = offerings.find(item => item.offeringId !== secondOffering);
+      const alternateOffering = offerings.find(item => item.offeringId === secondOffering);
+      expect(offering).toBeDefined();
+      expect(alternateOffering).toMatchObject({ offeringId: secondOffering, offeringRevisionId: secondRevision });
+      const selected = await service.selectOffering(started.handle, { offeringId: offering!.offeringId, offeringRevisionId: offering!.offeringRevisionId, idempotencyKey: 'selection-1' });
+      expect(selected.contractVersion).toBe('experience.v1');
+      const persisted = await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${business}, true)`);
+        return tx.execute(sql`select r.state->'selectedOffering'->>'offeringId' as offering_id, r.state->'selectedOffering'->>'publishedRevisionId' as revision_id, (select count(*) from visitor_observations where visitor_identity_id=${started.visitorId}::uuid and kind='offering.selected')::int as observations, (select count(*) from visitor_decisions where visitor_identity_id=${started.visitorId}::uuid)::int as decisions from visitor_states s join visitor_state_revisions r on r.id=s.current_revision_id where s.visitor_identity_id=${started.visitorId}::uuid`);
+      });
+      expect(persisted.rows[0]).toMatchObject({ offering_id: offering!.offeringId, revision_id: offering!.offeringRevisionId, observations: 1, decisions: 3 });
+      const replay = await service.selectOffering(started.handle, { offeringId: offering!.offeringId, offeringRevisionId: offering!.offeringRevisionId, idempotencyKey: 'selection-1' });
+      expect(replay.contractVersion).toBe('experience.v1');
+      await expect(service.selectOffering(started.handle, { offeringId: alternateOffering!.offeringId, offeringRevisionId: alternateOffering!.offeringRevisionId, idempotencyKey: 'selection-1' })).rejects.toThrow('observation idempotency key conflicts with a different input');
+      await expect(service.selectOffering(started.handle, { offeringId: '74000000-0000-4000-8000-000000000001', offeringRevisionId: offering!.offeringRevisionId, idempotencyKey: 'selection-forged' })).rejects.toThrow('offering is not eligible');
+    } finally { await cleanup(resource); }
+  }, 90000);
+
   it('composes materially different server-authorized experiences for two intents', async () => {
     const resource = await disposable();
     try {

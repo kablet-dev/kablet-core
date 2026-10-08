@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressQualificationRequestSchema, observationSchema, qualificationQuestionSchema, type ExperienceModel, type InteractionIntent } from '@kablet/domain';
+import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressQualificationRequestSchema, observationSchema, qualificationQuestionSchema, selectOfferingRequestSchema, type ExperienceModel, type InteractionIntent } from '@kablet/domain';
 import { createAcquisitionRepository, createBusinessTruthRepository, createDecisionRepository, createIntentPolicyRepository, createInteractionSessionRepository, createMeasurementRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
 import { acquisitionContextSchema } from '@kablet/domain';
 
@@ -79,6 +79,20 @@ export function createInteractionService(input: { db: Database['db']; organizati
         const rendered = await render(session.visitorIdentityId, session.visitorSessionId, session.interactionSessionId, `interaction:${parsed.idempotencyKey}`, tx);
         await fact(session, prior.id, rendered.experience, 'qualification_answered', parsed.idempotencyKey, tx);
         return rendered.experience;
+      });
+    },
+    async selectOffering(handle: string, request: unknown): Promise<ExperienceModel> {
+      const parsed = selectOfferingRequestSchema.parse(request);
+      const session = await interactions.resolve(input.organizationId, input.businessId, handle);
+      if (!session) throw new InteractionExpiredError();
+      const prior = await createMeasurementRepository(input.db).getLatestExposure(input.organizationId, input.businessId, session.interactionSessionId); if (!prior) throw new Error('interaction exposure not found');
+      return input.db.transaction(async tx => {
+        const truth = await createBusinessTruthRepository(input.db, tx).listPublicOfferings(input.organizationId, input.businessId);
+        if (!truth.some(ref => ref.offeringId === parsed.offeringId && ref.offeringRevisionId === parsed.offeringRevisionId)) throw new Error('offering is not eligible');
+        const transactionVisitors = createVisitorStateRepository(input.db, tx);
+        const current = await transactionVisitors.getCurrentState(input.organizationId, input.businessId, session.visitorIdentityId);
+        await transactionVisitors.ingest(input.organizationId, { id: randomUUID(), organizationId: input.organizationId, businessId: input.businessId, visitorIdentityId: session.visitorIdentityId, sessionId: session.visitorSessionId, expectedVersion: current.version, kind: 'offering.selected' as const, value: { type: 'offering' as const, offeringId: parsed.offeringId, publishedRevisionId: parsed.offeringRevisionId }, idempotencyKey: parsed.idempotencyKey, observedAt: new Date(), sourceType: 'visitor' as const, sourceReference: 'interaction', correctionOfObservationId: null }, tx);
+        return (await render(session.visitorIdentityId, session.visitorSessionId, session.interactionSessionId, `interaction:${parsed.idempotencyKey}`, tx)).experience;
       });
     },
     async submitContact(handle: string, request: unknown): Promise<ExperienceModel> {
