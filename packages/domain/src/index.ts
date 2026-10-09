@@ -23,3 +23,4 @@ export * from './conversion';
 export * from './measurement';
 export * from './intent-policy';
 export * from './intent-interpretation';
+export * from './intent-executor';
