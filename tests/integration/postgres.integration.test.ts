@@ -350,6 +350,81 @@ describe('disposable PostgreSQL integration', () => {
     } finally { await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource); }
   }, 90000);
 
+  it('settles AI invocations atomically across success, failure, unknown, privacy, replay, and tenant boundaries', async () => {
+    let resource: Awaited<ReturnType<typeof provision>> | undefined;
+    let bootstrapPool: pg.Pool | undefined;
+    let runtimePool: pg.Pool | undefined;
+    try {
+      resource = await provision();
+      const bootstrap = createDb(resource.url); bootstrapPool = bootstrap.pool;
+      if (!roleAdminUrl || !process.env.TEST_APP_PASSWORD) throw new Error('TEST_ROLE_ADMIN_URL and TEST_APP_PASSWORD are required for settlement coverage');
+      const roleAdmin = new pg.Pool({ connectionString: roleAdminUrl, max: 1 });
+      try { await roleAdmin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false'); await migrate(bootstrap.db, { migrationsFolder }); }
+      finally { await roleAdmin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await roleAdmin.end(); }
+      await bootstrap.db.execute(sql`grant usage on schema public to kablet_dev`);
+      await bootstrap.db.execute(sql`grant select,insert,update,delete on organizations,businesses,visitor_identities,visitor_sessions,interaction_sessions,ai_intent_accounting_periods,ai_intent_invocations to kablet_dev`);
+      const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${resource.name}`); runtimePool = runtime.pool;
+      const org = randomUUID(), business = randomUUID(), otherBusiness = randomUUID(), visitor = randomUUID(), visitorSession = randomUUID(), interaction = randomUUID(), daily = randomUUID(), monthly = randomUUID();
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Settlement Org')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Settlement Business'),(${otherBusiness}::uuid,${org}::uuid,'Other Settlement Business')`);
+        await tx.execute(sql`insert into visitor_identities(id,organization_id,business_id,retention_expires_at) values (${visitor}::uuid,${org}::uuid,${business}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into visitor_sessions(id,organization_id,business_id,visitor_identity_id) values (${visitorSession}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid)`);
+        await tx.execute(sql`insert into interaction_sessions(id,handle_hash,organization_id,business_id,visitor_identity_id,visitor_session_id,expires_at) values (${interaction}::uuid,decode('abcdefabcdefabcdefabcdefabcdefab','hex'),${org}::uuid,${business}::uuid,${visitor}::uuid,${visitorSession}::uuid,now()+interval '1 day')`);
+        await tx.execute(sql`insert into ai_intent_accounting_periods(id,organization_id,business_id,period_kind,period_start,period_end,max_units) values (${daily}::uuid,${org}::uuid,${business}::uuid,'daily',current_date,current_date+1,100),(${monthly}::uuid,${org}::uuid,${business}::uuid,'monthly',date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month')::date,100)`);
+      });
+      const repository = createAiIntentRepository(runtime.db);
+      const claim = async (key: string, units = 5) => repository.claim({ organizationId: org, businessId: business, interactionSessionId: interaction, idempotencyKey: key, inputFingerprint: Uint8Array.from([key.length]), interpreterVersion: 'settlement-test', reservationUnits: units });
+      const succeeded = await claim('settle-success');
+      const failed = await claim('settle-failed');
+      const unknown = await claim('settle-unknown');
+      expect(succeeded.outcome).toBe('created'); expect(failed.outcome).toBe('created'); expect(unknown.outcome).toBe('created');
+      const successInput = { organizationId: org, businessId: business, invocationId: (succeeded as { invocationId: string }).invocationId, interpretation: { normalizedIntent: 'request_information' as const, reasonCode: 'intent_extracted' as const, confidence: 0.9, interpreterVersion: 'settlement-test' } };
+      await expect(repository.settleSucceeded(successInput)).resolves.toMatchObject({ outcome: 'settled', status: 'succeeded' });
+      await expect(repository.settleSucceeded(successInput)).resolves.toMatchObject({ outcome: 'already_settled', status: 'succeeded' });
+      await expect(repository.settleSucceeded({ ...successInput, interpretation: { ...successInput.interpretation, confidence: 0.4 } })).resolves.toMatchObject({ outcome: 'settlement_conflict' });
+      await expect(repository.settleDefinitiveFailure({ organizationId: org, businessId: business, invocationId: (failed as { invocationId: string }).invocationId })).resolves.toMatchObject({ outcome: 'settled', status: 'failed' });
+      await expect(repository.settleDefinitiveFailure({ organizationId: org, businessId: business, invocationId: (failed as { invocationId: string }).invocationId })).resolves.toMatchObject({ outcome: 'already_settled', status: 'failed' });
+      await expect(repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (unknown as { invocationId: string }).invocationId, providerRequestReference: 'provider-1' })).resolves.toMatchObject({ outcome: 'settled', status: 'unknown' });
+      await expect(repository.settleSucceeded({ ...successInput, invocationId: (unknown as { invocationId: string }).invocationId })).resolves.toMatchObject({ outcome: 'settlement_conflict' });
+      const counters = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select reserved_units,consumed_units,released_units,uncertain_units from ai_intent_accounting_periods where id=${daily}::uuid`); });
+      expect(counters.rows[0]).toMatchObject({ reserved_units: '15', consumed_units: '5', released_units: '5', uncertain_units: '5' });
+      const otherTenantResult = await createAiIntentRepository(runtime.db).settleUnknown({ organizationId: org, businessId: otherBusiness, invocationId: (succeeded as { invocationId: string }).invocationId });
+      expect(otherTenantResult).toMatchObject({ outcome: 'not_found' });
+      const rollbackClaim = await claim('settle-rollback');
+      expect(rollbackClaim.outcome).toBe('created');
+      const beforeRollback = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select reserved_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_reserved,(select consumed_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_consumed,(select uncertain_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_uncertain,(select released_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_released,(select reserved_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_reserved,(select consumed_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_consumed,(select uncertain_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_uncertain,(select released_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_released`); });
+      await bootstrap.db.execute(sql`create or replace function public.test_ai_settlement_failure() returns trigger language plpgsql as $$ begin if NEW.status='unknown' then raise exception 'test-only settlement failure'; end if; return NEW; end $$`);
+      await bootstrap.db.execute(sql`create trigger test_ai_settlement_failure before update on ai_intent_invocations for each row execute function public.test_ai_settlement_failure()`);
+      try {
+        await expect(repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (rollbackClaim as { invocationId: string }).invocationId })).rejects.toThrow();
+      } finally {
+        await bootstrap.db.execute(sql`drop trigger test_ai_settlement_failure on ai_intent_invocations`);
+        await bootstrap.db.execute(sql`drop function public.test_ai_settlement_failure()`);
+      }
+      const rollbackState = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select status from ai_intent_invocations where id=${(rollbackClaim as { invocationId: string }).invocationId}::uuid`); });
+      expect(rollbackState.rows[0]?.status).toBe('claimed');
+      const afterRollback = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select reserved_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_reserved,(select consumed_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_consumed,(select uncertain_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_uncertain,(select released_units from ai_intent_accounting_periods where id=${daily}::uuid) as daily_released,(select reserved_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_reserved,(select consumed_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_consumed,(select uncertain_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_uncertain,(select released_units from ai_intent_accounting_periods where id=${monthly}::uuid) as monthly_released`); });
+      expect(afterRollback.rows[0]).toEqual(beforeRollback.rows[0]);
+      const concurrentClaim = await claim('settle-concurrent');
+      const concurrentResults = await Promise.all([
+        repository.settleSucceeded({ ...successInput, invocationId: (concurrentClaim as { invocationId: string }).invocationId }),
+        repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (concurrentClaim as { invocationId: string }).invocationId }),
+      ]);
+      expect(concurrentResults.filter(result => result.outcome === 'settled')).toHaveLength(1);
+      expect(concurrentResults.filter(result => result.outcome === 'settlement_conflict')).toHaveLength(1);
+      await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`select public.kablet_visitor_privacy_delete(${org}::uuid,${visitor}::uuid)`); });
+      const deletedSession = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select count(*)::int as count from interaction_sessions where id=${interaction}::uuid`); });
+      expect(deletedSession.rows[0].count).toBe(0);
+      const unknownRow = await runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select visitor_identity_id,visitor_session_id,interaction_session_id,input_fingerprint from ai_intent_invocations where id=${(unknown as { invocationId: string }).invocationId}::uuid`); });
+      expect(unknownRow.rows[0]).toMatchObject({ visitor_identity_id: null, visitor_session_id: null, interaction_session_id: null, input_fingerprint: null });
+      await expect(repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (unknown as { invocationId: string }).invocationId, providerRequestReference: 'provider-1' })).resolves.toMatchObject({ outcome: 'already_settled', status: 'unknown' });
+      await expect(repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (unknown as { invocationId: string }).invocationId, providerRequestReference: 'provider-2' })).resolves.toMatchObject({ outcome: 'settlement_conflict', status: 'unknown' });
+      await expect(repository.settleUnknown({ organizationId: org, businessId: business, invocationId: (rollbackClaim as { invocationId: string }).invocationId })).resolves.toMatchObject({ outcome: 'settled', status: 'unknown' });
+    } finally { await bootstrapPool?.end(); await runtimePool?.end(); if (resource) await dispose(resource); }
+  }, 90000);
+
   it('uses the injected UTC claim clock for daily and monthly rollover attribution', async () => {
     let resource: Awaited<ReturnType<typeof provision>> | undefined;
     let bootstrapPool: pg.Pool | undefined;

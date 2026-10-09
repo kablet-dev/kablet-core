@@ -48,6 +48,23 @@ export type AiIntentSettlementResult =
   | { outcome: 'not_found' }
   | { outcome: 'unauthorized' };
 
+export type SettleAiIntentSucceededInput = {
+  organizationId: string;
+  businessId: string;
+  invocationId: string;
+  interpretation: Extract<SettleAiIntentRequest, { outcome: 'succeeded' }>['interpretation'];
+  providerRequestReference?: string;
+};
+
+export type SettleAiIntentFailureInput = {
+  organizationId: string;
+  businessId: string;
+  invocationId: string;
+  providerRequestReference?: string;
+};
+
+export type SettleAiIntentUnknownInput = SettleAiIntentFailureInput;
+
 export interface ClaimAiIntentInput {
   organizationId: string;
   businessId: string;
@@ -76,7 +93,65 @@ function assertFingerprint(value: Uint8Array) {
   if (!(value instanceof Uint8Array) || value.byteLength === 0 || value.byteLength > 64) throw new Error('input fingerprint is invalid');
 }
 
+function assertProviderReference(value: string | undefined) {
+  if (value !== undefined && (!value || value.length > 200)) throw new Error('provider request reference is invalid');
+}
+
+function assertInterpretation(value: SettleAiIntentSucceededInput['interpretation']) {
+  if (!value || !['explore_offerings', 'request_information', 'select_offering', 'unclear'].includes(value.normalizedIntent)) throw new Error('settlement interpretation is invalid');
+  if (!['intent_extracted', 'ambiguous', 'unsupported_request', 'safety_filtered'].includes(value.reasonCode)) throw new Error('settlement reason code is invalid');
+  if (value.confidence !== undefined && (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1)) throw new Error('settlement confidence is invalid');
+  if (!value.interpreterVersion || value.interpreterVersion.length > 64) throw new Error('settlement interpreter version is invalid');
+}
+
 export function createAiIntentRepository(database: Database['db'], clock: ClaimClock = () => new Date()) {
+  async function settle(input: SettleAiIntentSucceededInput | SettleAiIntentFailureInput | SettleAiIntentUnknownInput, status: AiIntentSettlementOutcome): Promise<AiIntentSettlementResult> {
+    if (!input.organizationId || !input.businessId || !input.invocationId) throw new Error('settlement identity is invalid');
+    assertProviderReference(input.providerRequestReference);
+    if (status === 'succeeded') assertInterpretation((input as SettleAiIntentSucceededInput).interpretation);
+
+    return database.transaction(async tx => {
+      const completedAt = clock();
+      if (!(completedAt instanceof Date) || Number.isNaN(completedAt.getTime())) throw new Error('settlement clock returned an invalid date');
+      await tx.execute(sql`select set_config('kablet.organization_id',${input.organizationId},true), set_config('kablet.business_id',${input.businessId},true)`);
+      const invocationResult = await tx.execute(sql`select id,status,reserved_units,consumed_units,released_units,uncertain_units,daily_period_id,monthly_period_id,normalized_intent,reason_code,confidence,interpreter_version,provider_request_reference from ai_intent_invocations where id=${input.invocationId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid for update`);
+      if (invocationResult.rows.length === 0) return { outcome: 'not_found' };
+      const row = invocationResult.rows[0] as { id: string; status: AiIntentSettlementOutcome | 'claimed'; reserved_units: string; consumed_units: string; released_units: string; uncertain_units: string; daily_period_id: string; monthly_period_id: string; normalized_intent: string | null; reason_code: string | null; confidence: string | null; interpreter_version: string; provider_request_reference: string | null };
+      if (row.status !== 'claimed') {
+        const sameProviderReference = row.provider_request_reference === (input.providerRequestReference ?? null);
+        const requestedInterpretation = status === 'succeeded' ? (input as SettleAiIntentSucceededInput).interpretation : undefined;
+        const sameInterpretation = status === 'succeeded' && requestedInterpretation !== undefined
+          && row.normalized_intent === requestedInterpretation.normalizedIntent
+          && row.reason_code === requestedInterpretation.reasonCode
+          && row.interpreter_version === requestedInterpretation.interpreterVersion
+          && (row.confidence === null ? requestedInterpretation.confidence === undefined : Number(row.confidence) === requestedInterpretation.confidence);
+        const equivalent = row.status === status && sameProviderReference && (status !== 'succeeded' || sameInterpretation);
+        return equivalent ? { outcome: 'already_settled', invocationId: row.id, status: row.status } : { outcome: 'settlement_conflict', invocationId: row.id, status: row.status };
+      }
+
+      const periods = await tx.execute(sql`select id,period_kind,organization_id,business_id from ai_intent_accounting_periods where id in (${row.daily_period_id}::uuid,${row.monthly_period_id}::uuid) and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid order by case period_kind when 'daily' then 1 when 'monthly' then 2 end for update`);
+      const daily = periods.rows.find(period => period.period_kind === 'daily');
+      const monthly = periods.rows.find(period => period.period_kind === 'monthly');
+      if (!daily || !monthly || periods.rows.length !== 2) throw new Error('invocation accounting periods are inconsistent');
+      const reserved = Number(row.reserved_units);
+      const interpretation = status === 'succeeded' ? (input as SettleAiIntentSucceededInput).interpretation : undefined;
+      if (status === 'succeeded') {
+        await tx.execute(sql`update ai_intent_accounting_periods set consumed_units=consumed_units+${reserved} where id=${row.daily_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_accounting_periods set consumed_units=consumed_units+${reserved} where id=${row.monthly_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_invocations set status='succeeded',normalized_intent=${interpretation!.normalizedIntent},reason_code=${interpretation!.reasonCode},confidence=${interpretation!.confidence ?? null},interpreter_version=${interpretation!.interpreterVersion},provider_request_reference=${input.providerRequestReference ?? null},consumed_units=${reserved},completed_at=${completedAt}::timestamptz where id=${row.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+      } else if (status === 'failed') {
+        await tx.execute(sql`update ai_intent_accounting_periods set released_units=released_units+${reserved} where id=${row.daily_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_accounting_periods set released_units=released_units+${reserved} where id=${row.monthly_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_invocations set status='failed',provider_request_reference=${input.providerRequestReference ?? null},released_units=${reserved},completed_at=${completedAt}::timestamptz where id=${row.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+      } else {
+        await tx.execute(sql`update ai_intent_accounting_periods set uncertain_units=uncertain_units+${reserved} where id=${row.daily_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_accounting_periods set uncertain_units=uncertain_units+${reserved} where id=${row.monthly_period_id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+        await tx.execute(sql`update ai_intent_invocations set status='unknown',provider_request_reference=${input.providerRequestReference ?? null},uncertain_units=${reserved},completed_at=${completedAt}::timestamptz where id=${row.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+      }
+      return { outcome: 'settled', invocationId: row.id, status };
+    });
+  }
+
   return {
     async claim(input: ClaimAiIntentInput): Promise<AiIntentClaimResult> {
       assertPositiveUnits(input.reservationUnits);
@@ -115,5 +190,8 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
         return { outcome: 'created', invocationId, dailyPeriodId: daily.id, monthlyPeriodId: monthly.id, reservedUnits: input.reservationUnits };
       });
     },
+    settleSucceeded(input: SettleAiIntentSucceededInput) { return settle(input, 'succeeded'); },
+    settleDefinitiveFailure(input: SettleAiIntentFailureInput) { return settle(input, 'failed'); },
+    settleUnknown(input: SettleAiIntentUnknownInput) { return settle(input, 'unknown'); },
   };
 }
