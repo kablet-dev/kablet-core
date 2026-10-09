@@ -85,6 +85,20 @@ export type AiIntentClaimResult =
   | { outcome: 'accounting_period_missing'; period: 'daily' | 'monthly' }
   | { outcome: 'session_invalid' };
 
+export type AiIntentReplayProjection = {
+  invocationId: string;
+  status: 'claimed' | 'succeeded' | 'failed' | 'unknown';
+  interpretation?: {
+    contractVersion: 'intent-interpretation.v1';
+    normalizedIntent: 'explore_offerings' | 'request_information' | 'select_offering' | 'unclear';
+    reasonCode: 'intent_extracted' | 'ambiguous' | 'unsupported_request' | 'safety_filtered';
+    confidence?: number;
+    interpreterVersion: string;
+  };
+};
+
+export type AiIntentExecutionClaimConfig = ClaimAiIntentInput;
+
 function assertPositiveUnits(value: number) {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error('reservation units must be a positive safe integer');
 }
@@ -153,6 +167,19 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
   }
 
   return {
+    async readInvocation(input: { organizationId: string; businessId: string; invocationId: string }): Promise<AiIntentReplayProjection | null> {
+      const result = await database.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${input.organizationId},true), set_config('kablet.business_id',${input.businessId},true)`);
+        return tx.execute(sql`select id,status,normalized_intent,reason_code,confidence,interpreter_version from ai_intent_invocations where id=${input.invocationId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
+      });
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0] as { id: string; status: AiIntentReplayProjection['status']; normalized_intent: 'explore_offerings' | 'request_information' | 'select_offering' | 'unclear' | null; reason_code: 'intent_extracted' | 'ambiguous' | 'unsupported_request' | 'safety_filtered' | null; confidence: string | null; interpreter_version: string };
+      return {
+        invocationId: row.id,
+        status: row.status,
+        ...(row.normalized_intent && row.reason_code ? { interpretation: { contractVersion: 'intent-interpretation.v1', normalizedIntent: row.normalized_intent, reasonCode: row.reason_code, ...(row.confidence === null ? {} : { confidence: Number(row.confidence) }), interpreterVersion: row.interpreter_version } } : {}),
+      };
+    },
     async claim(input: ClaimAiIntentInput): Promise<AiIntentClaimResult> {
       assertPositiveUnits(input.reservationUnits);
       assertFingerprint(input.inputFingerprint);
@@ -193,5 +220,15 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
     settleSucceeded(input: SettleAiIntentSucceededInput) { return settle(input, 'succeeded'); },
     settleDefinitiveFailure(input: SettleAiIntentFailureInput) { return settle(input, 'failed'); },
     settleUnknown(input: SettleAiIntentUnknownInput) { return settle(input, 'unknown'); },
+  };
+}
+
+export function createAiIntentExecutionAdapter(repository: ReturnType<typeof createAiIntentRepository>, claimInput: AiIntentExecutionClaimConfig) {
+  return {
+    claim: async () => repository.claim(claimInput),
+    readReplay: async (invocationId: string) => repository.readInvocation({ organizationId: claimInput.organizationId, businessId: claimInput.businessId, invocationId }),
+    settleSucceeded: (input: { invocationId: string; interpretation: SettleAiIntentSucceededInput['interpretation']; providerKey?: string; providerReference?: string }) => repository.settleSucceeded({ ...input, organizationId: claimInput.organizationId, businessId: claimInput.businessId, providerRequestReference: input.providerReference }),
+    settleDefinitiveFailure: (input: { invocationId: string; providerKey?: string; providerReference?: string }) => repository.settleDefinitiveFailure({ ...input, organizationId: claimInput.organizationId, businessId: claimInput.businessId, providerRequestReference: input.providerReference }),
+    settleUnknown: (input: { invocationId: string; providerKey?: string; providerReference?: string }) => repository.settleUnknown({ ...input, organizationId: claimInput.organizationId, businessId: claimInput.businessId, providerRequestReference: input.providerReference }),
   };
 }
