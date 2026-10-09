@@ -2,6 +2,52 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Database } from './index.js';
 
+export type AiIntentSettlementOutcome = 'succeeded' | 'failed' | 'unknown';
+
+declare const definitiveNonConsumptionProof: unique symbol;
+
+/** Capability supplied only by the trusted execution boundary. */
+export type DefinitiveNonConsumptionProof = {
+  readonly [definitiveNonConsumptionProof]: true;
+};
+
+export type SettleAiIntentRequest =
+  | {
+      organizationId: string;
+      businessId: string;
+      invocationId: string;
+      outcome: 'succeeded';
+      interpretation: {
+        normalizedIntent: 'explore_offerings' | 'request_information' | 'select_offering' | 'unclear';
+        reasonCode: 'intent_extracted' | 'ambiguous' | 'unsupported_request' | 'safety_filtered';
+        confidence?: number;
+        interpreterVersion: string;
+      };
+      providerRequestReference?: string;
+    }
+  | {
+      organizationId: string;
+      businessId: string;
+      invocationId: string;
+      outcome: 'failed';
+      definitiveNonConsumptionProof: DefinitiveNonConsumptionProof;
+      providerRequestReference?: string;
+    }
+  | {
+      organizationId: string;
+      businessId: string;
+      invocationId: string;
+      outcome: 'unknown';
+      providerRequestReference?: string;
+    };
+
+export type AiIntentSettlementResult =
+  | { outcome: 'settled'; invocationId: string; status: AiIntentSettlementOutcome }
+  | { outcome: 'already_settled'; invocationId: string; status: AiIntentSettlementOutcome }
+  | { outcome: 'settlement_conflict'; invocationId: string; status: string }
+  | { outcome: 'not_found' }
+  | { outcome: 'unauthorized' };
+
 export interface ClaimAiIntentInput {
   organizationId: string;
   businessId: string;
@@ -54,13 +100,13 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
           return { outcome: 'replay', invocationId: row.id, status: row.status, reservedUnits: Number(row.reserved_units) };
         }
 
-        const periods = await tx.execute(sql`select id,period_kind,max_units,reserved_units from ai_intent_accounting_periods where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and ((period_kind='daily' and period_start <= (${claimTime}::timestamptz at time zone 'UTC')::date and period_end > (${claimTime}::timestamptz at time zone 'UTC')::date) or (period_kind='monthly' and period_start <= (${claimTime}::timestamptz at time zone 'UTC')::date and period_end > (${claimTime}::timestamptz at time zone 'UTC')::date)) order by case period_kind when 'daily' then 1 when 'monthly' then 2 end for update`);
-        const daily = periods.rows.find(row => row.period_kind === 'daily') as { id: string; max_units: string; reserved_units: string } | undefined;
-        const monthly = periods.rows.find(row => row.period_kind === 'monthly') as { id: string; max_units: string; reserved_units: string } | undefined;
+        const periods = await tx.execute(sql`select id,period_kind,max_units,reserved_units,released_units from ai_intent_accounting_periods where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and ((period_kind='daily' and period_start <= (${claimTime}::timestamptz at time zone 'UTC')::date and period_end > (${claimTime}::timestamptz at time zone 'UTC')::date) or (period_kind='monthly' and period_start <= (${claimTime}::timestamptz at time zone 'UTC')::date and period_end > (${claimTime}::timestamptz at time zone 'UTC')::date)) order by case period_kind when 'daily' then 1 when 'monthly' then 2 end for update`);
+        const daily = periods.rows.find(row => row.period_kind === 'daily') as { id: string; max_units: string; reserved_units: string; released_units: string } | undefined;
+        const monthly = periods.rows.find(row => row.period_kind === 'monthly') as { id: string; max_units: string; reserved_units: string; released_units: string } | undefined;
         if (!daily) return { outcome: 'accounting_period_missing', period: 'daily' };
         if (!monthly) return { outcome: 'accounting_period_missing', period: 'monthly' };
-        if (Number(daily.max_units) - Number(daily.reserved_units) < input.reservationUnits) return { outcome: 'budget_exhausted', period: 'daily' };
-        if (Number(monthly.max_units) - Number(monthly.reserved_units) < input.reservationUnits) return { outcome: 'budget_exhausted', period: 'monthly' };
+        if (Number(daily.max_units) - (Number(daily.reserved_units) - Number(daily.released_units)) < input.reservationUnits) return { outcome: 'budget_exhausted', period: 'daily' };
+        if (Number(monthly.max_units) - (Number(monthly.reserved_units) - Number(monthly.released_units)) < input.reservationUnits) return { outcome: 'budget_exhausted', period: 'monthly' };
 
         await tx.execute(sql`update ai_intent_accounting_periods set reserved_units=reserved_units+${input.reservationUnits} where id=${daily.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
         await tx.execute(sql`update ai_intent_accounting_periods set reserved_units=reserved_units+${input.reservationUnits} where id=${monthly.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
