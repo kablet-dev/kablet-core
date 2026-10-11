@@ -38,11 +38,16 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await migrate(bootstrap.db, { migrationsFolder });
         await bootstrapConnection.query('set role kablet_privacy_owner');
         try {
-          await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A'),('${orgB}','Security B')`);
-          await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A'),('${businessB}','${orgB}','Business B')`);
+          await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgA]);
+          await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A')`);
+          await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A')`);
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [userA, `subject-${userA}`]);
           await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), userA, orgA, businessA]);
+          await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgB]);
+          await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgB}','Security B')`);
+          await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessB}','${orgB}','Business B')`);
         } finally {
+          await bootstrapConnection.query('reset kablet.organization_id');
           await bootstrapConnection.query('reset role');
         }
       } finally {
