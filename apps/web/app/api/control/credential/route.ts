@@ -7,7 +7,7 @@ import { loadControlCredentialVault } from '../../../../lib/control-credential-v
 
 const inputSchema = z.object({
   action: z.enum(['save', 'revoke']), organizationId: z.string().uuid(), businessId: z.string().uuid(), providerKey: z.string().trim().min(1).max(100),
-  secret: z.string().min(1).max(10000).optional(), scopes: z.array(z.string().trim().min(1).max(100)).max(64).optional(),
+  secret: z.string().min(1).max(10000).optional(), scopes: z.array(z.string().trim().min(1).max(100)).max(64).optional(), expiresAt: z.coerce.date().optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -20,8 +20,9 @@ export async function POST(request: Request) {
     runtime = createDb(loadServerConfig().DATABASE_URL);
     const security = createSecurityRepository(runtime.db);
     if (input.action === 'save') {
-      await security.saveProviderCredential({ organizationId: input.organizationId, businessId: input.businessId, providerKey: input.providerKey, secret: input.secret!, keyVersion: 'configured-by-vault', scopes: input.scopes!, createdBy: context!.actorId }, loadControlCredentialVault());
-      await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action: 'credential.save', resourceType: 'provider_credential', metadata: { providerKey: input.providerKey, scopes: input.scopes } });
+      const saved = await security.saveProviderCredential({ organizationId: input.organizationId, businessId: input.businessId, providerKey: input.providerKey, secret: input.secret!, scopes: input.scopes!, expiresAt: input.expiresAt, createdBy: context!.actorId }, loadControlCredentialVault());
+      const action = Number(saved?.rows?.[0]?.credential_revision ?? 1) > 1 ? 'credential.rotate' : 'credential.save';
+      await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action, resourceType: 'provider_credential', metadata: { providerKey: input.providerKey, scopes: input.scopes } });
     } else {
       await security.revokeProviderCredential({ organizationId: input.organizationId, businessId: input.businessId, providerKey: input.providerKey });
       await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action: 'credential.revoke', resourceType: 'provider_credential', metadata: { providerKey: input.providerKey } });

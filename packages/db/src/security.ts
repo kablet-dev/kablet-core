@@ -161,15 +161,21 @@ export function createSecurityRepository(db: Database['db']) {
         return tx.execute(sql`select public.kablet_visitor_privacy_delete(${input.organizationId}::uuid,${input.visitorId}::uuid) as deleted`);
       });
     },
-    async saveProviderCredential(input: { organizationId: string; businessId: string; providerKey: string; secret: string; keyVersion: string; scopes: string[]; createdBy: string }, vault: ReturnType<typeof createCredentialVault>) {
+    async saveProviderCredential(input: { organizationId: string; businessId: string; providerKey: string; secret: string; keyVersion?: string; scopes: string[]; createdBy: string; expiresAt?: Date | null }, vault: ReturnType<typeof createCredentialVault>) {
       const encrypted = vault.encrypt(input.secret);
-      return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`insert into kablet_provider_credentials(id,organization_id,business_id,provider_key,encrypted_secret,key_version,scopes,created_by) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.providerKey},${encrypted.ciphertext},${encrypted.keyVersion},${JSON.stringify(input.scopes)}::jsonb,${input.createdBy}::uuid) on conflict (organization_id,business_id,provider_key) do update set encrypted_secret=excluded.encrypted_secret,key_version=excluded.key_version,scopes=excluded.scopes,status='active',revoked_at=null returning id,provider_key,key_version,scopes,status`));
+      if (input.scopes.length === 0 || input.scopes.some(scope => !scope.trim())) throw new Error('provider scopes are required');
+      if (input.expiresAt && input.expiresAt.getTime() <= Date.now()) throw new Error('provider credential expiry is invalid');
+      return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`insert into kablet_provider_credentials(id,organization_id,business_id,provider_key,encrypted_secret,key_version,scopes,created_by,credential_revision,rotated_at,expires_at) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.providerKey},${encrypted.ciphertext},${encrypted.keyVersion},${JSON.stringify(input.scopes)}::jsonb,${input.createdBy}::uuid,1,null,${input.expiresAt ?? null}) on conflict (organization_id,business_id,provider_key) do update set encrypted_secret=excluded.encrypted_secret,key_version=excluded.key_version,scopes=excluded.scopes,status='active',revoked_at=null,credential_revision=kablet_provider_credentials.credential_revision+1,rotated_at=now(),created_by=excluded.created_by,expires_at=excluded.expires_at returning id,provider_key,key_version,scopes,status,credential_revision,rotated_at,expires_at`));
     },
-    async readProviderCredentialSecret(input: { organizationId: string; businessId: string; providerKey: string }, vault: ReturnType<typeof createCredentialVault>) {
+    async readProviderCredentialSecret(input: { organizationId: string; businessId: string; providerKey: string; requiredScopes?: string[] }, vault: ReturnType<typeof createCredentialVault>) {
       return tenant(db, input.organizationId, input.businessId, async tx => {
-        const row = await tx.execute(sql`select encrypted_secret,key_version,status from kablet_provider_credentials where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and provider_key=${input.providerKey}`);
-        const credential = row.rows[0] as { encrypted_secret: Buffer; key_version: string; status: string } | undefined;
+        const row = await tx.execute(sql`select encrypted_secret,key_version,status,scopes,credential_revision,expires_at from kablet_provider_credentials where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and provider_key=${input.providerKey} for share`);
+        const credential = row.rows[0] as { encrypted_secret: Buffer; key_version: string; status: string; scopes?: unknown; credential_revision: number; expires_at: Date | null } | undefined;
         if (!credential || credential.status !== 'active') throw new Error('provider credential unavailable');
+        if (credential.expires_at && new Date(credential.expires_at).getTime() <= Date.now()) throw new Error('provider credential expired');
+        const requiredScopes = input.requiredScopes ?? [];
+        const scopes = Array.isArray(credential.scopes) ? credential.scopes.map(String) : [];
+        if (requiredScopes.some(scope => !scopes.includes(scope))) throw new Error('provider scope unavailable');
         return vault.decrypt({ ciphertext: credential.encrypted_secret, keyVersion: credential.key_version });
       });
     },

@@ -114,7 +114,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await expect(security.exportVisitor({ organizationId: orgB, businessId: businessB, visitorId: unrelatedVisitor })).resolves.toMatchObject({ visitor: expect.anything() });
       const vault = createCredentialVault(Buffer.alloc(32, 9), 'test-key-v1');
       await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'provider-secret-value', keyVersion: 'test-key-v1', scopes: ['read_catalog'], createdBy: userA }, vault);
-      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).resolves.toBe('provider-secret-value');
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['read_catalog'] }, vault)).resolves.toBe('provider-secret-value');
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['write_orders'] }, vault)).rejects.toThrow('provider scope unavailable');
       const unscopedCredential = await runtimePool.query("select current_user, current_setting('kablet.organization_id', true) as organization_id, has_table_privilege(current_user, 'public.kablet_provider_credentials', 'SELECT') as can_select, (select count(*)::int from kablet_provider_credentials where provider_key='test-provider') as visible_count");
       expect(unscopedCredential.rows[0]).toMatchObject({ current_user: 'kablet_dev', organization_id: '', can_select: true, visible_count: 0 });
       const credentialReadClient = await runtimePool.connect();
@@ -122,14 +123,33 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await credentialReadClient.query('begin');
         await credentialReadClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
         await credentialReadClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
-        const scopedCredential = await credentialReadClient.query('select encrypted_secret, key_version, status from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider']);
+        const scopedCredential = await credentialReadClient.query('select encrypted_secret, key_version, status, credential_revision from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider']);
         expect(scopedCredential.rows).toHaveLength(1);
         expect(scopedCredential.rows[0].encrypted_secret.toString('utf8')).not.toContain('provider-secret-value');
-        expect(scopedCredential.rows[0]).toMatchObject({ key_version: 'test-key-v1', status: 'active' });
+        expect(scopedCredential.rows[0]).toMatchObject({ key_version: 'test-key-v1', status: 'active', credential_revision: 1 });
       } finally {
         await credentialReadClient.query('rollback').catch(() => undefined);
         credentialReadClient.release();
       }
+      const rotatedVault = createCredentialVault(Buffer.alloc(32, 10), 'test-key-v2');
+      const rotated = await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'rotated-provider-secret', keyVersion: 'test-key-v2', scopes: ['write_orders'], createdBy: userA }, rotatedVault);
+      expect(rotated.rows).toHaveLength(1);
+      expect(rotated.rows[0]).toMatchObject({ key_version: 'test-key-v2', credential_revision: 2, status: 'active' });
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['write_orders'] }, rotatedVault)).resolves.toBe('rotated-provider-secret');
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).rejects.toThrow('credential key version is unavailable');
+      await expect(security.readProviderCredentialSecret({ organizationId: orgB, businessId: businessB, providerKey: 'test-provider' }, rotatedVault)).rejects.toThrow('provider credential unavailable');
+      const newestVault = createCredentialVault(Buffer.alloc(32, 11), 'test-key-v3');
+      const [concurrentRead, concurrentRotation] = await Promise.allSettled([
+        security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['write_orders'] }, rotatedVault),
+        security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'newest-provider-secret', keyVersion: 'test-key-v3', scopes: ['read_catalog'], createdBy: userA }, newestVault),
+      ]);
+      expect(concurrentRotation.status).toBe('fulfilled');
+      if (concurrentRead.status === 'rejected') expect(concurrentRead.reason).toMatchObject({ message: 'credential key version is unavailable' });
+      else expect(concurrentRead.value).toBe('rotated-provider-secret');
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['read_catalog'] }, newestVault)).resolves.toBe('newest-provider-secret');
+      await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'expiring-provider-secret', scopes: ['read_catalog'], expiresAt: new Date(Date.now() + 2_000), createdBy: userA }, newestVault);
+      await new Promise(resolve => setTimeout(resolve, 2_100));
+      await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', requiredScopes: ['read_catalog'] }, newestVault)).rejects.toThrow('provider credential expired');
       await security.revokeProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' });
       const revokedCredentialClient = await runtimePool.connect();
       try {

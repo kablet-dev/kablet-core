@@ -74,6 +74,22 @@ describe('authenticated control-plane entry points', () => {
     expect(security.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'credential.save', actorId: context.actorId }));
   });
 
+  it('records a credential replacement as rotation without exposing key material', async () => {
+    security.saveProviderCredential.mockResolvedValue({ rows: [{ credential_revision: 2 }] });
+    const response = await credentialPost(request({ action: 'save', organizationId: context.organizationId, businessId: context.businessId, providerKey: 'shopify', secret: 'replacement-secret', scopes: ['write_orders'] }));
+    expect(response.status).toBe(200);
+    expect(security.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'credential.rotate', metadata: { providerKey: 'shopify', scopes: ['write_orders'] } }));
+    expect(await response.json()).not.toHaveProperty('secret');
+  });
+
+  it('fails closed when credential encryption configuration is unavailable', async () => {
+    mocks.loadControlCredentialVault.mockImplementation(() => { throw new Error('credential vault is not configured'); });
+    const response = await credentialPost(request({ action: 'save', organizationId: context.organizationId, businessId: context.businessId, providerKey: 'shopify', secret: 'secret', scopes: ['read_catalog'] }));
+    expect(response.status).toBe(503);
+    expect(security.saveProviderCredential).not.toHaveBeenCalled();
+    expect(security.audit).not.toHaveBeenCalled();
+  });
+
   it('rejects privacy operations for an authenticated merchant without privacy authority', async () => {
     mocks.authorizeControlCapability.mockReturnValue(false);
     const response = await privacyPost(request({ action: 'delete', organizationId: context.organizationId, businessId: context.businessId, visitorId: '60000000-0000-4000-8000-000000000001' }));
