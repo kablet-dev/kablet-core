@@ -28,6 +28,7 @@
     { "idx": 23, "version": "7", "when": 1761264000000, "tag": "0023_privacy_consent_select_grant", "breakpoints": true },
     { "idx": 24, "version": "7", "when": 1761350400000, "tag": "0024_platform_safety_support_access", "breakpoints": true },
     { "idx": 25, "version": "7", "when": 1761436800000, "tag": "0025_platform_audit_policy_repair", "breakpoints": true },
-    { "idx": 26, "version": "7", "when": 1761523200000, "tag": "0026_provider_credential_lifecycle", "breakpoints": true }
+    { "idx": 26, "version": "7", "when": 1761523200000, "tag": "0026_provider_credential_lifecycle", "breakpoints": true },
+    { "idx": 27, "version": "7", "when": 1761609600000, "tag": "0027_privacy_deletion_propagation", "breakpoints": true }
   ]
 }

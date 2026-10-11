@@ -90,6 +90,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await expect(security.resolveSession(expiredSession.token)).resolves.toBeNull();
       const visitor = await visitors.createVisitor(orgA, businessA, new Date(Date.now() + 60_000));
       const unrelatedVisitor = await visitors.createVisitor(orgB, businessB, new Date(Date.now() + 60_000));
+      await expect(security.grantConsent({ organizationId: orgA, businessId: businessA, visitorId: unrelatedVisitor, purpose: 'analytics', version: 'privacy.v1' })).rejects.toThrow('visitor not found');
       await security.grantConsent({ organizationId: orgA, businessId: businessA, visitorId: visitor, purpose: 'analytics', version: 'privacy.v1' });
       const grantedExport = await security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor });
       expect(grantedExport.visitor).not.toBeNull();
@@ -110,6 +111,24 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         directDeleteClient.release();
       }
       await expect(security.deleteVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor })).resolves.toMatchObject({ rows: [{ deleted: true }] });
+      const readDeletionRequests = async (organizationId: string, businessId: string) => {
+        const client = await runtimePool.connect();
+        try {
+          await client.query('begin');
+          await client.query('select set_config($1,$2,true),set_config($3,$4,true)', ['kablet.organization_id', organizationId, 'kablet.business_id', businessId]);
+          return (await client.query('select status,attempts,last_error,receipt_reference from kablet_privacy_deletion_requests where organization_id=$1 and business_id=$2 and visitor_identity_id=$3', [orgA, businessA, visitor])).rows;
+        } finally {
+          await client.query('rollback').catch(() => undefined);
+          client.release();
+        }
+      };
+      const deletionRequest = await readDeletionRequests(orgA, businessA);
+      expect(deletionRequest).toHaveLength(1);
+      expect(deletionRequest[0]).toMatchObject({ status: 'pending', attempts: 0, last_error: null, receipt_reference: null });
+      await expect(security.deleteVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor })).resolves.toMatchObject({ rows: [{ deleted: false }] });
+      const repeatedDeletionRequest = await readDeletionRequests(orgA, businessA);
+      expect(repeatedDeletionRequest).toHaveLength(1);
+      expect(await readDeletionRequests(orgB, businessB)).toHaveLength(0);
       await expect(security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor })).resolves.toMatchObject({ visitor: null, sessions: [], consents: [] });
       await expect(security.exportVisitor({ organizationId: orgB, businessId: businessB, visitorId: unrelatedVisitor })).resolves.toMatchObject({ visitor: expect.anything() });
       const vault = createCredentialVault(Buffer.alloc(32, 9), 'test-key-v1');

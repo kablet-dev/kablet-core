@@ -137,7 +137,11 @@ export function createSecurityRepository(db: Database['db']) {
       });
     },
     async grantConsent(input: { organizationId: string; businessId: string; visitorId: string; purpose: ConsentPurpose; version: string }) {
-      return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`insert into kablet_consents(id,organization_id,business_id,visitor_identity_id,purpose,version,granted_at,revoked_at) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.visitorId}::uuid,${input.purpose},${input.version},now(),null) on conflict (organization_id,business_id,visitor_identity_id,purpose,version) do update set granted_at=now(),revoked_at=null returning id`));
+      return tenant(db, input.organizationId, input.businessId, async tx => {
+        const visitor = await tx.execute(sql`select 1 from visitor_identities where id=${input.visitorId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid limit 1`);
+        if (!visitor.rows[0]) throw new Error('visitor not found');
+        return tx.execute(sql`insert into kablet_consents(id,organization_id,business_id,visitor_identity_id,purpose,version,granted_at,revoked_at) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.visitorId}::uuid,${input.purpose},${input.version},now(),null) on conflict (organization_id,business_id,visitor_identity_id,purpose,version) do update set granted_at=now(),revoked_at=null returning id`);
+      });
     },
     async revokeConsent(input: { organizationId: string; businessId: string; visitorId: string; purpose: ConsentPurpose }) { return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`update kablet_consents set revoked_at=now() where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and visitor_identity_id=${input.visitorId}::uuid and purpose=${input.purpose}`)); },
     async exportVisitor(input: { organizationId: string; businessId: string; visitorId: string }) {

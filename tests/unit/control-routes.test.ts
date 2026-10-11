@@ -104,6 +104,14 @@ describe('authenticated control-plane entry points', () => {
     expect(security.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'privacy.export', actorId: context.actorId }));
   });
 
+  it('reports deletion propagation as pending without exposing visitor data', async () => {
+    security.deleteVisitor.mockResolvedValue({ rows: [{ deleted: true }] });
+    const response = await privacyPost(request({ action: 'delete', organizationId: context.organizationId, businessId: context.businessId, visitorId: '60000000-0000-4000-8000-000000000001' }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ action: 'delete', accepted: true, propagationStatus: 'pending' });
+    expect(security.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'privacy.delete', actorId: context.actorId }));
+  });
+
   it('rejects an approval that has no different requester', async () => {
     security.approvePolicy.mockRejectedValue(new Error('approval_separation_required'));
     const response = await policyPost(request({ action: 'approve', organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '70000000-0000-4000-8000-000000000001' }));

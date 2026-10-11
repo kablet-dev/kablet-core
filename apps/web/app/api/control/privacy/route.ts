@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
     if (input.action === 'delete') await security.deleteVisitor({ organizationId: input.organizationId, businessId: input.businessId, visitorId: input.visitorId });
     await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action: `privacy.${input.action.replace('_consent', '')}`, resourceType: 'visitor', resourceId: input.visitorId, metadata: input.purpose ? { purpose: input.purpose, version: input.version } : {} });
-    return NextResponse.json({ action: input.action, accepted: true }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ action: input.action, accepted: true, ...(input.action === 'delete' ? { propagationStatus: 'pending' } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
     if (error instanceof Error && error.message === 'support_access_denied') return NextResponse.json({ code: 'unauthorized' }, { status: 403 });
