@@ -105,11 +105,32 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const vault = createCredentialVault(Buffer.alloc(32, 9), 'test-key-v1');
       await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'provider-secret-value', keyVersion: 'test-key-v1', scopes: ['read_catalog'], createdBy: userA }, vault);
       await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).resolves.toBe('provider-secret-value');
-      const storedCredential = await runtimePool.query("select encrypted_secret, key_version, status from kablet_provider_credentials where provider_key='test-provider'");
-      expect(storedCredential.rows[0].encrypted_secret.toString('utf8')).not.toContain('provider-secret-value');
-      expect(storedCredential.rows[0]).toMatchObject({ key_version: 'test-key-v1', status: 'active' });
+      const unscopedCredential = await runtimePool.query("select current_user, current_setting('kablet.organization_id', true) as organization_id, has_table_privilege(current_user, 'public.kablet_provider_credentials', 'SELECT') as can_select, (select count(*)::int from kablet_provider_credentials where provider_key='test-provider') as visible_count");
+      expect(unscopedCredential.rows[0]).toMatchObject({ current_user: 'kablet_dev', organization_id: null, can_select: true, visible_count: 0 });
+      const credentialReadClient = await runtimePool.connect();
+      try {
+        await credentialReadClient.query('begin');
+        await credentialReadClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
+        await credentialReadClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
+        const scopedCredential = await credentialReadClient.query('select encrypted_secret, key_version, status from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider']);
+        expect(scopedCredential.rows).toHaveLength(1);
+        expect(scopedCredential.rows[0].encrypted_secret.toString('utf8')).not.toContain('provider-secret-value');
+        expect(scopedCredential.rows[0]).toMatchObject({ key_version: 'test-key-v1', status: 'active' });
+      } finally {
+        await credentialReadClient.query('rollback').catch(() => undefined);
+        credentialReadClient.release();
+      }
       await security.revokeProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' });
-      await expect(runtimePool.query("select status from kablet_provider_credentials where provider_key='test-provider'")).resolves.toMatchObject({ rows: [{ status: 'revoked' }] });
+      const revokedCredentialClient = await runtimePool.connect();
+      try {
+        await revokedCredentialClient.query('begin');
+        await revokedCredentialClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
+        await revokedCredentialClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
+        await expect(revokedCredentialClient.query('select status from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider'])).resolves.toMatchObject({ rows: [{ status: 'revoked' }] });
+      } finally {
+        await revokedCredentialClient.query('rollback').catch(() => undefined);
+        revokedCredentialClient.release();
+      }
       await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).rejects.toThrow('provider credential unavailable');
       const revisionId = randomUUID();
       const requested = await security.requestPolicyApproval({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' });
