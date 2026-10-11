@@ -16,7 +16,7 @@ test('completes the browser conversion journey with durable lineage', async ({ p
     const pool = new pg.Pool({ connectionString: state.runtimeUrl });
     const connection = await pool.connect();
     try {
-      await connection.query("select set_config('kablet.organization_id',$1,true),set_config('kablet.business_id',$2,true)", [state.organizationId, state.businessId]);
+      await connection.query("select set_config('kablet.organization_id',$1,false),set_config('kablet.business_id',$2,false)", [state.organizationId, state.businessId]);
       const result = await connection.query(`select
         (select count(*) from visitor_identities where organization_id=$1 and business_id=$2) as visitors,
         (select count(*) from interaction_sessions where organization_id=$1 and business_id=$2) as sessions,

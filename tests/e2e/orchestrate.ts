@@ -35,8 +35,7 @@ function pnpmLauncher(): { command: string; prefix: string[] } {
   return { command: process.execPath, prefix: [join(npmRoot, 'npm', 'node_modules', 'pnpm', 'bin', 'pnpm.mjs')] };
 }
 
-async function terminate(child: ReturnType<typeof spawn>) {
-  if (child.exitCode !== null) return;
+async function terminate(child: ReturnType<typeof spawn>, port: number) {
   const waitForExit = () => new Promise<void>((resolve, reject) => {
     if (child.exitCode !== null) { resolve(); return; }
     const timer = setTimeout(() => reject(new Error('owned web server did not exit after termination')), 15000);
@@ -52,8 +51,28 @@ async function terminate(child: ReturnType<typeof spawn>) {
     if (process.platform === 'win32' && child.pid) await run('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], process.env);
     else if (child.pid) process.kill(-child.pid, 'SIGKILL');
     else child.kill('SIGKILL');
-    await waitForExit();
+    await waitForExit().catch(() => undefined);
   }
+  try { await waitForPortClosed(port); } catch {
+    if (process.platform === 'win32' && child.pid) await run('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], process.env);
+    else if (child.pid) process.kill(-child.pid, 'SIGKILL');
+    else child.kill('SIGKILL');
+    await waitForPortClosed(port);
+  }
+}
+
+async function waitForPortClosed(port: number): Promise<void> {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const open = await new Promise<boolean>(resolve => {
+      const probe = net.createConnection({ host: '127.0.0.1', port });
+      probe.once('connect', () => { probe.destroy(); resolve(true); });
+      probe.once('error', () => resolve(false));
+      probe.setTimeout(500, () => { probe.destroy(); resolve(false); });
+    });
+    if (!open) return;
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  throw new Error(`owned web server port ${port} remained open after termination`);
 }
 
 async function databaseExists(database: string): Promise<boolean> {
@@ -116,8 +135,8 @@ async function main() {
     primaryError = error;
   } finally {
     try {
-      if (server) await terminate(server);
-      serverStopped = !server || server.exitCode !== null;
+      if (server) await terminate(server, Number(serverPort));
+      serverStopped = !server || serverPort !== 'unassigned';
       if (!serverStopped) cleanupErrors.push(new Error('owned server process did not exit'));
     } catch (error) { cleanupErrors.push(error); }
     if (disposableIdentity) {
