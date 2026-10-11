@@ -1,16 +1,19 @@
-# KABLET — MASTER BUILD ROADMAP v1.0
+# KABLET — MASTER BUILD ROADMAP v1.1
 
 **Created:** 2026-10-11  
 **Status:** Proposed engineering execution plan based on Codex read-only audit and six locked blueprint chapters. **Not yet approved as a frozen schedule.**  
-**Repository baseline:** local commit `aac9677` (not pushed at audit time); working tree also has modified `apps/web/app/api/interaction/start/route.ts`, `packages/db/src/migrate.ts` and untracked `scripts/`.  
-**Strategic source of truth:** `01-business.md` through `06-infrastructure.md` and `kablet-blueprint-v1.0-index.md`.  
-**Engineering evidence:** user-supplied Codex audit `Pasted text(20261011-115252).txt` (read-only, 2026-10-11).  
-**Status caveat:** No independent repo access, running services, Shopify account access or successful current test execution was available to the roadmap author. Statuses below are grounded in the Codex audit, **not independently certified**.
+**Repository baseline:** commit `225db32` is the starting evidence baseline for this roadmap revision. Future updates must record the then-current commit rather than assuming `225db32` remains `HEAD`; the working tree at this revision also has modified `apps/web/app/api/interaction/start/route.ts`, `packages/db/src/migrate.ts` and untracked `scripts/`.
+**Strategic source of truth:** `docs/blueprint/01-business.md` through `docs/blueprint/06-infrastructure.md`. No separate blueprint index file is present in the repository.
+**Engineering evidence:** repository source, Git history through `225db32`, and the earlier read-only audit as historical supporting evidence.
+**Status caveat:** Existing implementation claims are evidence classifications, not fresh completion claims. Current test execution remains limited by the documented environment failure; no task is `VERIFIED DONE` without fresh linked evidence.
 
 ## How to read and maintain this roadmap
 
 - **Strategic LOCKED ≠ engineering DONE.** Locked blueprint sections are requirements, not implementation evidence.
-- **Evidence statuses:** `AUDIT-VERIFIED (historical)` = Codex found implementation and pre-existing tests/proofs, but did not execute them in this audit; `IMPLEMENTED–UNVERIFIED` = code exists without sufficient execution proof; `PARTIAL` = incomplete connection; `SCAFFOLD` = demo/interfaces only; `NOT FOUND` = absent from audited repo; `BLOCKED` = verification prevented; `NOT STARTED` = roadmap work not established as completed; `VERIFIED DONE` = fresh passing exit evidence attached after implementation. No roadmap task is `VERIFIED DONE` today.
+- **Three independent statuses are required for every task:** `Existing implementation` describes repository evidence at the baseline; `Roadmap gate` describes completion of the task's full intended scope; `Fresh verification` describes executable evidence for the current implementation. These statuses must not be collapsed.
+- **Existing implementation statuses:** `AUDIT-VERIFIED (historical)`, `IMPLEMENTED–UNVERIFIED`, `PARTIAL`, `SCAFFOLD`, `NOT FOUND`.
+- **Roadmap gate statuses:** `NOT STARTED`, `IN PROGRESS`, `IMPLEMENTED–UNVERIFIED`, `VERIFIED DONE`, or `BLOCKED` with owner, reason and unblock action.
+- **Fresh verification statuses:** `NOT RUN`, `PASS`, `FAIL`, `BLOCKED` or `NOT APPLICABLE`. `PASS` requires dated command output or an attached operational evidence package.
 - **Task status flow:** `NOT STARTED → IN PROGRESS → IMPLEMENTED–UNVERIFIED → VERIFIED DONE`; use `BLOCKED` with owner, reason and unblock action. Record commit, test output, date, reviewer and link to evidence for every transition.
 - **Dependency rule:** chapter numbers are a navigation structure, **not** permission to postpone prerequisites. Infrastructure, security, consent, SEO architecture and measurement contracts must be addressed at the slices where needed; Chapters 04–07 contain overlapping workstreams.
 - **Pilot vs public release:** Shopify-only **bounded pilot** comes first. First **public release** requires BOTH Shopify-connected headless commerce and minimal operational Kablet-native commerce (Chapter 1 locked decision). Do not silently change this scope.
@@ -22,7 +25,7 @@
 
 | Dimension | State at audit | Evidence / next action |
 |---|---|---|
-| Strategic blueprint | **60/60 LOCKED** | Six local Markdown files; not in Codex repo during audit |
+| Strategic blueprint | **60/60 LOCKED** | `docs/blueprint/01-business.md` through `06-infrastructure.md`; traceability is in Appendix E |
 | Engineering baseline | **Substantial existing foundation** | Zod/Next/React/Postgres, migrations 0000–0018, visitor/decision/interaction/lead-conversion paths |
 | Historical implementation confidence | **Mixed** | Codex marks many narrow modules verified from code and test history; current test execution blocked |
 | Current test execution | **BLOCKED** | esbuild `spawn EPERM` on Vitest startup; typechecks passed |
@@ -34,6 +37,7 @@
 | Hosting, DNS, CI, monitoring | **NOT FOUND IN REPO** | External resources unverified, not asserted nonexistent |
 | First pilot | **NOT READY** | Requires full safe merchant commerce spine and applicable launch gates |
 | First public release | **NOT READY** | Requires connected + native paths and all applicable gates |
+| Next checkpoint | **DOCUMENTATION ALIGNMENT** | Correct provenance, status separation, section traceability and milestone decomposition before implementation resumes |
 
 ## Existing assets to reuse — do not rebuild blindly
 
@@ -603,7 +607,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 **Next work is NOT to code immediately:** First review and approve this roadmap against the six locked blueprint files, then attach it to the repo so Codex can audit requirements against implementation.
 
-1. Confirm exact Git branch, `aac9677`, and working-tree preservation; decide how to isolate diagnostics, migration and seed changes (01.01).
+1. Confirm exact Git branch, baseline `225db32`, and working-tree preservation; decide how to isolate diagnostics, migration and seed changes (01.01).
 2. Get a permitted runner/CI environment to execute Vitest and E2E; capture pass/fail and avoid blaming code for `spawn EPERM` (01.02).
 3. Close service/route integration tests for the demo guard and free-text flow without building new AI prematurely (01.03).
 4. Set up minimal CI and security baseline (01.05); begin tenant auth design (02.01).
@@ -617,13 +621,13 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 - Codex recommends Shopify theme/app extension or embedding as an option; locked Chapter 1/4 requires Kablet to own the complete frontend. A Shopify-connected headless implementation can still use Shopify for commerce authority and provider checkout.
 - Codex's proposed sequence stops at Shopify pilot/public launch; locked Chapter 1/3 requires a **native commerce path before first public release**.
 - Codex calls several modules VERIFIED based on historical evidence; current tests did not run. This roadmap reserves `VERIFIED DONE` for fresh, linked evidence.
-- Codex did not have the blueprint files. The audit's lack-of-blueprint finding is an access limitation, not missing strategic work.
+- The earlier Codex audit did not have the blueprint files. That historical lack-of-blueprint finding was an access limitation, not missing strategic work; the files are now present under `docs/blueprint/`.
 
 # Appendix C — Initial audit evidence and limitations
 
 **Audit input:** `Pasted text(20261011-115252).txt`, 1,526 lines, supplied by user. This roadmap summarizes the audit; it does not independently verify repository source or remote services.
 
-**Known Git state:** checkpoint `aac9677` local, not pushed; modified `apps/web/app/api/interaction/start/route.ts`, `packages/db/src/migrate.ts`, untracked `scripts/`.
+**Historical Git state at the earlier audit:** checkpoint `aac9677` was local and not pushed. Current roadmap baseline is `225db32`; current working-tree changes remain `apps/web/app/api/interaction/start/route.ts`, `packages/db/src/migrate.ts`, and untracked `scripts/`.
 
 **Safe checks reported passed:** domain TypeScript, web TypeScript, `git diff --check`. **Blocked:** Vitest startup `Error: spawn EPERM` from esbuild; web build inconclusive; no E2E or database integration tests executed during audit.
 
@@ -638,3 +642,181 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 - **Scope change:** record proposal, reason, affected chapters, public release/pilot implications, decision and date before changing locked requirements.
 - **New blocker:** mark BLOCKED and specify owner, unblock condition and interim safe behavior.
 - **Commercial result:** report only verified net revenue, attributable coverage and valid randomized incremental RPV with uncertainty as separate quantities.
+
+# Appendix E — Complete blueprint traceability
+
+Every locked blueprint section maps to at least one roadmap task. The acceptance evidence column is the minimum evidence required; a task is not complete merely because the referenced code exists.
+
+| Blueprint section | Roadmap task IDs | Required acceptance evidence |
+|---|---|---|
+| `01-business.md §1.1` | `04.01`, `04.02`, `05.03`, `08.06` | Kablet-owned frontend, authority-order negative tests, approved product positioning |
+| `§1.2` | `04.03`, `04.04`, `06.01`, `06.05` | Validated friction hypotheses and outcome measurement without causal overclaim |
+| `§1.3` | `08.01`, `08.02`, `08.08` | Pilot dossier, merchant selection evidence, retention/expansion decision |
+| `§1.4` | `04.01`, `05.03`, `06.06`, `07.04` | Trust messaging, policy boundaries, evidence-backed claims |
+| `§1.5` | `03.01–03.06`, `04.01–04.07`, `05.04–05.06`, `08.04–08.06` | Both commerce paths share governed frontend/intelligence contracts; native path has real order proof |
+| `§1.6` | `07.08`, `07.07` | Usage-metering, billing, limits, safeguards and customer-visible usage evidence |
+| `§1.7` | `07.04`, `07.08`, `08.08` | Demo-to-signup-to-launch funnel, marketplace/content/referral evidence |
+| `§1.8` | `02.01`, `02.02`, `07.08`, `08.01` | Guided onboarding, activation, support and success criteria |
+| `§1.9` | `06.02`, `06.05`, `07.07`, `08.08` | Five-metric scorecard, cost/unit-economics report and retention evidence |
+| `§1.10` | `08.01–08.03`, `08.08` | Staged validation, pilot evidence and explicit scale/no-scale decision |
+| `02-intelligence.md §2.1` | `05.01`, `05.03`, `05.05` | Intelligence planes, provider boundary and decision flow test |
+| `§2.2` | `05.01`, `05.02`, `05.03`, `05.05` | Role matrix proving selective AI, deterministic execution and bounded analyst work |
+| `§2.3` | `02.03`, `05.01`, `05.07` | Memory/knowledge ownership, context minimization, retention and tenant-isolation tests |
+| `§2.4` | `01.03`, `05.01`, `05.03` | Intent fixtures, ambiguity handling, reassurance capability and safe fallback |
+| `§2.5` | `05.01a`, `05.01c`, `06.07` | Cold-start deterministic behavior and evidence-readiness promotion tests |
+| `§2.6` | `04.04`, `05.03` | Decision-to-experience fixtures and policy-constrained selection |
+| `§2.7` | `02.05`, `05.04`, `05.05` | Separate merchant/platform planes and authority-boundary negative tests |
+| `§2.8` | `05.02`, `07.07` | Budget reservation/settlement, caps, cost ledger, anomaly and fallback tests |
+| `§2.9` | `05.02`, `06.04`, `07.05` | AI outage, unsafe output, timeout, retry and degradation evidence |
+| `§2.10` | `05.03`, `06.06`, `06.07` | Versioned evaluation, promotion, rollback and learning evidence |
+| `03-execution.md §3.1` | `03.01`, `03.05`, `03.06` | Provider-neutral execution path and failure-state evidence |
+| `§3.2` | `03.01` | Contract tests proving provider-neutral commerce semantics |
+| `§3.3` | `03.02–03.06` | Shopify install, catalog, checkout, webhook and reconciliation proof |
+| `§3.4` | `08.04–08.06` | Native catalog, inventory, checkout, payment, order and storefront proof |
+| `§3.5` | `03.05`, `08.05` | Explicit authorization, payment lifecycle, idempotency and unknown-outcome recovery |
+| `§3.6` | `03.03`, `03.06`, `08.04`, `08.05` | Inventory concurrency, fulfillment, refunds, cancellation and reconciliation tests |
+| `§3.7` | `02.02`, `02.05`, `03.05` | Stale-action, capability, visitor-confirmation and permission negative tests |
+| `§3.8` | `03.06`, `06.01`, `06.02` | Provider receipt, matched/unmatched outcome and attribution-coverage evidence |
+| `§3.9` | `03.04–03.06`, `07.06` | Duplicate/missing/reordered signals, unknown payment, retry and recovery drills |
+| `§3.10` | `08.01`, `08.02`, `08.07` | Eight-gate dossier, scoped GO/LIMITED GO/NO-GO decision |
+| `04-experience.md §4.1` | `04.01` | Complete Kablet-owned frontend architecture and domain-routing proof |
+| `§4.2` | `04.03`, `04.04` | Journey fixtures for discovery, comparison, reassurance and purchase readiness |
+| `§4.3` | `04.04a`, `04.04b` | Declarative component contracts, renderer safety and composition tests |
+| `§4.4` | `01.03`, `04.04` | Transition safeguards, idempotency, accessibility and recovery tests |
+| `§4.5` | `04.03a`, `04.03b`, `04.03c` | Real-product discovery, comparison and reassurance fixtures |
+| `§4.6` | `03.05`, `04.05` | Checkout handoff continuity and verified transaction-state UX |
+| `§4.7` | `02.05`, `04.02` | Merchant Truth Registry, approval, publication and rollback evidence |
+| `§4.8` | `04.06`, `07.03`, `07.04` | Mobile/accessibility/performance/SEO budgets and provider-path tests |
+| `§4.9` | `02.03`, `04.06`, `04.06b` | Consent, six guardrails, deterministic validator and safe degradation |
+| `§4.10` | `04.07`, `08.02` | Seven-part live demo proof and reproducible failure demonstrations |
+| `05-learning.md §5.1` | `06.05`, `06.06` | Evidence hierarchy, estimand and valid/inconclusive reporting |
+| `§5.2` | `06.01`, `06.02` | Versioned events, authoritative financial ledger and data-quality gates |
+| `§5.3` | `06.01a`, `06.01b` | Identity joins, coverage, unmatched outcomes and causal boundaries |
+| `§5.4` | `06.03`, `06.04`, `06.05` | Pre-registration, sticky assignment, SRM/contamination checks and ITT analysis |
+| `§5.5` | `05.05a–05.05d` | Bounded Learning Analyst, six hypothesis families, prioritization and explanation |
+| `§5.6` | `06.06a`, `06.06b` | Five AND gates, immutable evidence contract, canary and rollback |
+| `§5.7` | `05.01c`, `06.07` | Three knowledge layers, pattern registry, readiness stages and opt-out |
+| `§5.8` | `06.04`, `06.06b`, `07.05` | Four drift domains, three monitoring loops and financially independent rollback |
+| `§5.9` | `05.04`, `06.02a` | Four non-additive revenue quantities, evidence cards and explainability |
+| `§5.10` | `06.05`, `08.03` | Three proof levels, three completion states and pre-registered RPV package |
+| `06-infrastructure.md §6.1` | `07.01`, `05.04`, `05.05` | Logical planes, service boundaries, interfaces and extraction criteria |
+| `§6.2` | `03.04`, `07.01`, `07.06` | Six data domains, typed event envelope, replay, retention and recovery |
+| `§6.3` | `02.01–02.05`, `07.05` | Tenant, role, AI/untrusted-content, secret and incident-containment tests |
+| `§6.4` | `01.05`, `07.02` | Environment authority, CI/CD, migration compatibility, flags and rollback |
+| `§6.5` | `04.06`, `07.07` | Three workload classes, edge/freshness safety, budgets and backpressure |
+| `§6.6` | `07.05–07.07`, `08.01` | Capability SLOs, synthetics, severity, error budgets and incident response |
+| `§6.7` | `05.02`, `07.07a` | Cost ledger, routing, caps, anomaly overrides and unit economics |
+| `§6.8` | `03.01–03.06` | Adapter, onboarding, webhook, action, rate-limit, freshness and disconnect proof |
+| `§6.9` | `07.05`, `07.06` | Protected audit, RPO/RTO, backup/restore, recovery sequence and visibility |
+| `§6.10` | `08.01`, `08.07` | Eight gates, staged activation, dossier, GO/LIMITED GO/NO-GO evidence |
+
+# Appendix F — Three-status task register
+
+This register makes the distinction explicit for every parent task. All roadmap gates remain `NOT STARTED` at this revision. Fresh verification is `BLOCKED` where the known test-runner limitation prevents execution; otherwise it is `NOT RUN` because the work has not been implemented or the check was outside this documentation-only pass.
+
+| Task IDs | Existing implementation state | Roadmap gate | Fresh verification |
+|---|---|---|---|
+| `01.01` | PARTIAL | NOT STARTED | NOT RUN |
+| `01.02` | BLOCKED | NOT STARTED | BLOCKED — runner environment |
+| `01.03` | PARTIAL | NOT STARTED | BLOCKED — runner environment |
+| `01.04` | IMPLEMENTED–UNVERIFIED | NOT STARTED | NOT RUN |
+| `01.05` | NOT FOUND | NOT STARTED | NOT RUN |
+| `02.01` | NOT FOUND | NOT STARTED | NOT RUN |
+| `02.02` | PARTIAL | NOT STARTED | NOT RUN |
+| `02.03` | PARTIAL | NOT STARTED | NOT RUN |
+| `02.04` | NOT FOUND | NOT STARTED | NOT RUN |
+| `02.05` | PARTIAL | NOT STARTED | NOT RUN |
+| `03.01` | NOT FOUND | NOT STARTED | NOT RUN |
+| `03.02` | NOT FOUND | NOT STARTED | NOT RUN |
+| `03.03` | NOT FOUND | NOT STARTED | NOT RUN |
+| `03.04` | SCAFFOLD | NOT STARTED | NOT RUN |
+| `03.05` | PARTIAL | NOT STARTED | NOT RUN |
+| `03.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `04.01` | PARTIAL | NOT STARTED | NOT RUN |
+| `04.02` | PARTIAL | NOT STARTED | NOT RUN |
+| `04.03` | SCAFFOLD | NOT STARTED | NOT RUN |
+| `04.04` | PARTIAL | NOT STARTED | NOT RUN |
+| `04.05` | PARTIAL | NOT STARTED | NOT RUN |
+| `04.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `04.07` | SCAFFOLD | NOT STARTED | NOT RUN |
+| `05.01` | PARTIAL | NOT STARTED | NOT RUN |
+| `05.02` | PARTIAL | NOT STARTED | NOT RUN |
+| `05.03` | PARTIAL | NOT STARTED | NOT RUN |
+| `05.04` | NOT FOUND | NOT STARTED | NOT RUN |
+| `05.05` | NOT FOUND | NOT STARTED | NOT RUN |
+| `05.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `06.01` | PARTIAL | NOT STARTED | NOT RUN |
+| `06.02` | PARTIAL | NOT STARTED | NOT RUN |
+| `06.03` | NOT FOUND | NOT STARTED | NOT RUN |
+| `06.04` | NOT FOUND | NOT STARTED | NOT RUN |
+| `06.05` | PARTIAL | NOT STARTED | NOT RUN |
+| `06.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `06.07` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.01` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.02` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.03` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.04` | SCAFFOLD | NOT STARTED | NOT RUN |
+| `07.05` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.07` | NOT FOUND | NOT STARTED | NOT RUN |
+| `07.08` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.01` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.02` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.03` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.04` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.05` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.06` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.07` | NOT FOUND | NOT STARTED | NOT RUN |
+| `08.08` | NOT FOUND | NOT STARTED | NOT RUN |
+
+# Appendix G — Independently verifiable sub-milestones
+
+Parent task IDs remain the roadmap reporting units. The following child IDs are the minimum decomposition required before a parent can become `VERIFIED DONE`.
+
+| Parent | Sub-milestones | Exit evidence |
+|---|---|---|
+| `01.03` | `01.03a` service flow; `01.03b` API dispatch; `01.03c` runtime guard; `01.03d` browser/accessibility | Passing unit/service/route/browser evidence and no-interpreter fallback |
+| `02.05` | `02.05a` authority matrix; `02.05b` approval/versioning; `02.05c` audit reconstruction | Negative authorization tests, actor/version lineage, rollback evidence |
+| `03.01` | `03.01a` normalized commerce contracts; `03.01b` provider receipt/error states; `03.01c` contract fixtures | Provider-neutral contract tests with no fabricated price, stock or payment state |
+| `03.03` | `03.03a` initial sync; `03.03b` incremental sync; `03.03c` freshness/reconciliation | Catalog parity, stale-data handling, idempotency and backfill evidence |
+| `03.04` | `03.04a` durable inbox; `03.04b` authentication/deduplication; `03.04c` worker retry/backpressure | Durable webhook replay and duplicate/reordered event tests |
+| `03.05` | `03.05a` cart; `03.05b` checkout handoff; `03.05c` stale/authorization gate; `03.05d` unknown payment UX | Provider sandbox evidence, explicit confirmation and no duplicate-charge proof |
+| `03.06` | `03.06a` order receipt; `03.06b` refunds/cancellations; `03.06c` reconciliation/coverage | Authoritative order matching, unmatched/delayed states and correction evidence |
+| `04.03` | `04.03a` discovery; `04.03b` comparison; `04.03c` reassurance | Real catalog fixtures and mobile/browser acceptance evidence |
+| `04.04` | `04.04a` composition contracts; `04.04b` renderer guardrails; `04.04c` transition state | Declarative component tests and safe fallback proof |
+| `04.06` | `04.06a` performance; `04.06b` accessibility/consent; `04.06c` SEO | Measured budgets, accessibility checks, consent behavior and crawlable output |
+| `05.01` | `05.01a` provider adapter; `05.01b` runtime wiring; `05.01c` cold start/knowledge layers; `05.01d` evaluation | Real optional provider, deterministic fallback, privacy-minimized context and regression suite |
+| `05.02` | `05.02a` budget claim; `05.02b` settlement/cost ledger; `05.02c` caps/anomaly; `05.02d` fallback | Atomic accounting, per-tenant caps, no overrun and outage behavior |
+| `05.05` | `05.05a` analyst input contract; `05.05b` six hypothesis families; `05.05c` prioritization; `05.05d` merchant explanation | Bounded async execution, no authority to self-promote, evidence-linked explanation |
+| `06.01` | `06.01a` outcome classes; `06.01b` identity/coverage; `06.01c` unmatched/delayed outcomes | Four reporting quantities remain distinct and coverage is visible |
+| `06.03` | `06.03a` preregistration; `06.03b` assignment/exposure; `06.03c` outcome window | Immutable contract, sticky assignment and ITT denominator tests |
+| `06.04` | `06.04a` SRM; `06.04b` contamination; `06.04c` maturity/coverage | Invalid experiments produce `INCONCLUSIVE`/`NO-GO`, never unsupported lift |
+| `06.06` | `06.06a` five AND gates; `06.06b` canary/rollback; `06.06c` policy version promotion | Only authorized candidates promote; rollback preserves financial history |
+| `07.05` | `07.05a` telemetry; `07.05b` SLOs/alerts; `07.05c` protected audit | Incident reconstruction, redaction and capability SLO evidence |
+| `07.08` | `07.08a` plans/metering; `07.08b` customer-visible limits; `07.08c` billing/support | Usage, bot exclusion, overage and support workflows are reproducible |
+| `08.01` | `08.01a–08.01h` one child per launch gate | Eight gate dossiers with owner, evidence, failure condition and rollback |
+
+# Appendix H — Critical dependency and acceptance invariants
+
+These dependencies are hard gates, not advisory sequencing suggestions:
+
+1. Identity, tenant authorization and approval provenance (`02.01–02.05`) precede merchant-controlled operations, provider credentials, policy promotion and dashboards.
+2. Provider-neutral commerce contracts (`03.01`) precede Shopify-specific installation, synchronization and action code.
+3. Authoritative catalog truth and freshness (`03.03`) precede adaptive product discovery and comparison (`04.03–04.04`).
+4. Verified provider orders and reconciliation (`03.06`) precede commercial RPV reporting (`06.01–06.05`) or any causal claim.
+5. Experiment assignment, contamination, SRM and maturity checks (`06.03–06.04`) precede causal lift claims and promotion (`06.05–06.06`).
+6. Production safeguards—secrets, monitoring, backups, rollback, rate limits and incident ownership (`07.01–07.07`)—precede real merchant traffic (`08.02`).
+7. Kablet-native commerce (`08.04–08.06`) is a hard prerequisite for first public release (`08.07`), while Shopify-connected pilot and public-release tracks remain independently gated.
+8. Platform safety/legal limits outrank merchant policy; merchant-approved policy outranks visitor/runtime authorization; visitor authorization outranks AI suggestion. Every consequential action must be Authorized, Validated, Idempotent, Verifiable and Recoverable.
+9. AI budgets require an atomic claim/settlement path, per-tenant and platform caps, anomaly handling, and deterministic fallback before live AI traffic.
+10. Unknown payment/order outcomes are neither success nor failure; reconciliation must precede retry or customer confirmation.
+
+# Appendix I — Launch-track separation
+
+| Track | May launch independently? | Minimum gate |
+|---|---|---|
+| Controlled Shopify pilot | Yes, with explicit scope limits | `08.01`, `08.02`, applicable Shopify/provider gates, monitored rollback and verified order evidence |
+| Shopify-connected public release | Yes, as its own release track | `08.07` connected-path gates, operations, legal, billing, support and evidence package |
+| Kablet-native public release | Yes, as its own release track, but not omitted from first public-release scope | `08.04–08.07`, inventory concurrency, payment/recovery, native SEO/domain and merchant operations |
+
+No track may claim causal lift from a verified order alone. Pilot limitations must be disclosed and must not silently redefine the dual-path public-release requirement.
