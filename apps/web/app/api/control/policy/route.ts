@@ -33,6 +33,9 @@ export async function POST(request: Request) {
     const policy = createIntentPolicyRepository(runtime.db);
     const result = await publishMerchantPolicy({ ...input, approvalId: input.approvalId, context, policyRepository: policy, securityRepository: security });
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
-  } catch { return NextResponse.json({ code: 'unavailable' }, { status: 503 }); }
+  } catch (error) {
+    if (error instanceof Error && error.message === 'approval_separation_required') return NextResponse.json({ code: 'approval_separation_required' }, { status: 403 });
+    return NextResponse.json({ code: 'unavailable' }, { status: 503 });
+  }
   finally { await runtime?.pool.end().catch(() => undefined); }
 }

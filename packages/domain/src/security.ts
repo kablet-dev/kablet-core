@@ -9,7 +9,7 @@ export type Role = z.infer<typeof roleSchema>;
 export const securityCapabilitySchema = z.enum([
   'organization.manage', 'business.manage', 'truth.read', 'truth.write',
   'integration.manage', 'experiment.manage', 'reporting.read', 'user.manage',
-  'policy.approve', 'credential.read_metadata', 'credential.rotate', 'audit.read',
+  'policy.approve', 'credential.read_metadata', 'credential.rotate', 'privacy.manage', 'audit.read',
 ]);
 export type SecurityCapability = z.infer<typeof securityCapabilitySchema>;
 

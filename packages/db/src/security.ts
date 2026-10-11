@@ -67,7 +67,11 @@ export function createSecurityRepository(db: Database['db']) {
       return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`insert into kablet_policy_approval_events(id,organization_id,business_id,policy_key,revision_id,event_type,actor_id,actor_type) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.policyKey},${input.revisionId}::uuid,'requested',${input.actorId}::uuid,${input.actorType}) returning id`));
     },
     async approvePolicy(input: { organizationId: string; businessId: string; policyKey: string; revisionId: string; actorId: string; actorType: 'merchant_user' | 'platform_operator' }) {
-      return tenant(db, input.organizationId, input.businessId, async tx => tx.execute(sql`insert into kablet_policy_approval_events(id,organization_id,business_id,policy_key,revision_id,event_type,actor_id,actor_type) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.policyKey},${input.revisionId}::uuid,'approved',${input.actorId}::uuid,${input.actorType}) returning id`));
+      return tenant(db, input.organizationId, input.businessId, async tx => {
+        const request = await tx.execute(sql`select 1 from kablet_policy_approval_events where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and policy_key=${input.policyKey} and revision_id=${input.revisionId}::uuid and event_type='requested' and actor_id<>${input.actorId}::uuid limit 1`);
+        if (!request.rows[0]) throw new Error('approval_separation_required');
+        return tx.execute(sql`insert into kablet_policy_approval_events(id,organization_id,business_id,policy_key,revision_id,event_type,actor_id,actor_type) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.policyKey},${input.revisionId}::uuid,'approved',${input.actorId}::uuid,${input.actorType}) returning id`);
+      });
     },
     async isPolicyApproved(input: { organizationId: string; businessId: string; policyKey: string; revisionId: string; approvalId: string }) {
       return tenant(db, input.organizationId, input.businessId, async tx => {

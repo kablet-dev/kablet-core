@@ -34,6 +34,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const admin = new pg.Pool({ connectionString: process.env.TEST_ROLE_ADMIN_URL, max: 1 });
       await admin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
       const userA = randomUUID();
+      const approverUser = randomUUID();
       const operatorUser = randomUUID();
       try {
         await migrate(bootstrap.db, { migrationsFolder });
@@ -53,6 +54,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
           await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A')`);
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [userA, `subject-${userA}`]);
           await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), userA, orgA, businessA]);
+          await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [approverUser, `approver-${approverUser}`]);
+          await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), approverUser, orgA, businessA]);
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [operatorUser, `operator-${operatorUser}`]);
           await bootstrapConnection.query(`insert into kablet_platform_operators(user_id,capabilities) values ($1,'["audit.read"]')`, [operatorUser]);
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgB]);
@@ -140,7 +143,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).rejects.toThrow('provider credential unavailable');
       const revisionId = randomUUID();
       const requested = await security.requestPolicyApproval({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' });
-      const approved = await security.approvePolicy({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' });
+      await expect(security.approvePolicy({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' })).rejects.toThrow('approval_separation_required');
+      const approved = await security.approvePolicy({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: approverUser, actorType: 'merchant_user' });
       expect(requested.rows).toHaveLength(1);
       expect(approved.rows).toHaveLength(1);
       await expect(security.isPolicyApproved({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, approvalId: String(approved.rows[0].id) })).resolves.toBe(true);

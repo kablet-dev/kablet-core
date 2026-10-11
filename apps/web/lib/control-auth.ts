@@ -26,6 +26,10 @@ export async function resolveControlContext(organizationId: string, businessId: 
   return repository().resolveMerchantContext(token, organizationId, businessId);
 }
 
+export function authorizeControlCapability(context: Awaited<ReturnType<typeof resolveControlContext>>, capability: 'user.manage' | 'policy.approve' | 'credential.rotate' | 'privacy.manage') {
+  return context?.capabilities.includes(capability) ?? false;
+}
+
 export async function issuePlatformOperatorSession(providerToken: string) {
   const identity = await createSupabaseAuthAdapter().verifySession(providerToken);
   if (!identity) return null;
