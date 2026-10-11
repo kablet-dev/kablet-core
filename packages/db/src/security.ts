@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import type { AuthContext, Capability, ConsentPurpose } from '@kablet/domain';
+import type { AuthContext, ConsentPurpose, SecurityCapability } from '@kablet/domain';
 import type { Database, DatabaseTransaction } from './index.js';
 import type { createCredentialVault } from './credential-vault.js';
 
@@ -33,10 +33,10 @@ export function createSecurityRepository(db: Database['db']) {
       const membership = row.rows[0] as { capabilities?: unknown; status?: string; starts_at?: Date; ends_at?: Date | null } | undefined;
       const now = Date.now();
       if (!membership || membership.status !== 'active' || (membership.starts_at && new Date(membership.starts_at).getTime() > now) || (membership.ends_at && new Date(membership.ends_at).getTime() <= now)) return null;
-      return { actorId: session.userId, actorType: 'merchant_user', organizationId, businessId, capabilities: Array.isArray(membership.capabilities) ? membership.capabilities as Capability[] : [], sessionId: session.sessionId };
+      return { actorId: session.userId, actorType: 'merchant_user', organizationId, businessId, capabilities: Array.isArray(membership.capabilities) ? membership.capabilities as SecurityCapability[] : [], sessionId: session.sessionId };
     },
     async revokeSession(sessionId: string) { await db.execute(sql`update kablet_auth_sessions set revoked_at=now() where id=${sessionId}::uuid`); },
-    async addMembership(input: { userId: string; organizationId: string; businessId?: string; role: string; capabilities: Capability[] }) {
+    async addMembership(input: { userId: string; organizationId: string; businessId?: string; role: string; capabilities: SecurityCapability[] }) {
       const id = randomUUID();
       return tenant(db, input.organizationId, input.businessId ?? input.organizationId, async tx => tx.execute(sql`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values (${id}::uuid,${input.userId}::uuid,${input.organizationId}::uuid,${input.businessId ? sql`${input.businessId}::uuid` : sql`null`},${input.role},${JSON.stringify(input.capabilities)}::jsonb) returning id`));
     },

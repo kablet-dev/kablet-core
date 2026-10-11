@@ -6,12 +6,12 @@ export type ActorType = z.infer<typeof actorTypeSchema>;
 export const roleSchema = z.enum(['owner', 'admin', 'operator', 'analyst', 'support']);
 export type Role = z.infer<typeof roleSchema>;
 
-export const capabilitySchema = z.enum([
+export const securityCapabilitySchema = z.enum([
   'organization.manage', 'business.manage', 'truth.read', 'truth.write',
   'integration.manage', 'experiment.manage', 'reporting.read', 'user.manage',
   'policy.approve', 'credential.read_metadata', 'credential.rotate', 'audit.read',
 ]);
-export type Capability = z.infer<typeof capabilitySchema>;
+export type SecurityCapability = z.infer<typeof securityCapabilitySchema>;
 
 export const membershipStatusSchema = z.enum(['invited', 'active', 'suspended', 'revoked']);
 export type MembershipStatus = z.infer<typeof membershipStatusSchema>;
@@ -19,7 +19,7 @@ export type MembershipStatus = z.infer<typeof membershipStatusSchema>;
 export const authContextSchema = z.object({
   actorId: z.string().uuid(), actorType: actorTypeSchema,
   organizationId: z.string().uuid().nullable(), businessId: z.string().uuid().nullable(),
-  capabilities: z.array(capabilitySchema), sessionId: z.string().uuid().nullable(),
+  capabilities: z.array(securityCapabilitySchema), sessionId: z.string().uuid().nullable(),
 }).strict();
 export type AuthContext = z.infer<typeof authContextSchema>;
 
@@ -30,7 +30,7 @@ export interface AuthProviderAdapter {
 
 export type AuthorizationResult = { allowed: true } | { allowed: false; reason: 'unauthenticated' | 'wrong_actor_type' | 'wrong_organization' | 'wrong_business' | 'missing_capability' | 'membership_inactive' };
 
-export function authorize(context: AuthContext | null, input: { actorType?: ActorType; organizationId?: string; businessId?: string; capability: Capability }): AuthorizationResult {
+export function authorize(context: AuthContext | null, input: { actorType?: ActorType; organizationId?: string; businessId?: string; capability: SecurityCapability }): AuthorizationResult {
   if (!context) return { allowed: false, reason: 'unauthenticated' };
   if (input.actorType && context.actorType !== input.actorType) return { allowed: false, reason: 'wrong_actor_type' };
   if (input.organizationId && context.organizationId !== input.organizationId) return { allowed: false, reason: 'wrong_organization' };

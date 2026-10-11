@@ -33,12 +33,22 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       bootstrapPool = bootstrapConnection;
       const admin = new pg.Pool({ connectionString: process.env.TEST_ROLE_ADMIN_URL, max: 1 });
       await admin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
-      try { await migrate(bootstrap.db, { migrationsFolder }); } finally { await admin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await admin.end(); }
-      await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A'),('${orgB}','Security B')`);
-      await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A'),('${businessB}','${orgB}','Business B')`);
       const userA = randomUUID();
-      await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [userA, `subject-${userA}`]);
-      await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), userA, orgA, businessA]);
+      try {
+        await migrate(bootstrap.db, { migrationsFolder });
+        await bootstrapConnection.query('set role kablet_privacy_owner');
+        try {
+          await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A'),('${orgB}','Security B')`);
+          await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A'),('${businessB}','${orgB}','Business B')`);
+          await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [userA, `subject-${userA}`]);
+          await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), userA, orgA, businessA]);
+        } finally {
+          await bootstrapConnection.query('reset role');
+        }
+      } finally {
+        await admin.query('revoke kablet_privacy_owner from kablet_test_bootstrap');
+        await admin.end();
+      }
       const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       runtimePool = runtime.pool;
       const security = createSecurityRepository(runtime.db);
