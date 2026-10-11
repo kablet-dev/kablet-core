@@ -106,7 +106,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'provider-secret-value', keyVersion: 'test-key-v1', scopes: ['read_catalog'], createdBy: userA }, vault);
       await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).resolves.toBe('provider-secret-value');
       const unscopedCredential = await runtimePool.query("select current_user, current_setting('kablet.organization_id', true) as organization_id, has_table_privilege(current_user, 'public.kablet_provider_credentials', 'SELECT') as can_select, (select count(*)::int from kablet_provider_credentials where provider_key='test-provider') as visible_count");
-      expect(unscopedCredential.rows[0]).toMatchObject({ current_user: 'kablet_dev', organization_id: null, can_select: true, visible_count: 0 });
+      expect(unscopedCredential.rows[0]).toMatchObject({ current_user: 'kablet_dev', organization_id: '', can_select: true, visible_count: 0 });
       const credentialReadClient = await runtimePool.connect();
       try {
         await credentialReadClient.query('begin');
