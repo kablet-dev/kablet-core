@@ -8,6 +8,10 @@ export const expressIntentRequestSchema = z.object({
   intent: interactionIntentSchema,
   idempotencyKey: z.string().trim().min(1).max(200),
 }).strict();
+export const expressFreeTextIntentRequestSchema = z.object({
+  text: z.string().trim().min(1).max(4000),
+  idempotencyKey: z.string().trim().min(1).max(200),
+}).strict();
 export const expressQualificationRequestSchema = z.object({ questionKey: z.string().trim().regex(/^[a-z][a-z0-9_.-]{1,63}$/), answer: z.string().trim().regex(/^[a-z0-9][a-z0-9_.-]{0,63}$/), idempotencyKey: z.string().trim().min(1).max(200) }).strict();
 export const selectOfferingRequestSchema = z.object({ offeringId: z.string().uuid(), offeringRevisionId: z.string().uuid(), idempotencyKey: z.string().trim().min(1).max(200) }).strict();
 export const expressContactRequestSchema = z.object({ name: z.string().trim().min(1).max(120), email: z.string().email().max(320), consent: z.literal(true), idempotencyKey: z.string().trim().min(1).max(200) }).strict();
@@ -21,6 +25,7 @@ export const safeInteractionErrorSchema = z.object({
   message: z.string().min(1).max(200),
 }).strict();
 export type ExpressIntentRequest = z.infer<typeof expressIntentRequestSchema>;
+export type ExpressFreeTextIntentRequest = z.infer<typeof expressFreeTextIntentRequestSchema>;
 export type ExpressQualificationRequest = z.infer<typeof expressQualificationRequestSchema>;
 export type SelectOfferingRequest = z.infer<typeof selectOfferingRequestSchema>;
 export type ExpressContactRequest = z.infer<typeof expressContactRequestSchema>;

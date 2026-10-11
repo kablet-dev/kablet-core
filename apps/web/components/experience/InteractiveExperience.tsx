@@ -18,6 +18,7 @@ export function InteractiveExperience() {
   const [experience, setExperience] = useState<ExperienceModel | null>(null);
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<Intent>('request_information');
+  const [needText, setNeedText] = useState('');
   const [selectedQualification, setSelectedQualification] = useState<string | null>(null);
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -104,6 +105,17 @@ export function InteractiveExperience() {
     }
   }
 
+  async function submitNeed() {
+    if (!experience || busy || !needText.trim()) return;
+    const stableKey = submissionKey ?? crypto.randomUUID();
+    setSubmissionKey(stableKey); setBusy(true); setFailure(null);
+    try {
+      const response = await fetch('/api/interaction/intent', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: needText, idempotencyKey: stableKey }) });
+      if (!response.ok) throw new Error('interpretation failed');
+      const payload = await response.json(); setExperience(payload.experience); setNeedText(''); setSubmissionKey(null);
+    } catch { setFailure('intent'); } finally { setBusy(false); }
+  }
+
   async function confirmAction() {
     if (!experience || actionBusy) return;
     setActionBusy(true);
@@ -160,6 +172,11 @@ export function InteractiveExperience() {
         </div>
         <button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !experience}>
           {busy ? 'Working...' : 'Continue'}
+        </button>
+        <label htmlFor='visitor-need'>Or tell us what you need</label>
+        <textarea id='visitor-need' value={needText} onChange={event => setNeedText(event.target.value)} maxLength={4000} placeholder='For example: My employer just fired me. I need help.' />
+        <button className='intent-submit' type='button' onClick={() => void submitNeed()} disabled={busy || !experience || !needText.trim()}>
+          {busy ? 'Working...' : 'Help me find the right next step'}
         </button>
       </div>}
       {experience?.decisionType === 'request_qualification' && <button className='intent-submit' type='button' onClick={() => void submit()} disabled={busy || !selectedQualification}>{busy ? 'Working...' : 'Continue'}</button>}

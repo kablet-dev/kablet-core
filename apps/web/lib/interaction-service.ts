@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressQualificationRequestSchema, observationSchema, qualificationQuestionSchema, selectOfferingRequestSchema, type ExperienceModel, type InteractionIntent } from '@kablet/domain';
+import { decisionToExperience, experienceInputSchema, expressContactRequestSchema, expressIntentRequestSchema, expressFreeTextIntentRequestSchema, expressQualificationRequestSchema, intentInterpretationInputSchema, intentInterpretationOutputSchema, observationSchema, qualificationQuestionSchema, selectOfferingRequestSchema, type ExperienceModel, type InteractionIntent, type IntentInterpreter } from '@kablet/domain';
 import { createAcquisitionRepository, createBusinessTruthRepository, createDecisionRepository, createIntentPolicyRepository, createInteractionSessionRepository, createMeasurementRepository, createVisitorStateRepository, type Database, type DatabaseTransaction } from '@kablet/db';
 import { acquisitionContextSchema } from '@kablet/domain';
 
@@ -10,10 +10,11 @@ const contactRequirement = { fields: ['name', 'email'] as ('name' | 'email' | 'p
 export class InteractionExpiredError extends Error { constructor() { super('interaction expired or revoked'); this.name = 'InteractionExpiredError'; } }
 
 export type InteractionAcquisitionInput = { landingPath: string; referrer: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null };
-export function createInteractionService(input: { db: Database['db']; organizationId: string; businessId: string; decisionRepository?: ReturnType<typeof createDecisionRepository> }) {
+export function createInteractionService(input: { db: Database['db']; organizationId: string; businessId: string; decisionRepository?: ReturnType<typeof createDecisionRepository>; intentInterpreter?: IntentInterpreter }) {
   const visitors = createVisitorStateRepository(input.db);
   const interactions = createInteractionSessionRepository(input.db);
   const decisions = input.decisionRepository ?? createDecisionRepository(input.db);
+  const intentInterpreter = input.intentInterpreter;
   async function render(visitorIdentityId: string, sessionId: string, interactionSessionId: string, idempotencyKey: string, transaction?: DatabaseTransaction): Promise<{ experience: ExperienceModel; exposureId: string }> {
     const stateRepository = createVisitorStateRepository(input.db, transaction);
     const truthRepository = createBusinessTruthRepository(input.db, transaction);
@@ -81,6 +82,19 @@ export function createInteractionService(input: { db: Database['db']; organizati
         await fact(session, prior.id, rendered.experience, 'intent_expressed', parsed.idempotencyKey, tx);
         return rendered.experience;
       });
+    },
+    async interpretIntent(handle: string, request: unknown): Promise<{ experience: ExperienceModel; interpretation: ReturnType<typeof intentInterpretationOutputSchema.parse> }> {
+      const parsed = expressFreeTextIntentRequestSchema.parse(request);
+      if (!intentInterpreter) throw new Error('intent interpreter is unavailable');
+      const session = await interactions.resolve(input.organizationId, input.businessId, handle);
+      if (!session) throw new InteractionExpiredError();
+      const policy = await createIntentPolicyRepository(input.db).getCurrent(input.organizationId, input.businessId, 'baseline');
+      const interpretationInput = intentInterpretationInputSchema.parse({ text: parsed.text, context: { contractVersion: 'intent-interpretation-context.v1', allowedIntents: ['explore_offerings', 'request_information', 'select_offering', 'unclear'], policyRevisionId: policy.id } });
+      const interpretation = intentInterpretationOutputSchema.parse(await intentInterpreter.interpret(interpretationInput));
+      if (interpretation.normalizedIntent === 'unclear') {
+        return { experience: await this.resume(handle), interpretation };
+      }
+      return { experience: await this.expressIntent(handle, { intent: interpretation.normalizedIntent, idempotencyKey: parsed.idempotencyKey }), interpretation };
     },
     async submitQualification(handle: string, request: unknown): Promise<ExperienceModel> {
       const parsed = expressQualificationRequestSchema.parse(request);
