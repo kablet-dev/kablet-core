@@ -78,6 +78,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const expiredSession = await security.createSession(userA, new Date(Date.now() - 60_000));
       await expect(security.resolveSession(expiredSession.token)).resolves.toBeNull();
       const visitor = await visitors.createVisitor(orgA, businessA, new Date(Date.now() + 60_000));
+      const unrelatedVisitor = await visitors.createVisitor(orgB, businessB, new Date(Date.now() + 60_000));
       await security.grantConsent({ organizationId: orgA, businessId: businessA, visitorId: visitor, purpose: 'analytics', version: 'privacy.v1' });
       const grantedExport = await security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor });
       expect(grantedExport.visitor).not.toBeNull();
@@ -86,8 +87,19 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await security.revokeConsent({ organizationId: orgA, businessId: businessA, visitorId: visitor, purpose: 'analytics' });
       const revokedExport = await security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor });
       expect(revokedExport.consents[0].revoked_at).not.toBeNull();
+      const directDeleteClient = await runtimePool.connect();
+      try {
+        await directDeleteClient.query('begin');
+        await directDeleteClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
+        await directDeleteClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
+        await expect(directDeleteClient.query('delete from kablet_consents where visitor_identity_id=$1', [visitor])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await directDeleteClient.query('rollback').catch(() => undefined);
+        directDeleteClient.release();
+      }
       await expect(security.deleteVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor })).resolves.toMatchObject({ rows: [{ deleted: true }] });
       await expect(security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor })).resolves.toMatchObject({ visitor: null, sessions: [], consents: [] });
+      await expect(security.exportVisitor({ organizationId: orgB, businessId: businessB, visitorId: unrelatedVisitor })).resolves.toMatchObject({ visitor: expect.anything() });
       const vault = createCredentialVault(Buffer.alloc(32, 9), 'test-key-v1');
       await security.saveProviderCredential({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider', secret: 'provider-secret-value', keyVersion: 'test-key-v1', scopes: ['read_catalog'], createdBy: userA }, vault);
       await expect(security.readProviderCredentialSecret({ organizationId: orgA, businessId: businessA, providerKey: 'test-provider' }, vault)).resolves.toBe('provider-secret-value');
