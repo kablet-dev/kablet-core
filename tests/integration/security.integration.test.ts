@@ -38,6 +38,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       try {
         await migrate(bootstrap.db, { migrationsFolder });
         const privacyBoundary = await bootstrapConnection.query("select pg_get_userbyid(p.proowner) as owner, p.prosecdef as security_definer, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'SELECT') as privacy_can_select, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'DELETE') as privacy_can_delete, has_table_privilege('kablet_dev', 'public.kablet_consents', 'DELETE') as runtime_can_delete from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='kablet_visitor_privacy_delete' and p.pronargs=2");
+        expect(privacyBoundary.rows).toHaveLength(1);
         expect(privacyBoundary.rows[0]).toMatchObject({ owner: 'kablet_privacy_owner', security_definer: true, privacy_can_select: true, privacy_can_delete: true, runtime_can_delete: false });
         await bootstrapConnection.query('grant select on businesses to kablet_dev');
         await bootstrapConnection.query('grant select, insert, update, delete on visitor_identities, visitor_sessions, visitor_observations, visitor_state_revisions, visitor_states to kablet_dev');
@@ -46,6 +47,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgA]);
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.business_id', businessA]);
           const setupIdentity = await bootstrapConnection.query("select current_user, session_user, current_setting('kablet.organization_id', true) as organization_id, current_setting('kablet.business_id', true) as business_id");
+          expect(setupIdentity.rows).toHaveLength(1);
           expect(setupIdentity.rows[0]).toMatchObject({ current_user: process.env.TEST_BOOTSTRAP_USER, session_user: process.env.TEST_BOOTSTRAP_USER, organization_id: orgA, business_id: businessA });
           await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A')`);
           await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A')`);
@@ -70,6 +72,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const security = createSecurityRepository(runtime.db);
       const visitors = createVisitorStateRepository(runtime.db);
       const runtimeIdentity = await runtimePool.query("select current_user, has_table_privilege(current_user, 'businesses', 'SELECT') as can_read_businesses");
+      expect(runtimeIdentity.rows).toHaveLength(1);
       expect(runtimeIdentity.rows[0]).toMatchObject({ current_user: 'kablet_dev', can_read_businesses: true });
       const operatorSession = await security.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
       await expect(security.resolvePlatformContext(operatorSession.token)).resolves.toMatchObject({ actorId: operatorUser, actorType: 'platform_operator', organizationId: null, businessId: null });
@@ -88,6 +91,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       expect(grantedExport.consents[0].revoked_at).toBeNull();
       await security.revokeConsent({ organizationId: orgA, businessId: businessA, visitorId: visitor, purpose: 'analytics' });
       const revokedExport = await security.exportVisitor({ organizationId: orgA, businessId: businessA, visitorId: visitor });
+      expect(revokedExport.consents).toHaveLength(1);
       expect(revokedExport.consents[0].revoked_at).not.toBeNull();
       const directDeleteClient = await runtimePool.connect();
       try {
@@ -126,7 +130,9 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await revokedCredentialClient.query('begin');
         await revokedCredentialClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
         await revokedCredentialClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
-        await expect(revokedCredentialClient.query('select status from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider'])).resolves.toMatchObject({ rows: [{ status: 'revoked' }] });
+        const revokedCredential = await revokedCredentialClient.query('select status from kablet_provider_credentials where organization_id=$1 and business_id=$2 and provider_key=$3', [orgA, businessA, 'test-provider']);
+        expect(revokedCredential.rows).toHaveLength(1);
+        expect(revokedCredential.rows[0]).toMatchObject({ status: 'revoked' });
       } finally {
         await revokedCredentialClient.query('rollback').catch(() => undefined);
         revokedCredentialClient.release();
@@ -135,15 +141,28 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const revisionId = randomUUID();
       const requested = await security.requestPolicyApproval({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' });
       const approved = await security.approvePolicy({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, actorId: userA, actorType: 'merchant_user' });
+      expect(requested.rows).toHaveLength(1);
+      expect(approved.rows).toHaveLength(1);
       await expect(security.isPolicyApproved({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, approvalId: String(approved.rows[0].id) })).resolves.toBe(true);
       expect(String(requested.rows[0].id)).not.toBe(String(approved.rows[0].id));
       await security.audit({ organizationId: orgA, businessId: businessA, actorId: userA, actorType: 'merchant_user', action: 'security.test', resourceType: 'security_test', metadata: { providerToken: 'must-not-persist' } });
-      const audit = await runtimePool.query("select metadata from kablet_audit_events where action='security.test'");
-      expect(audit.rows[0].metadata.providerToken).toBe('[redacted]');
-      await expect(runtimePool.query("update kablet_audit_events set action='tampered' where action='security.test'")).rejects.toMatchObject({ code: '42501' });
+      const auditClient = await runtimePool.connect();
+      try {
+        await auditClient.query('begin');
+        await auditClient.query('select set_config($1,$2,true)', ['kablet.organization_id', orgA]);
+        await auditClient.query('select set_config($1,$2,true)', ['kablet.business_id', businessA]);
+        const audit = await auditClient.query("select metadata from kablet_audit_events where action='security.test'");
+        expect(audit.rows).toHaveLength(1);
+        expect(audit.rows[0].metadata.providerToken).toBe('[redacted]');
+        await expect(auditClient.query("update kablet_audit_events set action='tampered' where action='security.test'")).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await auditClient.query('rollback').catch(() => undefined);
+        auditClient.release();
+      }
       await bootstrapConnection.query("update kablet_users set status='suspended' where id=$1", [userA]);
       await expect(security.resolveSession(session.token)).resolves.toBeNull();
       const missingContext = await runtimePool.query('select count(*)::int as count from kablet_memberships');
+      expect(missingContext.rows).toHaveLength(1);
       expect(missingContext.rows[0].count).toBe(0);
       await security.revokeSession(session.id);
       await expect(security.resolveSession(session.token)).resolves.toBeNull();
