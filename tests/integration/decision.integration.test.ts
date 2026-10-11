@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import pg from 'pg';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { createDb, createDecisionRepository, createVisitorStateRepository } from '@kablet/db';
@@ -11,7 +12,7 @@ const bootstrapUser = process.env.TEST_BOOTSTRAP_USER;
 const bootstrapPassword = process.env.TEST_BOOTSTRAP_PASSWORD;
 const roleAdminUrl = process.env.TEST_ROLE_ADMIN_URL;
 const appPassword = process.env.TEST_APP_PASSWORD;
-const migrationsFolder = `${process.cwd()}\\packages\\db\\drizzle`;
+const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
 const org = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 function appUrl(name: string) { return `postgresql://kablet_dev:${encodeURIComponent(appPassword ?? '')}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${name}`; }

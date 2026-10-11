@@ -33,7 +33,7 @@ jobs:
       - run: pnpm run evidence:manifest -- --output milestone-01-evidence.json
       - run: pnpm run typecheck
       - run: pnpm run lint
-      - run: pnpm run test -- --reporter=dot
+      - run: pnpm run test:unit -- --reporter=dot
       - run: pnpm run build
       - uses: actions/upload-artifact@v4
         if: always()

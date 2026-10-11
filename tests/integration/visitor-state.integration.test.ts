@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -9,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 const manager = loadTestManagerConfig();
 const base = `postgresql://${encodeURIComponent(manager.TEST_MANAGER_USER)}:${encodeURIComponent(manager.TEST_MANAGER_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}`;
-const migrationsFolder = `${process.cwd()}\\packages\\db\\drizzle`;
+const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
 const org = '11111111-1111-4111-8111-111111111111';
 const otherOrg = '22222222-2222-4222-8222-222222222222';
 const appPassword = process.env.TEST_APP_PASSWORD;
