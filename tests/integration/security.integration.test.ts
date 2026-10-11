@@ -37,6 +37,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const operatorUser = randomUUID();
       try {
         await migrate(bootstrap.db, { migrationsFolder });
+        const privacyBoundary = await bootstrapConnection.query("select pg_get_userbyid(p.proowner) as owner, p.prosecdef as security_definer, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'SELECT') as privacy_can_select, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'DELETE') as privacy_can_delete, has_table_privilege('kablet_dev', 'public.kablet_consents', 'DELETE') as runtime_can_delete from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='kablet_visitor_privacy_delete' and p.pronargs=2");
+        expect(privacyBoundary.rows[0]).toMatchObject({ owner: 'kablet_privacy_owner', security_definer: true, privacy_can_select: true, privacy_can_delete: true, runtime_can_delete: false });
         await bootstrapConnection.query('grant select on businesses to kablet_dev');
         await bootstrapConnection.query('grant select, insert, update, delete on visitor_identities, visitor_sessions, visitor_observations, visitor_state_revisions, visitor_states to kablet_dev');
         await bootstrapConnection.query('grant select on visitor_decisions, interaction_facts, experience_exposures, action_requests, action_outcomes, ai_intent_invocations, visitor_consents to kablet_dev');

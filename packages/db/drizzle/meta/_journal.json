@@ -24,6 +24,7 @@
     { "idx": 19, "version": "7", "when": 1760918400000, "tag": "0019_identity_security", "breakpoints": true },
     { "idx": 20, "version": "7", "when": 1761004800000, "tag": "0020_control_plane_hardening", "breakpoints": true },
     { "idx": 21, "version": "7", "when": 1761091200000, "tag": "0021_privacy_delete_security_consents", "breakpoints": true },
-    { "idx": 22, "version": "7", "when": 1761177600000, "tag": "0022_privacy_consent_delete_grant", "breakpoints": true }
+    { "idx": 22, "version": "7", "when": 1761177600000, "tag": "0022_privacy_consent_delete_grant", "breakpoints": true },
+    { "idx": 23, "version": "7", "when": 1761264000000, "tag": "0023_privacy_consent_select_grant", "breakpoints": true }
   ]
 }
