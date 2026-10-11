@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createDb, createSecurityRepository } from '@kablet/db';
 import { loadServerConfig } from '@kablet/config';
+import type { SecurityCapability } from '@kablet/domain';
 import { createSupabaseAuthAdapter } from './supabase-auth';
 
 export const controlSessionCookieName = 'kablet_control_session';
@@ -26,7 +27,7 @@ export async function resolveControlContext(organizationId: string, businessId: 
   return repository().resolveMerchantContext(token, organizationId, businessId);
 }
 
-export function authorizeControlCapability(context: Awaited<ReturnType<typeof resolveControlContext>>, capability: 'user.manage' | 'policy.approve' | 'credential.rotate' | 'privacy.manage') {
+export function authorizeControlCapability(context: Awaited<ReturnType<typeof resolveControlContext>>, capability: SecurityCapability) {
   return context?.capabilities.includes(capability) ?? false;
 }
 
