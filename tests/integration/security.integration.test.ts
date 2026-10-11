@@ -170,6 +170,22 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await expect(security.setPlatformSafetyRule({ actorId: userA, ruleKey: 'baseline', effect: 'allow', reason: 'Merchant cannot override safety' })).rejects.toThrow('platform_safety_denied');
       await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
       await security.auditPlatform({ actorId: supportApproverUser, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
+      const unauthorizedPlatformAudit = await runtimePool.connect();
+      try {
+        await unauthorizedPlatformAudit.query('begin');
+        await expect(unauthorizedPlatformAudit.query("insert into kablet_audit_events(id,organization_id,business_id,actor_id,actor_type,action,resource_type,metadata) values ($1,null,null,$2,'platform_operator','security.unauthorized','security_test','{}'::jsonb)", [randomUUID(), userA])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await unauthorizedPlatformAudit.query('rollback').catch(() => undefined);
+        unauthorizedPlatformAudit.release();
+      }
+      await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.actor_id', supportApproverUser]);
+      try {
+        const platformAudit = await bootstrapConnection.query("select actor_id,organization_id,business_id,metadata from kablet_audit_events where action='security.support.test'");
+        expect(platformAudit.rows).toHaveLength(1);
+        expect(platformAudit.rows[0]).toMatchObject({ actor_id: supportApproverUser, organization_id: null, business_id: null, metadata: { providerToken: '[redacted]' } });
+      } finally {
+        await bootstrapConnection.query('reset kablet.actor_id');
+      }
       await security.audit({ organizationId: orgA, businessId: businessA, actorId: userA, actorType: 'merchant_user', action: 'security.test', resourceType: 'security_test', metadata: { providerToken: 'must-not-persist' } });
       const auditClient = await runtimePool.connect();
       try {
