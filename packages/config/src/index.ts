@@ -7,6 +7,7 @@ export function loadInteractionServerConfig(env: NodeJS.ProcessEnv = process.env
 export type ServerConfig = z.infer<typeof base> & { DATABASE_URL: string };
 export function loadServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig { const parsed = base.parse(env); const url = parsed.NODE_ENV === 'test' ? parsed.TEST_DATABASE_URL : parsed.DATABASE_URL; if (!url) throw new Error('DATABASE_URL is required for database access'); return {...parsed, DATABASE_URL: url}; }
 export function loadBrowserConfig(env: NodeJS.ProcessEnv = process.env) { return z.object({NEXT_PUBLIC_APP_NAME:z.string().default('Kablet')}).parse(env); }
+export function loadSupabaseAuthConfig(env: NodeJS.ProcessEnv = process.env) { return z.object({ SUPABASE_URL: z.string().url(), SUPABASE_ANON_KEY: z.string().min(1) }).parse(env); }
 
 const testManagerSchema = z.object({ TEST_MANAGER_HOST: z.string().min(1).default('localhost'), TEST_MANAGER_PORT: z.coerce.number().int().positive().default(5432), TEST_MANAGER_USER: z.literal('kablet_test_manager'), TEST_MANAGER_PASSWORD: z.string().min(1), TEST_MANAGER_DATABASE: z.literal('postgres') });
 export type TestManagerConfig = z.infer<typeof testManagerSchema>;

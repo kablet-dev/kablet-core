@@ -1,0 +1,37 @@
+import { cookies } from 'next/headers';
+import { createDb, createSecurityRepository } from '@kablet/db';
+import { loadServerConfig } from '@kablet/config';
+import { createSupabaseAuthAdapter } from './supabase-auth';
+
+export const controlSessionCookieName = 'kablet_control_session';
+
+let cachedRepository: ReturnType<typeof createSecurityRepository> | undefined;
+function repository() { if (!cachedRepository) cachedRepository = createSecurityRepository(createDb(loadServerConfig().DATABASE_URL).db); return cachedRepository; }
+
+export async function issueControlSession(providerToken: string) {
+  const identity = await createSupabaseAuthAdapter().verifySession(providerToken);
+  if (!identity) return null;
+  const security = repository();
+  const user = await security.upsertUser(identity.provider, identity.subject);
+  const session = await security.createSession(String(user.id), new Date(Date.now() + 8 * 60 * 60 * 1000));
+  const store = await cookies();
+  store.set(controlSessionCookieName, session.token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: session.expiresAt });
+  return { sessionId: session.id, expiresAt: session.expiresAt };
+}
+
+export async function resolveControlContext(organizationId: string, businessId: string) {
+  const token = (await cookies()).get(controlSessionCookieName)?.value;
+  if (!token) return null;
+  return repository().resolveMerchantContext(token, organizationId, businessId);
+}
+
+export async function revokeControlSession() {
+  const store = await cookies();
+  const token = store.get(controlSessionCookieName)?.value;
+  if (token) {
+    const security = repository();
+    const session = await security.resolveSession(token);
+    if (session) await security.revokeSession(session.sessionId);
+  }
+  store.delete(controlSessionCookieName);
+}
