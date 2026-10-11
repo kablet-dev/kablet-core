@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  resolveControlContext: vi.fn(), authorizeControlCapability: vi.fn(),
+  resolveControlContext: vi.fn(), authorizeControlCapability: vi.fn(), resolvePlatformOperatorContext: vi.fn(), authorizePlatformCapability: vi.fn(), resolveSupportControlContext: vi.fn(),
   createDb: vi.fn(), createSecurityRepository: vi.fn(), createIntentPolicyRepository: vi.fn(),
   loadControlCredentialVault: vi.fn(),
 }));
 
-vi.mock('../../apps/web/lib/control-auth', () => ({ resolveControlContext: mocks.resolveControlContext, authorizeControlCapability: mocks.authorizeControlCapability }));
+vi.mock('../../apps/web/lib/control-auth', () => ({ resolveControlContext: mocks.resolveControlContext, authorizeControlCapability: mocks.authorizeControlCapability, resolvePlatformOperatorContext: mocks.resolvePlatformOperatorContext, authorizePlatformCapability: mocks.authorizePlatformCapability, resolveSupportControlContext: mocks.resolveSupportControlContext }));
 vi.mock('../../apps/web/lib/control-credential-vault', () => ({ loadControlCredentialVault: mocks.loadControlCredentialVault }));
 vi.mock('@kablet/config', () => ({ loadServerConfig: () => ({ DATABASE_URL: 'postgres://test' }) }));
 vi.mock('@kablet/db', () => ({ createDb: mocks.createDb, createSecurityRepository: mocks.createSecurityRepository, createIntentPolicyRepository: mocks.createIntentPolicyRepository }));
@@ -15,10 +15,13 @@ import { POST as membershipPost } from '../../apps/web/app/api/control/membershi
 import { POST as credentialPost } from '../../apps/web/app/api/control/credential/route';
 import { POST as privacyPost } from '../../apps/web/app/api/control/privacy/route';
 import { POST as policyPost } from '../../apps/web/app/api/control/policy/route';
+import { POST as supportPost } from '../../apps/web/app/api/control/support/route';
+import { POST as platformSafetyPost } from '../../apps/web/app/api/control/platform-safety/route';
 
 const context = { actorId: '10000000-0000-4000-8000-000000000001', actorType: 'merchant_user' as const, organizationId: '20000000-0000-4000-8000-000000000001', businessId: '30000000-0000-4000-8000-000000000001', capabilities: ['user.manage', 'credential.rotate', 'privacy.manage', 'policy.approve', 'truth.read'] as const, sessionId: '40000000-0000-4000-8000-000000000001' };
+const platformContext = { actorId: '10000000-0000-4000-8000-000000000002', actorType: 'platform_operator' as const, organizationId: null, businessId: null, capabilities: ['support.grant', 'platform.safety.manage'] as const, sessionId: '40000000-0000-4000-8000-000000000002' };
 const db = { pool: { end: vi.fn().mockResolvedValue(undefined) }, db: {} };
-const security = { addMembership: vi.fn(), audit: vi.fn(), saveProviderCredential: vi.fn(), revokeProviderCredential: vi.fn(), grantConsent: vi.fn(), revokeConsent: vi.fn(), exportVisitor: vi.fn(), deleteVisitor: vi.fn(), requestPolicyApproval: vi.fn(), approvePolicy: vi.fn(), isPolicyApproved: vi.fn() };
+const security = { addMembership: vi.fn(), audit: vi.fn(), auditPlatform: vi.fn(), saveProviderCredential: vi.fn(), revokeProviderCredential: vi.fn(), grantConsent: vi.fn(), revokeConsent: vi.fn(), exportVisitor: vi.fn(), deleteVisitor: vi.fn(), requestPolicyApproval: vi.fn(), approvePolicy: vi.fn(), isPolicyApproved: vi.fn(), requestSupportGrant: vi.fn(), approveSupportGrant: vi.fn(), revokeSupportGrant: vi.fn(), setPlatformSafetyRule: vi.fn() };
 
 function request(body: unknown) { return new Request('http://localhost/api/control', { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }); }
 
@@ -29,6 +32,9 @@ describe('authenticated control-plane entry points', () => {
     mocks.createSecurityRepository.mockReturnValue(security);
     mocks.resolveControlContext.mockResolvedValue(context);
     mocks.authorizeControlCapability.mockImplementation((resolved: typeof context | null, capability: string) => Boolean(resolved?.capabilities.includes(capability as never)));
+    mocks.resolvePlatformOperatorContext.mockResolvedValue(platformContext);
+    mocks.authorizePlatformCapability.mockImplementation((resolved: typeof platformContext | null, capability: string) => Boolean(resolved?.capabilities.includes(capability as never)));
+    mocks.resolveSupportControlContext.mockResolvedValue({ ...context, actorType: 'platform_operator' as const });
     mocks.loadControlCredentialVault.mockReturnValue({ encrypt: vi.fn(), decrypt: vi.fn() });
     security.addMembership.mockResolvedValue({ rows: [{ id: '50000000-0000-4000-8000-000000000001' }] });
     security.saveProviderCredential.mockResolvedValue(undefined);
@@ -41,6 +47,10 @@ describe('authenticated control-plane entry points', () => {
     security.requestPolicyApproval.mockResolvedValue({ rows: [{ id: '50000000-0000-4000-8000-000000000001' }] });
     security.approvePolicy.mockResolvedValue({ rows: [{ id: '50000000-0000-4000-8000-000000000002' }] });
     security.isPolicyApproved.mockResolvedValue(true);
+    security.requestSupportGrant.mockResolvedValue({ rows: [{ id: '80000000-0000-4000-8000-000000000001', expires_at: new Date('2030-01-01T00:00:00.000Z') }] });
+    security.approveSupportGrant.mockResolvedValue({ rows: [{ id: '80000000-0000-4000-8000-000000000001' }] });
+    security.revokeSupportGrant.mockResolvedValue({ rows: [{ id: '80000000-0000-4000-8000-000000000001' }] });
+    security.setPlatformSafetyRule.mockResolvedValue({ rows: [{ rule_key: 'baseline', effect: 'deny', version: 2 }] });
   });
 
   it('rejects unauthenticated membership administration before repository mutation', async () => {
@@ -83,5 +93,40 @@ describe('authenticated control-plane entry points', () => {
     const response = await policyPost(request({ action: 'approve', organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '70000000-0000-4000-8000-000000000001' }));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ code: 'approval_separation_required' });
+  });
+
+  it('uses the verified platform operator for a scoped support grant', async () => {
+    const response = await supportPost(request({ action: 'request', organizationId: context.organizationId, businessId: context.businessId, purpose: 'Investigate an authorized issue', capabilities: ['privacy.manage'], expiresAt: '2030-01-01T00:00:00.000Z' }));
+    expect(response.status).toBe(201);
+    expect(security.requestSupportGrant).toHaveBeenCalledWith(expect.objectContaining({ actorId: platformContext.actorId, organizationId: context.organizationId, businessId: context.businessId, capabilities: ['privacy.manage'] }));
+  });
+
+  it('rejects support access when the platform session is absent or lacks support authority', async () => {
+    mocks.resolvePlatformOperatorContext.mockResolvedValue(null);
+    let response = await supportPost(request({ action: 'approve', grantId: '80000000-0000-4000-8000-000000000001' }));
+    expect(response.status).toBe(403);
+    mocks.resolvePlatformOperatorContext.mockResolvedValue({ ...platformContext, capabilities: ['audit.read'] });
+    response = await supportPost(request({ action: 'approve', grantId: '80000000-0000-4000-8000-000000000001' }));
+    expect(response.status).toBe(403);
+    expect(security.approveSupportGrant).not.toHaveBeenCalled();
+  });
+
+  it('rejects self-approval and preserves support grant revocation', async () => {
+    security.approveSupportGrant.mockRejectedValueOnce(new Error('support_grant_self_approval'));
+    let response = await supportPost(request({ action: 'approve', grantId: '80000000-0000-4000-8000-000000000001' }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ code: 'self_approval_denied' });
+    response = await supportPost(request({ action: 'revoke', grantId: '80000000-0000-4000-8000-000000000001' }));
+    expect(response.status).toBe(200);
+    expect(security.auditPlatform).toHaveBeenCalledWith(expect.objectContaining({ action: 'support.grant.revoke', actorId: platformContext.actorId }));
+  });
+
+  it('allows only an authorized platform operator to change platform safety', async () => {
+    const response = await platformSafetyPost(request({ ruleKey: 'baseline', effect: 'deny', reason: 'Blocked pending platform safety review' }));
+    expect(response.status).toBe(200);
+    expect(security.setPlatformSafetyRule).toHaveBeenCalledWith(expect.objectContaining({ actorId: platformContext.actorId, effect: 'deny' }));
+    expect(security.auditPlatform).toHaveBeenCalledWith(expect.objectContaining({ action: 'platform.safety.deny', actorId: platformContext.actorId }));
+    mocks.authorizePlatformCapability.mockReturnValue(false);
+    expect((await platformSafetyPost(request({ ruleKey: 'baseline', effect: 'allow', reason: 'Attempted merchant override' }))).status).toBe(403);
   });
 });

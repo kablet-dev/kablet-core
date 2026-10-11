@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createDb, createSecurityRepository } from '@kablet/db';
 import { loadServerConfig } from '@kablet/config';
-import { authorizeControlCapability, resolveControlContext } from '../../../../lib/control-auth';
+import { authorizeControlCapability, resolveControlContext, resolveSupportControlContext } from '../../../../lib/control-auth';
 
 const inputSchema = z.object({
   action: z.enum(['grant_consent', 'revoke_consent', 'export', 'delete']), organizationId: z.string().uuid(), businessId: z.string().uuid(), visitorId: z.string().uuid(),
-  purpose: z.enum(['contact', 'personalization', 'intelligence_context', 'analytics']).optional(), version: z.string().trim().min(1).max(64).optional(),
+  purpose: z.enum(['contact', 'personalization', 'intelligence_context', 'analytics']).optional(), version: z.string().trim().min(1).max(64).optional(), supportGrantId: z.string().uuid().optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -14,7 +14,9 @@ export async function POST(request: Request) {
   try {
     const input = inputSchema.parse(await request.json());
     if ((input.action === 'grant_consent' || input.action === 'revoke_consent') && (!input.purpose || (input.action === 'grant_consent' && !input.version))) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
-    const context = await resolveControlContext(input.organizationId, input.businessId);
+    const context = input.supportGrantId
+      ? await resolveSupportControlContext(input.organizationId, input.businessId, input.supportGrantId, 'privacy.manage')
+      : await resolveControlContext(input.organizationId, input.businessId);
     if (!authorizeControlCapability(context, 'privacy.manage')) return NextResponse.json({ code: 'unauthorized' }, { status: 403 });
     runtime = createDb(loadServerConfig().DATABASE_URL);
     const security = createSecurityRepository(runtime.db);
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ action: input.action, accepted: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
+    if (error instanceof Error && error.message === 'support_access_denied') return NextResponse.json({ code: 'unauthorized' }, { status: 403 });
     return NextResponse.json({ code: 'unavailable' }, { status: 503 });
   } finally { await runtime?.pool.end().catch(() => undefined); }
 }

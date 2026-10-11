@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && error.message === 'approval_separation_required') return NextResponse.json({ code: 'approval_separation_required' }, { status: 403 });
+    if (error instanceof Error && error.message === 'platform_safety_denied') return NextResponse.json({ code: 'platform_safety_denied' }, { status: 403 });
     return NextResponse.json({ code: 'unavailable' }, { status: 503 });
   }
   finally { await runtime?.pool.end().catch(() => undefined); }

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import type { AuthContext, ConsentPurpose, SecurityCapability, ActorType } from '@kablet/domain';
+import type { AuthContext, ConsentPurpose, SecurityCapability, ActorType, SupportGrantCapability } from '@kablet/domain';
 import type { Database, DatabaseTransaction } from './index.js';
 import type { createCredentialVault } from './credential-vault.js';
 
@@ -15,6 +15,9 @@ function safeAuditMetadata(value: unknown): unknown {
 }
 function tenant<T>(db: Database['db'], organizationId: string, businessId: string, fn: (tx: DatabaseTransaction) => Promise<T>) {
   return db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${organizationId},true),set_config('kablet.business_id',${businessId},true)`); return fn(tx); });
+}
+function actorScoped<T>(db: Database['db'], actorId: string, fn: (tx: DatabaseTransaction) => Promise<T>) {
+  return db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.actor_id',${actorId},true)`); return fn(tx); });
 }
 
 export function createSecurityRepository(db: Database['db']) {
@@ -59,6 +62,60 @@ export function createSecurityRepository(db: Database['db']) {
       return Boolean(row.rows[0]);
     },
     async revokeSession(sessionId: string) { await db.execute(sql`update kablet_auth_sessions set revoked_at=now() where id=${sessionId}::uuid`); },
+    async requestSupportGrant(input: { actorId: string; organizationId: string; businessId: string; purpose: string; capabilities: SupportGrantCapability[]; expiresAt: Date }) {
+      if (input.purpose.trim().length < 10 || input.capabilities.length === 0 || input.expiresAt.getTime() <= Date.now()) throw new Error('invalid_support_grant');
+      return actorScoped(db, input.actorId, async tx => {
+        const operator = await tx.execute(sql`select capabilities from kablet_platform_operators where user_id=${input.actorId}::uuid and status='active'`);
+        if (!operator.rows[0] || !(operator.rows[0].capabilities as unknown[]).includes('support.grant')) throw new Error('support_grant_denied');
+        await tx.execute(sql`select set_config('kablet.organization_id',${input.organizationId},true),set_config('kablet.business_id',${input.businessId},true)`);
+        const business = await tx.execute(sql`select 1 from businesses where id=${input.businessId}::uuid and organization_id=${input.organizationId}::uuid and active`);
+        if (!business.rows[0]) throw new Error('support_grant_target_invalid');
+        return tx.execute(sql`insert into kablet_support_grants(id,requested_by,organization_id,business_id,purpose,capabilities,expires_at) values (${randomUUID()}::uuid,${input.actorId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.purpose},${JSON.stringify(input.capabilities)}::jsonb,${input.expiresAt}) returning id,expires_at`);
+      });
+    },
+    async approveSupportGrant(input: { actorId: string; grantId: string }) {
+      return actorScoped(db, input.actorId, async tx => {
+        const operator = await tx.execute(sql`select capabilities from kablet_platform_operators where user_id=${input.actorId}::uuid and status='active'`);
+        if (!operator.rows[0] || !(operator.rows[0].capabilities as unknown[]).includes('support.grant')) throw new Error('support_grant_denied');
+        const grant = await tx.execute(sql`select requested_by,expires_at,revoked_at from kablet_support_grants where id=${input.grantId}::uuid`);
+        const row = grant.rows[0] as { requested_by: string; expires_at: Date; revoked_at: Date | null } | undefined;
+        if (!row || row.revoked_at || new Date(row.expires_at).getTime() <= Date.now()) throw new Error('support_grant_unavailable');
+        if (String(row.requested_by) === input.actorId) throw new Error('support_grant_self_approval');
+        return tx.execute(sql`update kablet_support_grants set approved_by=${input.actorId}::uuid,approved_at=now() where id=${input.grantId}::uuid and approved_by is null returning id,expires_at`);
+      });
+    },
+    async revokeSupportGrant(input: { actorId: string; grantId: string }) {
+      return actorScoped(db, input.actorId, async tx => {
+        const operator = await tx.execute(sql`select capabilities from kablet_platform_operators where user_id=${input.actorId}::uuid and status='active'`);
+        if (!operator.rows[0] || !(operator.rows[0].capabilities as unknown[]).includes('support.grant')) throw new Error('support_grant_denied');
+        return tx.execute(sql`update kablet_support_grants set revoked_at=coalesce(revoked_at,now()) where id=${input.grantId}::uuid returning id,revoked_at`);
+      });
+    },
+    async resolveSupportGrant(input: { actorId: string; grantId: string; organizationId: string; businessId: string; capability: SupportGrantCapability }) {
+      return actorScoped(db, input.actorId, async tx => {
+        const operator = await tx.execute(sql`select 1 from kablet_platform_operators where user_id=${input.actorId}::uuid and status='active'`);
+        if (!operator.rows[0]) throw new Error('support_access_denied');
+        const grant = await tx.execute(sql`select id,capabilities,expires_at from kablet_support_grants where id=${input.grantId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and approved_by is not null and revoked_at is null and expires_at>now() and capabilities @> ${JSON.stringify([input.capability])}::jsonb`);
+        if (!grant.rows[0]) throw new Error('support_access_denied');
+        return { grantId: String(grant.rows[0].id), actorId: input.actorId, organizationId: input.organizationId, businessId: input.businessId, capability: input.capability, expiresAt: grant.rows[0].expires_at };
+      });
+    },
+    async setPlatformSafetyRule(input: { actorId: string; ruleKey: string; effect: 'allow' | 'deny'; reason: string }) {
+      if (input.reason.trim().length < 10) throw new Error('invalid_platform_safety_rule');
+      return actorScoped(db, input.actorId, async tx => {
+        const operator = await tx.execute(sql`select capabilities from kablet_platform_operators where user_id=${input.actorId}::uuid and status='active'`);
+        if (!operator.rows[0] || !(operator.rows[0].capabilities as unknown[]).includes('platform.safety.manage')) throw new Error('platform_safety_denied');
+        return tx.execute(sql`insert into kablet_platform_safety_rules(rule_key,effect,reason,updated_by,version,updated_at) values (${input.ruleKey},${input.effect},${input.reason},${input.actorId}::uuid,1,now()) on conflict (rule_key) do update set effect=excluded.effect,reason=excluded.reason,updated_by=excluded.updated_by,version=kablet_platform_safety_rules.version+1,updated_at=now() returning rule_key,effect,version`);
+      });
+    },
+    async assertPlatformSafety(policyKey: string) {
+      const row = await db.execute(sql`select effect,reason from kablet_platform_safety_rules where rule_key=${policyKey} or rule_key='*' order by case when rule_key=${policyKey} then 0 else 1 end limit 1`);
+      const safety = row.rows[0] as { effect?: string; reason?: string } | undefined;
+      if (!safety || safety.effect !== 'allow') throw new Error('platform_safety_denied');
+    },
+    async auditPlatform(input: { actorId: string; action: string; resourceType: string; resourceId?: string; metadata?: Record<string, unknown> }) {
+      return actorScoped(db, input.actorId, async tx => tx.execute(sql`insert into kablet_audit_events(id,organization_id,business_id,actor_id,actor_type,action,resource_type,resource_id,metadata) values (${randomUUID()}::uuid,null,null,${input.actorId}::uuid,'platform_operator',${input.action},${input.resourceType},${input.resourceId ? sql`${input.resourceId}::uuid` : sql`null`},${JSON.stringify(safeAuditMetadata(input.metadata ?? {}))}::jsonb) returning id`));
+    },
     async addMembership(input: { userId: string; organizationId: string; businessId?: string; role: string; capabilities: SecurityCapability[] }) {
       const id = randomUUID();
       return tenant(db, input.organizationId, input.businessId ?? input.organizationId, async tx => tx.execute(sql`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values (${id}::uuid,${input.userId}::uuid,${input.organizationId}::uuid,${input.businessId ? sql`${input.businessId}::uuid` : sql`null`},${input.role},${JSON.stringify(input.capabilities)}::jsonb) returning id`));

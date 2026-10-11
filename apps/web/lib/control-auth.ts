@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { createDb, createSecurityRepository } from '@kablet/db';
 import { loadServerConfig } from '@kablet/config';
-import type { SecurityCapability } from '@kablet/domain';
+import type { SecurityCapability, SupportGrantCapability } from '@kablet/domain';
 import { createSupabaseAuthAdapter } from './supabase-auth';
 
 export const controlSessionCookieName = 'kablet_control_session';
@@ -29,6 +29,23 @@ export async function resolveControlContext(organizationId: string, businessId: 
 
 export function authorizeControlCapability(context: Awaited<ReturnType<typeof resolveControlContext>>, capability: SecurityCapability) {
   return context?.capabilities.includes(capability) ?? false;
+}
+
+export async function resolvePlatformOperatorContext() {
+  const token = (await cookies()).get(platformSessionCookieName)?.value;
+  if (!token) return null;
+  return repository().resolvePlatformContext(token);
+}
+
+export function authorizePlatformCapability(context: Awaited<ReturnType<typeof resolvePlatformOperatorContext>>, capability: Extract<SecurityCapability, 'support.grant' | 'platform.safety.manage'>) {
+  return context?.capabilities.includes(capability) ?? false;
+}
+
+export async function resolveSupportControlContext(organizationId: string, businessId: string, grantId: string, capability: SupportGrantCapability) {
+  const platform = await resolvePlatformOperatorContext();
+  if (!platform) return null;
+  await repository().resolveSupportGrant({ actorId: platform.actorId, grantId, organizationId, businessId, capability });
+  return { ...platform, organizationId, businessId, capabilities: [capability], sessionId: platform.sessionId };
 }
 
 export async function issuePlatformOperatorSession(providerToken: string) {

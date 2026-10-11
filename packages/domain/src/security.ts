@@ -9,9 +9,11 @@ export type Role = z.infer<typeof roleSchema>;
 export const securityCapabilitySchema = z.enum([
   'organization.manage', 'business.manage', 'truth.read', 'truth.write',
   'integration.manage', 'experiment.manage', 'reporting.read', 'user.manage',
-  'policy.approve', 'credential.read_metadata', 'credential.rotate', 'privacy.manage', 'audit.read',
+  'policy.approve', 'credential.read_metadata', 'credential.rotate', 'privacy.manage', 'platform.safety.manage', 'support.grant', 'audit.read',
 ]);
 export type SecurityCapability = z.infer<typeof securityCapabilitySchema>;
+export const supportGrantCapabilitySchema = z.enum(['truth.read', 'credential.read_metadata', 'privacy.manage', 'audit.read']);
+export type SupportGrantCapability = z.infer<typeof supportGrantCapabilitySchema>;
 
 export const membershipStatusSchema = z.enum(['invited', 'active', 'suspended', 'revoked']);
 export type MembershipStatus = z.infer<typeof membershipStatusSchema>;

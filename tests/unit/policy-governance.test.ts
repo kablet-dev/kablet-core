@@ -6,7 +6,7 @@ const context = { actorId: '10000000-0000-4000-8000-000000000001', actorType: 'm
 describe('merchant policy governance', () => {
   it('publishes only with merchant approval and records actor lineage', async () => {
     const policyRepository = { publish: vi.fn().mockResolvedValue(undefined) };
-    const securityRepository = { isPolicyApproved: vi.fn().mockResolvedValue(true), audit: vi.fn().mockResolvedValue(undefined) };
+    const securityRepository = { assertPlatformSafety: vi.fn().mockResolvedValue(undefined), isPolicyApproved: vi.fn().mockResolvedValue(true), audit: vi.fn().mockResolvedValue(undefined) };
     await expect(publishMerchantPolicy({ context: { ...context, capabilities: [...context.capabilities] }, organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '50000000-0000-4000-8000-000000000001', approvalId: '60000000-0000-4000-8000-000000000001', policyRepository: policyRepository as never, securityRepository: securityRepository as never })).resolves.toEqual({ published: true, revisionId: '50000000-0000-4000-8000-000000000001' });
     expect(policyRepository.publish).toHaveBeenCalledWith(context.organizationId, context.businessId, 'baseline', '50000000-0000-4000-8000-000000000001');
     expect(securityRepository.audit).toHaveBeenCalledWith(expect.objectContaining({ actorId: context.actorId, actorType: 'merchant_user', action: 'policy.publish' }));
@@ -14,7 +14,7 @@ describe('merchant policy governance', () => {
 
   it('rejects platform actors and does not call the policy repository', async () => {
     const policyRepository = { publish: vi.fn() };
-    const securityRepository = { isPolicyApproved: vi.fn(), audit: vi.fn() };
+    const securityRepository = { assertPlatformSafety: vi.fn(), isPolicyApproved: vi.fn(), audit: vi.fn() };
     await expect(publishMerchantPolicy({ context: { ...context, actorType: 'platform_operator', capabilities: [...context.capabilities] }, organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '50000000-0000-4000-8000-000000000001', approvalId: '60000000-0000-4000-8000-000000000001', policyRepository: policyRepository as never, securityRepository: securityRepository as never })).rejects.toThrow('authorization_denied:wrong_actor_type');
     expect(policyRepository.publish).not.toHaveBeenCalled();
     expect(securityRepository.audit).not.toHaveBeenCalled();
@@ -22,8 +22,15 @@ describe('merchant policy governance', () => {
 
   it('rejects publication without a durable approval event', async () => {
     const policyRepository = { publish: vi.fn() };
-    const securityRepository = { isPolicyApproved: vi.fn().mockResolvedValue(false), audit: vi.fn() };
+    const securityRepository = { assertPlatformSafety: vi.fn().mockResolvedValue(undefined), isPolicyApproved: vi.fn().mockResolvedValue(false), audit: vi.fn() };
     await expect(publishMerchantPolicy({ context, organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '50000000-0000-4000-8000-000000000001', approvalId: '60000000-0000-4000-8000-000000000001', policyRepository: policyRepository as never, securityRepository: securityRepository as never })).rejects.toThrow('policy_approval_required');
+    expect(policyRepository.publish).not.toHaveBeenCalled();
+  });
+
+  it('blocks publication when platform safety denies the policy', async () => {
+    const policyRepository = { publish: vi.fn() };
+    const securityRepository = { assertPlatformSafety: vi.fn().mockRejectedValue(new Error('platform_safety_denied')), isPolicyApproved: vi.fn(), audit: vi.fn() };
+    await expect(publishMerchantPolicy({ context, organizationId: context.organizationId, businessId: context.businessId, policyKey: 'baseline', revisionId: '50000000-0000-4000-8000-000000000001', approvalId: '60000000-0000-4000-8000-000000000001', policyRepository: policyRepository as never, securityRepository: securityRepository as never })).rejects.toThrow('platform_safety_denied');
     expect(policyRepository.publish).not.toHaveBeenCalled();
   });
 });

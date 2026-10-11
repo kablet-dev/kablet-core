@@ -36,6 +36,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const userA = randomUUID();
       const approverUser = randomUUID();
       const operatorUser = randomUUID();
+      const supportApproverUser = randomUUID();
       try {
         await migrate(bootstrap.db, { migrationsFolder });
         const privacyBoundary = await bootstrapConnection.query("select pg_get_userbyid(p.proowner) as owner, p.prosecdef as security_definer, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'SELECT') as privacy_can_select, has_table_privilege('kablet_privacy_owner', 'public.kablet_consents', 'DELETE') as privacy_can_delete, has_table_privilege('kablet_dev', 'public.kablet_consents', 'DELETE') as runtime_can_delete from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='kablet_visitor_privacy_delete' and p.pronargs=2");
@@ -57,7 +58,9 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [approverUser, `approver-${approverUser}`]);
           await bootstrapConnection.query(`insert into kablet_memberships(id,user_id,organization_id,business_id,role,capabilities) values ($1,$2,$3,$4,'admin','["truth.read","policy.approve"]')`, [randomUUID(), approverUser, orgA, businessA]);
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [operatorUser, `operator-${operatorUser}`]);
-          await bootstrapConnection.query(`insert into kablet_platform_operators(user_id,capabilities) values ($1,'["audit.read"]')`, [operatorUser]);
+          await bootstrapConnection.query(`insert into kablet_platform_operators(user_id,capabilities) values ($1,'["audit.read","support.grant"]')`, [operatorUser]);
+          await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [supportApproverUser, `support-approver-${supportApproverUser}`]);
+          await bootstrapConnection.query(`insert into kablet_platform_operators(user_id,capabilities) values ($1,'["audit.read","support.grant","platform.safety.manage"]')`, [supportApproverUser]);
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgB]);
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.business_id', businessB]);
           await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgB}','Security B')`);
@@ -149,6 +152,24 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       expect(approved.rows).toHaveLength(1);
       await expect(security.isPolicyApproved({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, approvalId: String(approved.rows[0].id) })).resolves.toBe(true);
       expect(String(requested.rows[0].id)).not.toBe(String(approved.rows[0].id));
+      const supportGrant = await security.requestSupportGrant({ actorId: operatorUser, organizationId: orgA, businessId: businessA, purpose: 'Investigate an authorized tenant issue', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 60_000) });
+      const supportGrantId = String(supportGrant.rows[0].id);
+      await expect(security.approveSupportGrant({ actorId: operatorUser, grantId: supportGrantId })).rejects.toThrow('support_grant_self_approval');
+      await expect(security.approveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId })).resolves.toMatchObject({ rows: [{ id: supportGrantId }] });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).resolves.toMatchObject({ grantId: supportGrantId, organizationId: orgA, businessId: businessA });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgB, businessId: businessB, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      await security.revokeSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      const expiringGrant = await security.requestSupportGrant({ actorId: operatorUser, organizationId: orgA, businessId: businessA, purpose: 'Verify expiry enforcement safely', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 2_000) });
+      const expiringGrantId = String(expiringGrant.rows[0].id);
+      await security.approveSupportGrant({ actorId: supportApproverUser, grantId: expiringGrantId });
+      await new Promise(resolve => setTimeout(resolve, 2_100));
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: expiringGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, ruleKey: 'baseline', effect: 'deny', reason: 'Blocked during a safety review' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'deny' }] });
+      await expect(security.assertPlatformSafety('baseline')).rejects.toThrow('platform_safety_denied');
+      await expect(security.setPlatformSafetyRule({ actorId: userA, ruleKey: 'baseline', effect: 'allow', reason: 'Merchant cannot override safety' })).rejects.toThrow('platform_safety_denied');
+      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
+      await security.auditPlatform({ actorId: supportApproverUser, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
       await security.audit({ organizationId: orgA, businessId: businessA, actorId: userA, actorType: 'merchant_user', action: 'security.test', resourceType: 'security_test', metadata: { providerToken: 'must-not-persist' } });
       const auditClient = await runtimePool.connect();
       try {
