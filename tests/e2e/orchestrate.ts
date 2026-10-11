@@ -95,6 +95,7 @@ async function main() {
       KABLET_INTERACTION_ORGANIZATION_ID: database.organizationId,
       KABLET_INTERACTION_BUSINESS_ID: database.businessId,
       KABLET_INTERACTION_COOKIE_SECRET: database.cookieSecret,
+      KABLET_INTERACTION_ENABLE_DEMO_INTERPRETER: 'true',
       KABLET_E2E_STATE_FILE: stateFile,
       PORT: String(port),
       KABLET_E2E_BASE_URL: baseURL,

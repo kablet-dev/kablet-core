@@ -1,0 +1,122 @@
+name: Kablet CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run evidence:manifest -- --output milestone-01-evidence.json
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test -- --reporter=dot
+      - run: pnpm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: milestone-01-evidence-${{ github.sha }}
+          path: milestone-01-evidence.json
+          if-no-files-found: error
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  database:
+    name: Disposable PostgreSQL integration and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      TEST_MANAGER_HOST: localhost
+      TEST_MANAGER_PORT: 5432
+      TEST_MANAGER_USER: kablet_test_manager
+      TEST_MANAGER_PASSWORD: ci-manager-password
+      TEST_MANAGER_DATABASE: postgres
+      TEST_BOOTSTRAP_USER: kablet_test_bootstrap
+      TEST_BOOTSTRAP_PASSWORD: ci-bootstrap-password
+      TEST_ROLE_ADMIN_URL: postgresql://postgres:ci-postgres-password@localhost:5432/postgres
+      TEST_APP_PASSWORD: ci-app-password
+      TEST_UNAUTHORIZED_USER: kablet_unauthorized
+      TEST_UNAUTHORIZED_PASSWORD: ci-unauthorized-password
+      DATABASE_URL: postgresql://kablet_dev:ci-app-password@localhost:5432/kablet_dev
+      TEST_DATABASE_URL: postgresql://kablet_dev:ci-app-password@localhost:5432/kablet_test_ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create disposable test identities
+        shell: bash
+        env:
+          PGPASSWORD: ci-postgres-password
+        run: |
+          psql --host=localhost --port=5432 --username=postgres --dbname=postgres --set=ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE kablet_privacy_owner NOLOGIN;
+          CREATE ROLE kablet_test_manager LOGIN PASSWORD 'ci-manager-password' CREATEDB;
+          CREATE ROLE kablet_test_bootstrap LOGIN PASSWORD 'ci-bootstrap-password' NOSUPERUSER NOCREATEDB;
+          CREATE ROLE kablet_dev LOGIN PASSWORD 'ci-app-password' NOSUPERUSER NOCREATEDB;
+          CREATE ROLE kablet_unauthorized LOGIN PASSWORD 'ci-unauthorized-password' NOSUPERUSER NOCREATEDB;
+          SQL
+      - name: Verify test manager boundary
+        shell: bash
+        env:
+          PGPASSWORD: ci-manager-password
+        run: |
+          test "$(psql --host=localhost --port=5432 --username=kablet_test_manager --dbname=postgres --tuples-only --no-align --command="select current_user || '/' || current_database()")" = "kablet_test_manager/postgres"
+      - name: Run disposable PostgreSQL integration tests
+        run: pnpm run test:integration -- --reporter=dot
+      - name: Install Chromium for E2E
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run disposable PostgreSQL browser E2E tests
+        run: pnpm run test:e2e

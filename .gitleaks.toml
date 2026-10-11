@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Kablet non-secret test fixtures"
+paths = [
+  '''^tests/''',
+  '''^docs/''',
+]

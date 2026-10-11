@@ -3,15 +3,14 @@ import { interactionExperienceResponseSchema, safeInteractionErrorSchema, expres
 import { getInteractionService } from '../../../../lib/server-interaction';
 import { InteractionExpiredError } from '../../../../lib/interaction-service';
 import { readJsonBody, RequestBodyTooLargeError } from '../../../../lib/request-body';
-import { cookies } from 'next/headers';
 import { ZodError } from 'zod';
+import { getInteractionHandle } from '../../../../lib/interaction-cookie';
 
-const cookieName = 'kablet_interaction';
 function failure(status: number, code: 'invalid_request' | 'interaction_expired' | 'unavailable') { return NextResponse.json(safeInteractionErrorSchema.parse({ contractVersion: 'interaction-error.v1', code, message: code === 'invalid_request' ? 'Choose one of the supported intents.' : code === 'interaction_expired' ? 'This interaction has expired. Start a new one.' : 'The interaction is temporarily unavailable.' }), { status, headers: { 'Cache-Control': 'no-store' } }); }
 export async function POST(request: Request) {
   try {
     if (request.headers.get('content-length') && Number(request.headers.get('content-length')) > 8192) return failure(413, 'invalid_request');
-    const handle = (await cookies()).get(cookieName)?.value;
+    const handle = await getInteractionHandle();
     if (!handle) return failure(401, 'interaction_expired');
     const input = await readJsonBody(request, 4096);
     const structured = expressIntentRequestSchema.safeParse(input);

@@ -15,5 +15,17 @@ export async function POST(request: Request) {
     const response = NextResponse.json(interactionExperienceResponseSchema.parse({ contractVersion: 'interaction-response.v1', experience: started.experience }), { headers: { 'Cache-Control': 'no-store' } });
     response.cookies.set(cookieName, started.handle, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 1800 });
     return response;
-  } catch (error) { return failure(error instanceof RequestBodyTooLargeError || error instanceof SyntaxError || error instanceof ZodError ? 400 : 503, error instanceof RequestBodyTooLargeError || error instanceof SyntaxError || error instanceof ZodError ? 'invalid_request' : 'unavailable'); }
+  } catch (error) {
+    const invalid = error instanceof RequestBodyTooLargeError || error instanceof SyntaxError || error instanceof ZodError;
+    if (!invalid && process.env.NODE_ENV !== 'production') {
+      const diagnostic = error as { name?: unknown; message?: unknown; stack?: unknown; code?: unknown };
+      console.error('[interaction/start] failed', {
+        name: typeof diagnostic.name === 'string' ? diagnostic.name : 'Error',
+        message: typeof diagnostic.message === 'string' ? diagnostic.message : 'unknown failure',
+        code: typeof diagnostic.code === 'string' ? diagnostic.code : undefined,
+        stack: typeof diagnostic.stack === 'string' ? diagnostic.stack : undefined,
+      });
+    }
+    return failure(invalid ? 400 : 503, invalid ? 'invalid_request' : 'unavailable');
+  }
 }

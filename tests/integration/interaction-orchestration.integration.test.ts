@@ -10,6 +10,8 @@ import { createActionService } from '../../apps/web/lib/action-service';
 import { describe, expect, it } from 'vitest';
 import { seedBaselineIntentPolicy } from './intent-policy-fixture';
 
+const demoInterpretation = (normalizedIntent: 'request_information' | 'unclear', interpreterVersion = 'integration-test') => ({ contractVersion: 'intent-interpretation.v1' as const, normalizedIntent, reasonCode: normalizedIntent === 'unclear' ? 'ambiguous' as const : 'intent_extracted' as const, interpreterVersion });
+
 const manager = loadTestManagerConfig();
 const bootstrapUser = process.env.TEST_BOOTSTRAP_USER;
 const bootstrapPassword = process.env.TEST_BOOTSTRAP_PASSWORD;
@@ -64,6 +66,41 @@ async function disposable() {
 async function cleanup(resource: Awaited<ReturnType<typeof disposable>>) { await resource.runtime.pool.end(); await resource.managerPool.query(`drop database "${resource.name}"`); await resource.managerPool.end(); }
 
 describe('real interaction orchestration', () => {
+  it('routes recognized free text through the governed structured intent path', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business, intentInterpreter: { interpret: async input => input.text === 'need information' ? demoInterpretation('request_information') : demoInterpretation('unclear') } });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const result = await service.interpretIntent(started.handle, { text: 'need information', idempotencyKey: 'free-text-recognized' });
+      expect(result.interpretation.normalizedIntent).toBe('request_information');
+      expect(result.experience.decisionId).not.toBe(started.experience.decisionId);
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('does not fabricate a decision for unclear free text and fails closed without an interpreter', async () => {
+    const resource = await disposable();
+    try {
+      const interpreter = { interpret: async () => demoInterpretation('unclear') };
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business, intentInterpreter: interpreter });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const unclear = await service.interpretIntent(started.handle, { text: 'unsupported request', idempotencyKey: 'free-text-unclear' });
+      expect(unclear.interpretation.normalizedIntent).toBe('unclear');
+      expect(unclear.experience.decisionId).toBe(started.experience.decisionId);
+      const noInterpreter = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business });
+      await expect(noInterpreter.interpretIntent(started.handle, { text: 'need information', idempotencyKey: 'free-text-unavailable' })).rejects.toThrow('intent interpreter is unavailable');
+    } finally { await cleanup(resource); }
+  }, 90000);
+
+  it('replays recognized free text idempotently', async () => {
+    const resource = await disposable();
+    try {
+      const service = createInteractionService({ db: resource.runtime.db, organizationId: org, businessId: business, intentInterpreter: { interpret: async () => demoInterpretation('request_information') } });
+      const started = await service.start(new Date(Date.now() + 60_000));
+      const first = await service.interpretIntent(started.handle, { text: 'need information', idempotencyKey: 'free-text-replay' });
+      const second = await service.interpretIntent(started.handle, { text: 'need information', idempotencyKey: 'free-text-replay' });
+      expect(second.experience.decisionId).toBe(first.experience.decisionId);
+    } finally { await cleanup(resource); }
+  }, 90000);
   it('resumes the latest authoritative experience without creating durable records', async () => {
     const resource = await disposable();
     try {
