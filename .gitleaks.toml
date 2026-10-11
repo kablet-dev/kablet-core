@@ -7,11 +7,3 @@ paths = [
   '''^tests/''',
   '''^docs/''',
 ]
-
-# These values existed only as disposable PostgreSQL CI fixture passwords in
-# earlier workflow revisions. They are not credentials for any external
-# system; current workflow runs derive them from the GitHub run id.
-regexTarget = "secret"
-regexes = [
-  '''^ci-(postgres|manager|bootstrap|app|unauthorized)-password$''',
-]
