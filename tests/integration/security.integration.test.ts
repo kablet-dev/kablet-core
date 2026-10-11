@@ -63,6 +63,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const session = await security.createSession(userA, new Date(Date.now() + 60_000));
       await expect(security.resolveMerchantContext(session.token, orgA, businessA)).resolves.toMatchObject({ actorId: userA, organizationId: orgA, businessId: businessA });
       await expect(security.resolveMerchantContext(session.token, orgB, businessB)).resolves.toBeNull();
+      const expiredSession = await security.createSession(userA, new Date(Date.now() - 60_000));
+      await expect(security.resolveSession(expiredSession.token)).resolves.toBeNull();
       const missingContext = await runtimePool.query('select count(*)::int as count from kablet_memberships');
       expect(missingContext.rows[0].count).toBe(0);
       await security.revokeSession(session.id);

@@ -23,7 +23,7 @@ export function createSecurityRepository(db: Database['db']) {
       return { id, token, expiresAt };
     },
     async resolveSession(token: string): Promise<{ sessionId: string; userId: string } | null> {
-      const row = await db.execute(sql`select id,user_id from kablet_auth_sessions s join kablet_users u on u.id=s.user_id where s.token_hash=${hashToken(token)} and s.revoked_at is null and s.expires_at > now() and u.status='active'`);
+      const row = await db.execute(sql`select s.id,s.user_id from kablet_auth_sessions s join kablet_users u on u.id=s.user_id where s.token_hash=${hashToken(token)} and s.revoked_at is null and s.expires_at > now() and u.status='active'`);
       return row.rows[0] ? { sessionId: String(row.rows[0].id), userId: String(row.rows[0].user_id) } : null;
     },
     async resolveMerchantContext(token: string, organizationId: string, businessId: string): Promise<AuthContext | null> {
