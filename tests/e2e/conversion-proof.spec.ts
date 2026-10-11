@@ -9,6 +9,30 @@ test('completes the browser conversion journey with durable lineage', async ({ p
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
   page.on('requestfailed', request => { failedRequests.push(`${request.method()} ${request.url()} — ${request.failure()?.errorText ?? 'unknown failure'}`); });
   page.on('requestfinished', request => { if (request.url().includes('/api/interaction/start')) finishedRequests.push(`${request.method()} ${request.url()}`); });
+  const statePath = process.env.KABLET_E2E_STATE_FILE;
+  if (!statePath) throw new Error('KABLET_E2E_STATE_FILE is required');
+  const state = JSON.parse(await readFile(statePath, 'utf8')) as { runtimeUrl: string; organizationId: string; businessId: string; offeringId: string; offeringRevisionId: string };
+  async function lineageCounts() {
+    const pool = new pg.Pool({ connectionString: state.runtimeUrl });
+    const connection = await pool.connect();
+    try {
+      await connection.query("select set_config('kablet.organization_id',$1,true),set_config('kablet.business_id',$2,true)", [state.organizationId, state.businessId]);
+      const result = await connection.query(`select
+        (select count(*) from visitor_identities where organization_id=$1 and business_id=$2) as visitors,
+        (select count(*) from interaction_sessions where organization_id=$1 and business_id=$2) as sessions,
+        (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2) as decisions,
+        (select count(*) from experience_exposures where organization_id=$1 and business_id=$2) as exposures,
+        (select count(*) from visitor_observations where organization_id=$1 and business_id=$2 and kind='offering.selected') as selections,
+        (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2 and decision_type='offer_next_step') as next_steps,
+        (select count(*) from interaction_facts where organization_id=$1 and business_id=$2 and interaction_kind='action_confirmed') as confirmations,
+        (select count(*) from action_requests where organization_id=$1 and business_id=$2) as requests,
+        (select count(*) from execution_attempts where organization_id=$1 and business_id=$2) as attempts,
+        (select count(*) from action_outcomes where organization_id=$1 and business_id=$2 and status='verified') as outcomes,
+        (select count(*) from conversion_facts where organization_id=$1 and business_id=$2) as conversions`, [state.organizationId, state.businessId]);
+      return Object.fromEntries(Object.entries(result.rows[0]).map(([key, value]) => [key, Number(value)])) as Record<string, number>;
+    } finally { connection.release(); await pool.end(); }
+  }
+  const before = await lineageCounts();
   const startResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/start');
   await page.goto('/experience/interactive', { waitUntil: 'domcontentloaded' });
   const startResponse = await startResponsePromise;
@@ -92,29 +116,6 @@ test('completes the browser conversion journey with durable lineage', async ({ p
   }
   await expect(page.getByText('Your request was securely delivered and verified.')).toBeVisible();
 
-  const statePath = process.env.KABLET_E2E_STATE_FILE;
-  if (!statePath) throw new Error('KABLET_E2E_STATE_FILE is required');
-  const state = JSON.parse(await readFile(statePath, 'utf8')) as { runtimeUrl: string; organizationId: string; businessId: string; offeringId: string; offeringRevisionId: string };
-  const pool = new pg.Pool({ connectionString: state.runtimeUrl });
-  try {
-    const connection = await pool.connect();
-    try {
-      await connection.query('begin');
-      await connection.query("select set_config('kablet.organization_id',$1,true),set_config('kablet.business_id',$2,true)", [state.organizationId, state.businessId]);
-      const result = await connection.query(`select
-      (select count(*) from visitor_identities where organization_id=$1 and business_id=$2) as visitors,
-      (select count(*) from interaction_sessions where organization_id=$1 and business_id=$2) as sessions,
-      (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2) as decisions,
-      (select count(*) from experience_exposures where organization_id=$1 and business_id=$2) as exposures,
-      (select count(*) from visitor_observations where organization_id=$1 and business_id=$2 and kind='offering.selected') as selections,
-      (select count(*) from visitor_decisions where organization_id=$1 and business_id=$2 and decision_type='offer_next_step') as next_steps,
-      (select count(*) from interaction_facts where organization_id=$1 and business_id=$2 and interaction_kind='action_confirmed') as confirmations,
-      (select count(*) from action_requests where organization_id=$1 and business_id=$2) as requests,
-      (select count(*) from execution_attempts where organization_id=$1 and business_id=$2) as attempts,
-      (select count(*) from action_outcomes where organization_id=$1 and business_id=$2 and status='verified') as outcomes,
-      (select count(*) from conversion_facts where organization_id=$1 and business_id=$2) as conversions`, [state.organizationId, state.businessId]);
-      expect(result.rows[0]).toMatchObject({ visitors: '1', sessions: '1', decisions: '4', exposures: '4', selections: '1', next_steps: '1', confirmations: '1', requests: '1', attempts: '1', outcomes: '1', conversions: '1' });
-      await connection.query('commit');
-    } catch (error) { await connection.query('rollback').catch(() => undefined); throw error; } finally { connection.release(); }
-  } finally { await pool.end(); }
+  const after = await lineageCounts();
+  expect(Object.fromEntries(Object.keys(after).map(key => [key, after[key] - before[key]]))).toEqual({ visitors: 1, sessions: 1, decisions: 4, exposures: 4, selections: 1, next_steps: 1, confirmations: 1, requests: 1, attempts: 1, outcomes: 1, conversions: 1 });
 });

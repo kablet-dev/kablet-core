@@ -37,7 +37,7 @@ function pnpmLauncher(): { command: string; prefix: string[] } {
 
 async function terminate(child: ReturnType<typeof spawn>) {
   if (child.exitCode !== null) return;
-  const exited = new Promise<void>((resolve, reject) => {
+  const waitForExit = () => new Promise<void>((resolve, reject) => {
     if (child.exitCode !== null) { resolve(); return; }
     const timer = setTimeout(() => reject(new Error('owned web server did not exit after termination')), 15000);
     child.once('exit', () => { clearTimeout(timer); resolve(); });
@@ -45,9 +45,15 @@ async function terminate(child: ReturnType<typeof spawn>) {
   if (process.platform === 'win32' && child.pid) {
     await run('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], process.env);
   } else {
-    child.kill('SIGTERM');
+    if (child.pid) process.kill(-child.pid, 'SIGTERM');
+    else child.kill('SIGTERM');
   }
-  await exited;
+  try { await waitForExit(); } catch {
+    if (process.platform === 'win32' && child.pid) await run('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], process.env);
+    else if (child.pid) process.kill(-child.pid, 'SIGKILL');
+    else child.kill('SIGKILL');
+    await waitForExit();
+  }
 }
 
 async function databaseExists(database: string): Promise<boolean> {
@@ -102,7 +108,7 @@ async function main() {
     };
     await writeFile(stateFile, JSON.stringify({ database: database.database, organizationId: database.organizationId, businessId: database.businessId, offeringId: database.offeringId, offeringRevisionId: database.offeringRevisionId, definitionId: database.definitionId, runtimeUrl: database.runtimeUrl }));
     const launcher = pnpmLauncher();
-    server = spawn(launcher.command, [...launcher.prefix, '--filter', '@kablet/web', 'dev'], { env: environment, stdio: 'inherit' });
+    server = spawn(launcher.command, [...launcher.prefix, '--filter', '@kablet/web', 'dev'], { env: environment, stdio: 'inherit', detached: process.platform !== 'win32' });
     await waitForServer(baseURL, server);
     const result = await run(launcher.command, [...launcher.prefix, 'exec', 'playwright', 'test'], environment);
     if (result !== 0) throw new Error(`Playwright exited with status ${result}`);

@@ -19,5 +19,5 @@ test('supports accessible free-text adaptive interaction without fabricating uns
   const recognizedResponse = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/interaction/intent');
   await submit.click();
   expect((await recognizedResponse).ok()).toBeTruthy();
-  await expect(page.getByText('What kind of timeframe are you considering.')).toBeVisible();
+  await expect(page.getByText('What kind of timeframe are you considering?')).toBeVisible();
 });
