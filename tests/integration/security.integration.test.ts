@@ -36,9 +36,10 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const userA = randomUUID();
       try {
         await migrate(bootstrap.db, { migrationsFolder });
-        await bootstrapConnection.query('set role kablet_privacy_owner');
         try {
           await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.organization_id', orgA]);
+          const setupIdentity = await bootstrapConnection.query("select current_user, session_user, current_setting('kablet.organization_id', true) as organization_id");
+          expect(setupIdentity.rows[0]).toMatchObject({ current_user: process.env.TEST_BOOTSTRAP_USER, session_user: process.env.TEST_BOOTSTRAP_USER, organization_id: orgA });
           await bootstrapConnection.query(`insert into organizations(id,name) values ('${orgA}','Security A')`);
           await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessA}','${orgA}','Business A')`);
           await bootstrapConnection.query(`insert into kablet_users(id,auth_provider,provider_subject) values ($1,'supabase',$2)`, [userA, `subject-${userA}`]);
@@ -48,7 +49,6 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
           await bootstrapConnection.query(`insert into businesses(id,organization_id,name) values ('${businessB}','${orgB}','Business B')`);
         } finally {
           await bootstrapConnection.query('reset kablet.organization_id');
-          await bootstrapConnection.query('reset role');
         }
       } finally {
         await admin.query('revoke kablet_privacy_owner from kablet_test_bootstrap');
