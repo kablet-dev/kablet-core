@@ -37,6 +37,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const operatorUser = randomUUID();
       try {
         await migrate(bootstrap.db, { migrationsFolder });
+        await bootstrapConnection.query('grant select on businesses to kablet_dev');
         await bootstrapConnection.query('grant select, insert, update, delete on visitor_identities, visitor_sessions, visitor_observations, visitor_state_revisions, visitor_states to kablet_dev');
         await bootstrapConnection.query('grant select on visitor_decisions, interaction_facts, experience_exposures, action_requests, action_outcomes, ai_intent_invocations, visitor_consents to kablet_dev');
         try {
@@ -66,6 +67,8 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       runtimePool = runtime.pool;
       const security = createSecurityRepository(runtime.db);
       const visitors = createVisitorStateRepository(runtime.db);
+      const runtimeIdentity = await runtimePool.query("select current_user, has_table_privilege(current_user, 'businesses', 'SELECT') as can_read_businesses");
+      expect(runtimeIdentity.rows[0]).toMatchObject({ current_user: 'kablet_dev', can_read_businesses: true });
       const operatorSession = await security.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
       await expect(security.resolvePlatformContext(operatorSession.token)).resolves.toMatchObject({ actorId: operatorUser, actorType: 'platform_operator', organizationId: null, businessId: null });
       await expect(security.resolveMerchantContext(operatorSession.token, orgA, businessA)).resolves.toBeNull();
