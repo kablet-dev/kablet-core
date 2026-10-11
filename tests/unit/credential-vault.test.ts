@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCredentialVault } from '@kablet/db';
+import { createCredentialVault, createRotatingCredentialVault } from '@kablet/db';
 
 describe('provider credential boundary', () => {
   it('encrypts and decrypts only with the active key version', () => {
@@ -12,5 +12,13 @@ describe('provider credential boundary', () => {
 
   it('rejects invalid key material', () => {
     expect(() => createCredentialVault(Buffer.alloc(16), 'key-1')).toThrow('32 bytes');
+  });
+
+  it('decrypts an older version while encrypting with the active version', () => {
+    const oldVault = createCredentialVault(Buffer.alloc(32, 1), 'key-1');
+    const old = oldVault.encrypt('rotating-provider-secret');
+    const rotating = createRotatingCredentialVault({ 'key-1': Buffer.alloc(32, 1), 'key-2': Buffer.alloc(32, 2) }, 'key-2');
+    expect(rotating.decrypt(old)).toBe('rotating-provider-secret');
+    expect(rotating.encrypt('new-secret').keyVersion).toBe('key-2');
   });
 });

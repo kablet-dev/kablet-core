@@ -23,6 +23,9 @@ export const authContextSchema = z.object({
 }).strict();
 export type AuthContext = z.infer<typeof authContextSchema>;
 
+export const policyApprovalEventTypeSchema = z.enum(['requested', 'approved', 'rejected']);
+export type PolicyApprovalEventType = z.infer<typeof policyApprovalEventTypeSchema>;
+
 export type ExternalIdentity = { provider: 'supabase'; subject: string };
 export interface AuthProviderAdapter {
   verifySession(token: string): Promise<ExternalIdentity | null>;

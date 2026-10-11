@@ -4,6 +4,7 @@ import { loadServerConfig } from '@kablet/config';
 import { createSupabaseAuthAdapter } from './supabase-auth';
 
 export const controlSessionCookieName = 'kablet_control_session';
+export const platformSessionCookieName = 'kablet_platform_session';
 
 let cachedRepository: ReturnType<typeof createSecurityRepository> | undefined;
 function repository() { if (!cachedRepository) cachedRepository = createSecurityRepository(createDb(loadServerConfig().DATABASE_URL).db); return cachedRepository; }
@@ -25,6 +26,18 @@ export async function resolveControlContext(organizationId: string, businessId: 
   return repository().resolveMerchantContext(token, organizationId, businessId);
 }
 
+export async function issuePlatformOperatorSession(providerToken: string) {
+  const identity = await createSupabaseAuthAdapter().verifySession(providerToken);
+  if (!identity) return null;
+  const security = repository();
+  const user = await security.upsertUser(identity.provider, identity.subject);
+  if (!(await security.isRegisteredPlatformOperator(String(user.id)))) return null;
+  const session = await security.createSession(String(user.id), new Date(Date.now() + 60 * 60 * 1000), 'platform_operator');
+  const store = await cookies();
+  store.set(platformSessionCookieName, session.token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: session.expiresAt });
+  return { sessionId: session.id, expiresAt: session.expiresAt };
+}
+
 export async function revokeControlSession() {
   const store = await cookies();
   const token = store.get(controlSessionCookieName)?.value;
@@ -34,4 +47,15 @@ export async function revokeControlSession() {
     if (session) await security.revokeSession(session.sessionId);
   }
   store.delete(controlSessionCookieName);
+}
+
+export async function revokePlatformOperatorSession() {
+  const store = await cookies();
+  const token = store.get(platformSessionCookieName)?.value;
+  if (token) {
+    const security = repository();
+    const session = await security.resolveSession(token);
+    if (session?.actorType === 'platform_operator') await security.revokeSession(session.sessionId);
+  }
+  store.delete(platformSessionCookieName);
 }
