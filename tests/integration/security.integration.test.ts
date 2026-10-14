@@ -272,8 +272,17 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const forgedPlatformSession = await runtimePool.connect();
       try {
         await forgedPlatformSession.query('begin');
-        await expect(forgedPlatformSession.query("insert into kablet_auth_sessions(id,user_id,token_hash,actor_type,expires_at) values ($1,$2,$3,'platform_operator',now()+interval '1 hour')", [randomUUID(), supportApproverUser, randomBytes(32)])).rejects.toMatchObject({ code: '42501' });
-        await expect(forgedPlatformSession.query("update kablet_auth_sessions set actor_type='platform_operator' where id=$1", [session.id])).rejects.toMatchObject({ code: '42501' });
+        const expectDeniedInSavepoint = async (query: string, values: unknown[]) => {
+          await forgedPlatformSession.query('savepoint expected_authorization_denial');
+          try {
+            await expect(forgedPlatformSession.query(query, values)).rejects.toMatchObject({ code: '42501' });
+          } finally {
+            await forgedPlatformSession.query('rollback to savepoint expected_authorization_denial');
+            await forgedPlatformSession.query('release savepoint expected_authorization_denial');
+          }
+        };
+        await expectDeniedInSavepoint("insert into kablet_auth_sessions(id,user_id,token_hash,actor_type,expires_at) values ($1,$2,$3,'platform_operator',now()+interval '1 hour')", [randomUUID(), supportApproverUser, randomBytes(32)]);
+        await expectDeniedInSavepoint("update kablet_auth_sessions set actor_type='platform_operator' where id=$1", [session.id]);
       } finally {
         await forgedPlatformSession.query('rollback').catch(() => undefined);
         forgedPlatformSession.release();
