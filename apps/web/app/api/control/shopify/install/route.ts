@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createCommerceRepository, createDb } from '@kablet/db';
 import { authorizeControlCapability, resolveControlContext } from '../../../../../lib/control-auth';
-import { buildShopifyInstallUrl, createShopifyOAuthState, normalizeShopifyDomain, SHOPIFY_REQUIRED_SCOPES } from '../../../../lib/shopify-provider';
+import { buildShopifyInstallUrl, createShopifyOAuthState, normalizeShopifyDomain, SHOPIFY_REQUIRED_SCOPES } from '../../../../../lib/shopify-provider';
 import { loadControlServerConfig } from '@kablet/config';
 
 const inputSchema = z.object({ organizationId: z.string().uuid(), businessId: z.string().uuid(), shopDomain: z.string().min(1).max(255) }).strict();

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createCommerceRepository, createCredentialVault, createDb, createSecurityRepository } from '@kablet/db';
-import { exchangeShopifyCode, normalizeShopifyDomain, verifyShopifyOAuthQuery } from '../../../../lib/shopify-provider';
+import { exchangeShopifyCode, normalizeShopifyDomain, verifyShopifyOAuthQuery } from '../../../../../lib/shopify-provider';
 import { loadControlServerConfig } from '@kablet/config';
 
 export async function GET(request: Request) {
