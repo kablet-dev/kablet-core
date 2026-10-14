@@ -203,6 +203,27 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
+### Chapter 02 remediation status — not a completion declaration
+
+The current implementation establishes the following reusable security boundaries:
+
+- **02.01:** Supabase-backed merchant and platform-operator session issuance, expiry, revocation and server-side membership/operator resolution in `apps/web/lib/supabase-auth.ts`, `apps/web/lib/control-auth.ts` and `packages/db/src/security.ts`.
+- **02.02:** Canonical capabilities, tenant-scoped membership authorization, requester/approver separation and time-bounded support grants in `packages/domain/src/security.ts`, `packages/db/src/security.ts`, migrations `0019`, `0020`, `0024`, and control-plane routes under `apps/web/app/api/control/`.
+- **02.03:** Tenant-scoped export, transactional deletion, consent records and a durable pending deletion-request boundary in `packages/db/src/security.ts`, `apps/web/app/api/control/privacy/route.ts`, and migrations `0021` and `0027`.
+- **02.04:** Server-side encrypted credential storage, key-versioned decryption, rotation, revocation and scope checks in `packages/db/src/credential-vault.ts`, `packages/db/src/security.ts`, and migration `0026`.
+- **02.05:** Approval-linked policy publication, runtime platform-safety checks, append-only audit evidence and redacted metadata in `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, and migrations `0020`, `0024`, `0025`.
+- **02-F5 remediation:** Authenticated platform session provenance and support-grant lifecycle hardening are implemented in migration `0028_security_context_and_support_grant_hardening.sql`; runtime consent-dependent action eligibility now fails closed when a control-plane consent is revoked in `apps/web/lib/action-service.ts`.
+
+Fresh verification evidence currently consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38551341338`, plus the focused security and action-outcome integration coverage. The roadmap gate remains **NOT COMPLETE** until the fresh evidence is independently reviewed and the unresolved boundaries below are closed or explicitly accepted by the decision owner.
+
+The following obligations remain pending and are intentionally deferred to the first real provider/downstream integration milestone:
+
+1. Every provider adapter must call the credential authorization boundary immediately before execution and reject revoked, expired or insufficiently scoped credentials. No live external provider adapter currently exists in the repository.
+2. Every downstream processor that stores visitor-derived data must consume `kablet_privacy_deletion_requests` with retryable, idempotent processing, durable attempts and completion receipts. No external downstream processor currently exists; deletion remains visibly `pending` until one is implemented.
+3. Deployment key management, rotation operations and production incident controls remain infrastructure obligations; missing encryption configuration must continue to fail closed.
+
+Required acceptance evidence for this chapter includes direct SQL negative tests for forged actor context, immutable support-grant fields, post-withdrawal action rejection, tenant isolation, audit redaction/immutability, and the complete migration sequence. These references are implemented in `tests/integration/security.integration.test.ts` and `tests/integration/action-outcome.integration.test.ts`; CI execution remains the authoritative PostgreSQL verification environment.
+
 # Chapter 03 — Shopify Commerce Foundation & Durable Provider Operations
 
 **Outcome:** Establish verified Shopify truth and resilient provider integration, not just catalog screenshots.

@@ -20,18 +20,18 @@ export async function POST(request: Request) {
     const security = createSecurityRepository(runtime.db);
     if (input.action === 'request') {
       if (!input.organizationId || !input.businessId || !input.purpose || !input.capabilities || !input.expiresAt) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
-      const result = await security.requestSupportGrant({ actorId: context!.actorId, organizationId: input.organizationId, businessId: input.businessId, purpose: input.purpose, capabilities: input.capabilities, expiresAt: input.expiresAt });
+      const result = await security.requestSupportGrant({ actorId: context!.actorId, sessionId: context!.sessionId!, organizationId: input.organizationId, businessId: input.businessId, purpose: input.purpose, capabilities: input.capabilities, expiresAt: input.expiresAt });
       await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: 'platform_operator', action: 'support.grant.request', resourceType: 'support_grant', resourceId: String(result.rows[0]?.id), metadata: { purpose: input.purpose, capabilities: input.capabilities, expiresAt: input.expiresAt.toISOString() } });
       return NextResponse.json({ grantId: result.rows[0]?.id, expiresAt: result.rows[0]?.expires_at }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     }
     if (!input.grantId) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
     if (input.action === 'approve') {
-      const result = await security.approveSupportGrant({ actorId: context!.actorId, grantId: input.grantId });
-      await security.auditPlatform({ actorId: context!.actorId, action: 'support.grant.approve', resourceType: 'support_grant', resourceId: input.grantId });
+      const result = await security.approveSupportGrant({ actorId: context!.actorId, sessionId: context!.sessionId!, grantId: input.grantId });
+      await security.auditPlatform({ actorId: context!.actorId, sessionId: context!.sessionId!, action: 'support.grant.approve', resourceType: 'support_grant', resourceId: input.grantId });
       return NextResponse.json({ grantId: result.rows[0]?.id, approved: true }, { headers: { 'Cache-Control': 'no-store' } });
     }
-    const result = await security.revokeSupportGrant({ actorId: context!.actorId, grantId: input.grantId });
-    await security.auditPlatform({ actorId: context!.actorId, action: 'support.grant.revoke', resourceType: 'support_grant', resourceId: input.grantId });
+    const result = await security.revokeSupportGrant({ actorId: context!.actorId, sessionId: context!.sessionId!, grantId: input.grantId });
+    await security.auditPlatform({ actorId: context!.actorId, sessionId: context!.sessionId!, action: 'support.grant.revoke', resourceType: 'support_grant', resourceId: input.grantId });
     return NextResponse.json({ grantId: result.rows[0]?.id, revoked: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });

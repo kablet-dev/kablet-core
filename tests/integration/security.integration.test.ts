@@ -81,6 +81,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       expect(runtimeIdentity.rows).toHaveLength(1);
       expect(runtimeIdentity.rows[0]).toMatchObject({ current_user: 'kablet_dev', can_read_businesses: true });
       const operatorSession = await security.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
+      const supportApproverSession = await security.createSession(supportApproverUser, new Date(Date.now() + 60_000), 'platform_operator');
       await expect(security.resolvePlatformContext(operatorSession.token)).resolves.toMatchObject({ actorId: operatorUser, actorType: 'platform_operator', organizationId: null, businessId: null });
       await expect(security.resolveMerchantContext(operatorSession.token, orgA, businessA)).resolves.toBeNull();
       const session = await security.createSession(userA, new Date(Date.now() + 60_000));
@@ -191,24 +192,33 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       expect(approved.rows).toHaveLength(1);
       await expect(security.isPolicyApproved({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, approvalId: String(approved.rows[0].id) })).resolves.toBe(true);
       expect(String(requested.rows[0].id)).not.toBe(String(approved.rows[0].id));
-      const supportGrant = await security.requestSupportGrant({ actorId: operatorUser, organizationId: orgA, businessId: businessA, purpose: 'Investigate an authorized tenant issue', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 60_000) });
+      const supportGrant = await security.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Investigate an authorized tenant issue', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 60_000) });
       const supportGrantId = String(supportGrant.rows[0].id);
-      await expect(security.approveSupportGrant({ actorId: operatorUser, grantId: supportGrantId })).rejects.toThrow('support_grant_self_approval');
-      await expect(security.approveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId })).resolves.toMatchObject({ rows: [{ id: supportGrantId }] });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).resolves.toMatchObject({ grantId: supportGrantId, organizationId: orgA, businessId: businessA });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgB, businessId: businessB, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
-      await security.revokeSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
-      const expiringGrant = await security.requestSupportGrant({ actorId: operatorUser, organizationId: orgA, businessId: businessA, purpose: 'Verify expiry enforcement safely', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 2_000) });
+      await expect(security.approveSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, grantId: supportGrantId })).rejects.toThrow('support_grant_self_approval');
+      await expect(security.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId })).resolves.toMatchObject({ rows: [{ id: supportGrantId }] });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).resolves.toMatchObject({ grantId: supportGrantId, organizationId: orgA, businessId: businessA });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgB, businessId: businessB, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      const forgedGrantUpdate = await runtimePool.connect();
+      try {
+        await forgedGrantUpdate.query('begin');
+        await forgedGrantUpdate.query('select set_config($1,$2,true)', ['kablet.auth_session_id', supportApproverSession.id]);
+        await expect(forgedGrantUpdate.query('update kablet_support_grants set capabilities=$1 where id=$2', ['["privacy.manage","audit.read"]', supportGrantId])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await forgedGrantUpdate.query('rollback').catch(() => undefined);
+        forgedGrantUpdate.release();
+      }
+      await security.revokeSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      const expiringGrant = await security.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Verify expiry enforcement safely', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 2_000) });
       const expiringGrantId = String(expiringGrant.rows[0].id);
-      await security.approveSupportGrant({ actorId: supportApproverUser, grantId: expiringGrantId });
+      await security.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId });
       await new Promise(resolve => setTimeout(resolve, 2_100));
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, grantId: expiringGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
-      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, ruleKey: 'baseline', effect: 'deny', reason: 'Blocked during a safety review' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'deny' }] });
+      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'deny', reason: 'Blocked during a safety review' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'deny' }] });
       await expect(security.assertPlatformSafety('baseline')).rejects.toThrow('platform_safety_denied');
-      await expect(security.setPlatformSafetyRule({ actorId: userA, ruleKey: 'baseline', effect: 'allow', reason: 'Merchant cannot override safety' })).rejects.toThrow('platform_safety_denied');
-      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
-      await security.auditPlatform({ actorId: supportApproverUser, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
+      await expect(security.setPlatformSafetyRule({ actorId: userA, sessionId: session.id, ruleKey: 'baseline', effect: 'allow', reason: 'Merchant cannot override safety' })).rejects.toThrow('platform_safety_denied');
+      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
+      await security.auditPlatform({ actorId: supportApproverUser, sessionId: supportApproverSession.id, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
       const unauthorizedPlatformAudit = await runtimePool.connect();
       try {
         await unauthorizedPlatformAudit.query('begin');
@@ -217,13 +227,23 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await unauthorizedPlatformAudit.query('rollback').catch(() => undefined);
         unauthorizedPlatformAudit.release();
       }
-      await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.actor_id', supportApproverUser]);
+      const forgedPlatformAudit = await runtimePool.connect();
+      try {
+        await forgedPlatformAudit.query('begin');
+        await forgedPlatformAudit.query('select set_config($1,$2,true)', ['kablet.actor_id', supportApproverUser]);
+        await expect(forgedPlatformAudit.query("insert into kablet_audit_events(id,organization_id,business_id,actor_id,actor_type,action,resource_type,metadata) values ($1,null,null,$2,'platform_operator','security.forged','security_test','{}'::jsonb)", [randomUUID(), supportApproverUser])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await forgedPlatformAudit.query('rollback').catch(() => undefined);
+        forgedPlatformAudit.release();
+      }
+      await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.auth_session_id', supportApproverSession.id]);
       try {
         const platformAudit = await bootstrapConnection.query("select actor_id,organization_id,business_id,metadata from kablet_audit_events where action='security.support.test'");
         expect(platformAudit.rows).toHaveLength(1);
         expect(platformAudit.rows[0]).toMatchObject({ actor_id: supportApproverUser, organization_id: null, business_id: null, metadata: { providerToken: '[redacted]' } });
       } finally {
         await bootstrapConnection.query('reset kablet.actor_id');
+        await bootstrapConnection.query('reset kablet.auth_session_id');
       }
       await security.audit({ organizationId: orgA, businessId: businessA, actorId: userA, actorType: 'merchant_user', action: 'security.test', resourceType: 'security_test', metadata: { providerToken: 'must-not-persist' } });
       const auditClient = await runtimePool.connect();

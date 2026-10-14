@@ -44,7 +44,7 @@ export function authorizePlatformCapability(context: Awaited<ReturnType<typeof r
 export async function resolveSupportControlContext(organizationId: string, businessId: string, grantId: string, capability: SupportGrantCapability) {
   const platform = await resolvePlatformOperatorContext();
   if (!platform) return null;
-  await repository().resolveSupportGrant({ actorId: platform.actorId, grantId, organizationId, businessId, capability });
+  await repository().resolveSupportGrant({ actorId: platform.actorId, sessionId: platform.sessionId!, grantId, organizationId, businessId, capability });
   return { ...platform, organizationId, businessId, capabilities: [capability], sessionId: platform.sessionId };
 }
 
