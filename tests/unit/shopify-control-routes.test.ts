@@ -34,9 +34,12 @@ describe('Shopify control routes', () => {
 
   it('rejects unauthenticated disconnect before mutation', async () => {
     mocks.resolveControlContext.mockResolvedValue(null);
+    mocks.authorizeControlCapability.mockReturnValue(false);
     const response = await disconnectPost(request({ organizationId: '20000000-0000-4000-8000-000000000001', businessId: '30000000-0000-4000-8000-000000000001', connectionId: '40000000-0000-4000-8000-000000000001', providerKey: 'shopify:demo.myshopify.com' }));
     expect(response.status).toBe(403);
     expect(commerce.disconnectConnection).not.toHaveBeenCalled();
+    expect(security.revokeProviderCredential).not.toHaveBeenCalled();
+    expect(security.audit).not.toHaveBeenCalled();
   });
 
   it('disconnects locally, revokes the credential, and records redacted audit evidence', async () => {

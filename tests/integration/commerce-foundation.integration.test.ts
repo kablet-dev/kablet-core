@@ -80,8 +80,8 @@ describe.skipIf(!enabled)('commerce provider foundation', () => {
       for (const row of policies.rows) expect(row).toMatchObject({ relforcerowsecurity: true });
       const runtimePrivileges = await bootstrap.db.execute(sql`select has_table_privilege('kablet_dev','kablet_provider_webhook_inbox','INSERT') as can_insert, has_table_privilege('kablet_dev','kablet_provider_webhook_inbox','UPDATE') as can_update`);
       expect(runtimePrivileges.rows[0]).toMatchObject({ can_insert: false, can_update: true });
-      const controlPrivileges = await bootstrap.db.execute(sql`select has_table_privilege('kablet_control','kablet_provider_oauth_states','INSERT') as oauth_insert, has_table_privilege('kablet_control','kablet_provider_oauth_states','UPDATE') as oauth_update, has_table_privilege('kablet_control','kablet_provider_webhook_inbox','INSERT') as webhook_insert`);
-      expect(controlPrivileges.rows[0]).toMatchObject({ oauth_insert: true, oauth_update: true, webhook_insert: true });
+      const controlPrivileges = await bootstrap.db.execute(sql`select has_table_privilege('kablet_control','kablet_provider_oauth_states','INSERT') as oauth_insert, has_table_privilege('kablet_control','kablet_provider_oauth_states','UPDATE') as oauth_update, has_table_privilege('kablet_control','kablet_provider_webhook_inbox','INSERT') as webhook_insert, has_table_privilege('kablet_control','kablet_provider_webhook_inbox','SELECT') as webhook_select`);
+      expect(controlPrivileges.rows[0]).toMatchObject({ oauth_insert: true, oauth_update: true, webhook_insert: true, webhook_select: true });
     } finally {
       await runtime?.pool.end().catch(() => undefined);
       await control?.pool.end().catch(() => undefined);
