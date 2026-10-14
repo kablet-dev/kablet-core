@@ -17,3 +17,4 @@ export * from './intent-policy.js';
 export * from './ai-intent.js';
 export * from './security.js';
 export * from './credential-vault.js';
+export * from './commerce.js';

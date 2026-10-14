@@ -232,39 +232,39 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 ## 03.01 — Commerce provider abstraction and Shopify contracts
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED; OFFLINE CONTRACT VERIFICATION PRESENT; LIVE PROVIDER VERIFICATION PENDING.
 - **Build / verify:** Define normalized shop, product, variant, price, inventory, cart, order and provider receipt contracts without losing provider-specific authority.
 - **Definition of done:** Contract tests; no invented prices, stock, or payment statuses; normalized contracts support product/catalog, service/booking, lead and subscription capabilities without duplicating core intelligence; provider-specific fields remain adapter-owned.
 - **Blueprint / audit references:** B3.2 B3.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/domain/src/commerce.ts`, `apps/web/lib/shopify-provider.ts`, `tests/unit/commerce-contracts.test.ts`, `tests/unit/shopify-provider.test.ts`.
 
 ## 03.02 — Shopify installation and shop identity
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED BOUNDARY; LIVE SHOPIFY INSTALLATION PENDING.
 - **Build / verify:** Authorized merchant install/OAuth, scoped shop association, token lifecycle and connection health.
 - **Definition of done:** One test shop connects/disconnects; tenant scoping and revoked-token tests.
 - **Blueprint / audit references:** Audit E-A; B6.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `apps/web/app/api/control/shopify/install/route.ts`, `apps/web/app/api/control/shopify/callback/route.ts`, `packages/db/src/commerce.ts`, `docs/MILESTONE-03-SHOPIFY.md`.
 
 ## 03.03 — Catalog sync and freshness
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED FOUNDATION; CONTROLLED SYNC VERIFICATION PRESENT; LIVE CATALOG VERIFICATION PENDING.
 - **Build / verify:** Resumable paginated initial sync, versioned incremental updates, inventory/price freshness and stale-state handling.
 - **Definition of done:** Product/variant correctness, replay and freshness tests.
 - **Blueprint / audit references:** Audit E-A; B3.3 B6.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/drizzle/0031_commerce_provider_foundation.sql`, `packages/db/src/commerce.ts`, `apps/worker/src/shopify-worker.ts`, `tests/integration/commerce-foundation.integration.test.ts`.
 
 ## 03.04 — Durable webhook inbox and worker
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED DURABLE INBOX AND WORKER; CONTROLLED RECOVERY VERIFICATION PRESENT; LIVE WEBHOOK VERIFICATION PENDING.
 - **Build / verify:** Authenticated webhook verification, durable acceptance, dedupe, ordering protection, retries, dead letters and tenant isolation.
 - **Definition of done:** Forged/duplicate/out-of-order/crash tests; worker actually processes jobs.
 - **Blueprint / audit references:** Audit G; B6.2 B6.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `apps/web/app/api/webhooks/shopify/route.ts`, `packages/db/src/commerce.ts`, `apps/worker/src/index.ts`, `apps/worker/src/shopify-worker.ts`, `tests/unit/shopify-worker.test.ts`.
 
 ## 03.05 — Commerce actions and safe checkout handoff
 
@@ -761,10 +761,10 @@ This register makes the distinction explicit for every parent task. All roadmap 
 | `02.03` | IMPLEMENTED; downstream deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; downstream propagation deferred |
 | `02.04` | IMPLEMENTED at repository boundary; provider execution deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; provider execution deferred |
 | `02.05` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
-| `03.01` | NOT FOUND | NOT STARTED | NOT RUN |
-| `03.02` | NOT FOUND | NOT STARTED | NOT RUN |
-| `03.03` | NOT FOUND | NOT STARTED | NOT RUN |
-| `03.04` | SCAFFOLD | NOT STARTED | NOT RUN |
+| `03.01` | IMPLEMENTED | IN PROGRESS | OFFLINE contract tests present; live provider verification pending |
+| `03.02` | IMPLEMENTED boundary | IN PROGRESS | OAuth/security fixtures present; live Shopify installation pending |
+| `03.03` | IMPLEMENTED foundation | IN PROGRESS | Disposable PostgreSQL/catalog tests present; live catalog verification pending |
+| `03.04` | IMPLEMENTED inbox and worker | IN PROGRESS | Worker/unit coverage present; live signed webhook verification pending |
 | `03.05` | PARTIAL | NOT STARTED | NOT RUN |
 | `03.06` | NOT FOUND | NOT STARTED | NOT RUN |
 | `04.01` | PARTIAL | NOT STARTED | NOT RUN |
