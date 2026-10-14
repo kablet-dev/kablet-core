@@ -7,7 +7,7 @@ AS $$
   SELECT s.user_id
   FROM public.kablet_auth_sessions s
   JOIN public.kablet_users u ON u.id = s.user_id
-  WHERE pg_catalog.current_user = 'kablet_control'
+  WHERE current_user = 'kablet_control'
     AND s.id = NULLIF(current_setting('kablet.auth_session_id', true), '')::uuid
     AND s.actor_type = 'platform_operator'
     AND s.revoked_at IS NULL
@@ -20,7 +20,7 @@ LANGUAGE plpgsql
 SET search_path = pg_catalog, public
 AS $$
 BEGIN
-  IF NEW.actor_type = 'platform_operator' AND pg_catalog.current_user <> 'kablet_control' THEN
+  IF NEW.actor_type = 'platform_operator' AND current_user <> 'kablet_control' THEN
     RAISE EXCEPTION 'platform sessions require the control database role';
   END IF;
   RETURN NEW;
