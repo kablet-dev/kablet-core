@@ -250,7 +250,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 ## 03.03 — Catalog sync and freshness
 
-- **Status:** IMPLEMENTED FOUNDATION; LIVE CATALOG VERIFICATION PENDING.
+- **Status:** IMPLEMENTED FOUNDATION; CONTROLLED SYNC VERIFICATION PRESENT; LIVE CATALOG VERIFICATION PENDING.
 - **Build / verify:** Resumable paginated initial sync, versioned incremental updates, inventory/price freshness and stale-state handling.
 - **Definition of done:** Product/variant correctness, replay and freshness tests.
 - **Blueprint / audit references:** Audit E-A; B3.3 B6.8.
@@ -259,7 +259,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 ## 03.04 — Durable webhook inbox and worker
 
-- **Status:** IMPLEMENTED DURABLE INBOX AND WORKER; LIVE WEBHOOK VERIFICATION PENDING.
+- **Status:** IMPLEMENTED DURABLE INBOX AND WORKER; CONTROLLED RECOVERY VERIFICATION PRESENT; LIVE WEBHOOK VERIFICATION PENDING.
 - **Build / verify:** Authenticated webhook verification, durable acceptance, dedupe, ordering protection, retries, dead letters and tenant isolation.
 - **Definition of done:** Forged/duplicate/out-of-order/crash tests; worker actually processes jobs.
 - **Blueprint / audit references:** Audit G; B6.2 B6.8.

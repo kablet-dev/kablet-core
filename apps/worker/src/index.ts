@@ -1,5 +1,6 @@
-import { createCommerceRepository, createDb } from '@kablet/db';
+import { createCommerceRepository, createCredentialVault, createDb, createSecurityRepository } from '@kablet/db';
 import { loadControlServerConfig, loadServerConfig } from '@kablet/config';
+import { syncShopifyCatalog } from './shopify-catalog-sync.js';
 import { processShopifyWebhook } from './shopify-worker.js';
 
 export async function processAvailableWebhooksOnce() {
@@ -23,13 +24,39 @@ export async function processAvailableWebhooksOnce() {
   } finally { await control.pool.end(); await runtime.pool.end(); }
 }
 
+export async function processAvailableCatalogSyncsOnce() {
+  const runtime = createDb(loadServerConfig().DATABASE_URL);
+  const control = createDb(loadControlServerConfig().DATABASE_URL);
+  try {
+    const controlRepository = createCommerceRepository(control.db);
+    const runtimeRepository = createCommerceRepository(runtime.db);
+    const security = createSecurityRepository(control.db);
+    const key = process.env.KABLET_CREDENTIAL_KEY;
+    const keyVersion = process.env.KABLET_CREDENTIAL_KEY_VERSION;
+    const apiVersion = process.env.SHOPIFY_API_VERSION;
+    if (!key || !keyVersion || !apiVersion) throw new Error('catalog_worker_not_configured');
+    const vault = createCredentialVault(Buffer.from(key, 'base64'), keyVersion);
+    const connections = await controlRepository.listActiveConnections();
+    for (const connection of connections.rows as Array<{ id: string; organization_id: string; business_id: string; provider: string; shop_domain: string }>) {
+      if (connection.provider !== 'shopify') continue;
+      const syncs = await runtimeRepository.listRunningCatalogSyncs({ organizationId: connection.organization_id, businessId: connection.business_id, connectionId: connection.id });
+      for (const sync of syncs.rows as Array<{ id: string }>) {
+        await syncShopifyCatalog({ repository: runtimeRepository, organizationId: connection.organization_id, businessId: connection.business_id, connectionId: connection.id, shopDomain: connection.shop_domain, apiVersion, workerId: `catalog-worker:${process.pid}`, syncId: sync.id, credentialReader: scopes => security.readProviderCredentialSecret({ organizationId: connection.organization_id, businessId: connection.business_id, providerKey: `shopify:${connection.shop_domain}`, requiredScopes: scopes }, vault) });
+      }
+    }
+  } finally { await control.pool.end(); await runtime.pool.end(); }
+}
+
 let stopping = false;
 let idleHandle: NodeJS.Timeout | undefined;
 async function run() {
   const config = loadServerConfig();
   console.log(`Kablet worker ready on database ${new URL(config.DATABASE_URL).host}`);
   await processAvailableWebhooksOnce();
-  idleHandle = setInterval(() => { processAvailableWebhooksOnce().catch(error => console.error('Webhook worker cycle failed:', error instanceof Error ? error.message : 'unknown')); }, Number(process.env.WORKER_POLL_MS ?? 5000));
+  await processAvailableCatalogSyncsOnce();
+  idleHandle = setInterval(() => {
+    Promise.all([processAvailableWebhooksOnce(), processAvailableCatalogSyncsOnce()]).catch(error => console.error('Worker cycle failed:', error instanceof Error ? error.message : 'unknown'));
+  }, Number(process.env.WORKER_POLL_MS ?? 5000));
 }
 function shutdown() { if (stopping) return; stopping = true; if (idleHandle) clearInterval(idleHandle); console.log('Kablet worker stopped'); }
 if (process.env.KABLET_WORKER_RUN === 'true') run().catch(error => { console.error('Worker startup failed:', error instanceof Error ? error.message : 'unknown'); process.exitCode = 1; });

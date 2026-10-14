@@ -24,7 +24,8 @@ The initial requested Shopify scopes are `read_products` and `read_inventory`. S
 2. A random state is stored hashed, tenant-scoped, single-use, and expires after ten minutes.
 3. The callback verifies Shopify's query HMAC, consumes the state, exchanges the code server-side, verifies the shop identity through Shopify, checks required scopes, encrypts the token, and stores the tenant-scoped connection.
 4. Shopify webhooks are verified against the raw body before parsing. A signed event is durably deduplicated in the inbox before a `202` response.
-5. The worker discovers active connections through the server-only control role, claims events under tenant RLS, normalizes supported product events, and marks them processed or retryable/dead-lettered.
+5. An authorized merchant starts an initial, incremental, or reconciliation sync through `/api/control/shopify/sync`. The worker claims the durable sync, requests paginated product pages, verifies credentials before every request, checkpoints each page, and only marks the sync complete after the final page.
+6. The worker discovers active connections through the server-only control role, claims events under tenant RLS, normalizes supported product events, and marks them processed or retryable/dead-lettered. Expired webhook and sync leases can be reclaimed after a worker crash.
 
 Provider tokens are never returned in responses or persisted in audit metadata. The repository's credential authorization boundary must be called immediately before any future provider network execution.
 
@@ -34,4 +35,5 @@ Provider tokens are never returned in responses or persisted in audit metadata. 
 - Shopify HMAC, OAuth-state, normalization, and credential-boundary fixtures: implemented with offline unit coverage.
 - Disposable PostgreSQL catalog/webhook/RLS/deduplication coverage: implemented and executed only when the CI PostgreSQL job runs.
 - Live Shopify OAuth, catalog synchronization, webhook delivery, rate limits, and connection health: pending real Shopify development-store verification.
+- Controlled catalog synchronization covers cursor progression, checkpointing, provider failure, and recovery in unit/integration fixtures; live Shopify pagination and rate-limit behavior remain pending.
 - Checkout, payment, order, refund, cancellation, and commercial reconciliation: Milestone 03.05–03.06, not implemented by Batch A.
