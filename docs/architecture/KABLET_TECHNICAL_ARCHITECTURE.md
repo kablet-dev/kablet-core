@@ -20829,4 +20829,14 @@ It is controlled engineering execution against this baseline.
 
 ---
 
+## Implementation posture addendum — Native Store First
+
+This addendum records ecommerce execution order only. It does not alter the Foundation's ownership, intelligence, governance, security, provider-replaceability or multi-vertical invariants.
+
+- Kablet Native Store is the first ecommerce implementation path and treats Kablet's native catalog, inventory, cart, checkout and order records as authoritative commerce state for native businesses.
+- Native commerce enters the same controlled capability and execution boundaries as external providers. It does not introduce a second intelligence engine, Experience Runtime, action authorization model or measurement system.
+- The completed Shopify Batch A foundation remains a retained adapter/provider reference and reusable contract implementation. Shopify Connect Your Store and Batch B are deferred execution work, not deleted functionality and not a change to provider-neutral architecture.
+- Payment and order outcomes must be verified server-side; the shopper browser, AI output and client redirect cannot establish payment or revenue truth. Platform safety remains above merchant policy, which remains above runtime decisions.
+- The first Native Store scope is deliberately narrow. Advanced Shopify parity, broad tax/currency, multi-warehouse, marketplace, wholesale and carrier ecosystems require later evidence and owner approval.
+
 # END — KABLET TECHNICAL ARCHITECTURE v0.1

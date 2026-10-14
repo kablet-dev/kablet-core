@@ -2,16 +2,16 @@
 
 **Created:** 2026-10-11  
 **Status:** Proposed engineering execution plan based on Codex read-only audit and six locked blueprint chapters. **Not yet approved as a frozen schedule.**  
-**Repository baseline:** commit `225db32` is the starting evidence baseline for this roadmap revision. Future updates must record the then-current commit rather than assuming `225db32` remains `HEAD`; the working tree at this revision also has modified `apps/web/app/api/interaction/start/route.ts`, `packages/db/src/migrate.ts` and untracked `scripts/`.
+**Repository baseline:** commit `e4d03a6` is the starting evidence baseline for this Native Store strategy revision. Future updates must record the then-current commit rather than assuming `e4d03a6` remains `HEAD`; the working tree was clean when this strategy branch was created.
 **Strategic source of truth:** `docs/blueprint/01-business.md` through `docs/blueprint/06-infrastructure.md`. No separate blueprint index file is present in the repository.
-**Engineering evidence:** repository source, Git history through `225db32`, and the earlier read-only audit as historical supporting evidence.
+**Engineering evidence:** repository source, Git history through `e4d03a6`, and the earlier read-only audit as historical supporting evidence.
 **Status caveat:** Existing implementation claims are evidence classifications, not fresh completion claims. Current test execution remains limited by the documented environment failure; no task is `VERIFIED DONE` without fresh linked evidence.
 
 ## How to read and maintain this roadmap
 
 ## Approved multi-vertical architecture decisions
 
-These decisions preserve the locked blueprint boundary while allowing the first commercial implementation to remain Shopify-focused:
+These decisions preserve the locked blueprint boundary while changing ecommerce execution order to Native Store First:
 
 - Ecommerce is Kablet's first vertical, not its permanent product boundary.
 - Shared intelligence, visitor, decision, experience, action, outcome and measurement contracts remain vertical-neutral.
@@ -20,6 +20,10 @@ These decisions preserve the locked blueprint boundary while allowing the first 
 - Verified financial outcomes remain distinct from nonfinancial conversion indicators.
 - Intelligence knowledge is separated into business-specific, vertical-level and generalized layers with privacy, consent and opt-out controls.
 - Platform governance, merchant authority and runtime execution remain separate planes; platform safety outranks approved merchant policy, which outranks runtime decisions.
+- Kablet Native Store is the first ecommerce product path: Kablet is authoritative for native catalog, inventory, cart, checkout, order and merchant operations within the deliberately limited launch scope.
+- Shopify Batch A (`03.01–03.04`) is retained as a completed, reusable provider foundation. “Connect Your Store” and Shopify-specific Batch B work are deferred; no Shopify code or history is removed.
+- Native commerce uses the same provider-neutral commerce contracts, capability registry, execution gateway, Experience Runtime, outcome lineage and measurement controls as external providers. It is not a second intelligence engine or a separate adaptive frontend.
+- Native payment, order and inventory mutations remain deterministic and server-authorized. AI may inform governed decisions, but never asserts payment, inventory, order or revenue truth.
 
 These are roadmap acceptance constraints, not claims that future vertical features already exist.
 
@@ -30,7 +34,7 @@ These are roadmap acceptance constraints, not claims that future vertical featur
 - **Fresh verification statuses:** `NOT RUN`, `PASS`, `FAIL`, `BLOCKED` or `NOT APPLICABLE`. `PASS` requires dated command output or an attached operational evidence package.
 - **Task status flow:** `NOT STARTED → IN PROGRESS → IMPLEMENTED–UNVERIFIED → VERIFIED DONE`; use `BLOCKED` with owner, reason and unblock action. Record commit, test output, date, reviewer and link to evidence for every transition.
 - **Dependency rule:** chapter numbers are a navigation structure, **not** permission to postpone prerequisites. Infrastructure, security, consent, SEO architecture and measurement contracts must be addressed at the slices where needed; Chapters 04–07 contain overlapping workstreams.
-- **Pilot vs public release:** Shopify-only **bounded pilot** comes first. First **public release** requires BOTH Shopify-connected headless commerce and minimal operational Kablet-native commerce (Chapter 1 locked decision). Do not silently change this scope.
+- **Pilot vs public release:** the first product implementation is a bounded Kablet-native pilot. Shopify-connected pilot/public-release tracks remain independently gated and deferred until product-owner approval and provider evidence. The locked requirement that first public release include an operational Native path is preserved.
 - **Frontend model:** Kablet **owns the complete adaptive customer-facing frontend**, not an overlay/widget or mere Shopify theme extension. Shopify remains authoritative for connected commerce; checkout may hand off to provider-authorized flow. Any bridge/demo technique is temporary, not a product redefinition.
 - **Commercial proof:** A verified order is not necessarily attributable, and attributed revenue is not automatically causal lift. Report valid randomized incremental net RPV only when evidence supports it.
 - **Do not assign false percentages.** Progress = completed and independently evidenced tasks / applicable scoped tasks, plus separate launch-gate status. Initial verified completion against this new roadmap is **0 tasks independently certified**, not a claim that no code exists.
@@ -43,15 +47,17 @@ These are roadmap acceptance constraints, not claims that future vertical featur
 | Engineering baseline | **Substantial existing foundation** | Zod/Next/React/Postgres, migrations 0000–0018, visitor/decision/interaction/lead-conversion paths |
 | Historical implementation confidence | **Mixed** | Codex marks many narrow modules verified from code and test history; current test execution blocked |
 | Current test execution | **BLOCKED** | esbuild `spawn EPERM` on Vitest startup; typechecks passed |
-| Shopify ecommerce | **NOT FOUND** | OAuth, catalog, checkout, webhooks, order reconciliation absent |
-| Full adaptive ecommerce frontend | **PARTIAL / NOT FOUND** | Narrow React lead demo exists; full headless commerce frontend absent |
+| Shopify Batch A provider foundation | **IMPLEMENTED / CI-VERIFIED** | `03.01–03.04` merged in `e4d03a6`; retained as provider-neutral and Shopify adapter infrastructure |
+| Shopify Connect Your Store / Batch B | **DEFERRED** | No new Shopify-specific execution until the native product path and explicit owner approval |
+| Native ecommerce | **NOT STARTED** | Native catalog, storefront, cart, payment, orders and merchant operations remain to be built |
+| Full adaptive ecommerce frontend | **PARTIAL / NOT READY** | Experience Runtime exists; native storefront and commerce compositions are absent |
 | Production AI provider | **NOT FOUND** | Durable executor/accounting exists but demo exact-match interpreter wired for development only |
 | Merchant & internal dashboards | **NOT FOUND** | No authenticated merchant/admin surfaces |
 | Incremental net RPV experiments | **NOT FOUND** | Exposure and local attribution foundations only |
 | Hosting, DNS, CI, monitoring | **NOT FOUND IN REPO** | External resources unverified, not asserted nonexistent |
-| First pilot | **NOT READY** | Requires full safe merchant commerce spine and applicable launch gates |
-| First public release | **NOT READY** | Requires connected + native paths and all applicable gates |
-| Next checkpoint | **DOCUMENTATION ALIGNMENT** | Correct provenance, status separation, section traceability and milestone decomposition before implementation resumes |
+| First Native Store pilot | **NOT READY** | Requires native storefront, catalog truth, cart, payment/order proof and applicable launch gates |
+| First public release | **NOT READY** | Requires the Native path plus the separately gated connected path required by the locked blueprint |
+| Next checkpoint | **NATIVE STORE DOMAIN AND STOREFRONT** | Establish native commerce truth before adaptive discovery and payment work |
 
 ## Existing assets to reuse — do not rebuild blindly
 
@@ -74,13 +80,13 @@ These are roadmap acceptance constraints, not claims that future vertical featur
 |---|---|---|
 | M0 — Trustworthy engineering baseline | Chapter 01 | Executable tests, safe Git state, CI and documented limitations |
 | M1 — Secure merchant identity | Chapter 02 + cross-cutting security | Authenticated tenant and approval tests |
-| M2 — Verified Shopify commerce truth | Chapter 03 | Scoped install, catalog, durable webhook, reconciled order |
-| M3 — Real Kablet-owned frontend | Chapter 04 | Browser discovery→cart→checkout→provider receipt with safe fallback |
+| M2 — Shopify Batch A foundation (retained) | Chapter 03.01–03.04 | Provider-neutral contracts, Shopify connection/catalog/webhook foundation; CI-verified, live provider evidence pending |
+| M3 — Native commerce and Kablet-owned adaptive storefront | Chapter 08.04–08.06 + Chapter 04 + 03.05–03.06 contracts | Native catalog, inventory, storefront, cart, payment boundary, verified order and adaptive journey |
 | M4 — Governed AI and control planes | Chapter 05 | Real optional AI, merchant approvals, internal oversight |
 | M5 — Defensible commercial measurement | Chapter 06 | Verified outcomes, experiment validity and net RPV reporting |
 | M6 — Production pilot readiness | Chapter 07 + 08.01 | Tested deployment/restore, 8 pilot launch gates |
-| M7 — Bounded Shopify merchant pilot | Chapter 08.02–08.03 | Authorized merchant, monitored live journeys, valid/inconclusive randomized evidence |
-| M8 — Dual-path public release | Chapter 08.04–08.07 | Native store operational + Shopify path + public-release gates |
+| M7 — Bounded Native Store pilot | Chapter 08.02–08.03 | Authorized merchant, monitored live journeys, valid/inconclusive randomized evidence |
+| M8 — Dual-path public release | Chapter 08.07 | Native store operational + separately accepted Shopify-connected path + public-release gates |
 
 **Fastest meaningful integration proof:** authenticated Shopify test shop → authoritative product → Kablet-owned minimal storefront → governed cart/checkout → provider-confirmed order → reconciled evidence → minimal merchant view. This is a *cross-chapter vertical milestone*, not a substitute for remaining public-release commitments. Production AI and advanced learning are not prerequisites for the earliest safe deterministic commerce proof.
 
@@ -90,7 +96,7 @@ These are roadmap acceptance constraints, not claims that future vertical featur
 2. **Pilot traffic design:** preserve incumbent merchant site where needed; design eligible cohort and holdout without pretending observational exposure proves causal lift.
 3. **Infrastructure vendor and region:** choose based on constraints, cost, data location, recovery and operational capability; no vendor selection inferred from audit.
 4. **Provider-specific contracts:** verify Shopify scopes, rate limits, webhooks and commerce APIs against current provider documentation during implementation.
-5. **Native commerce:** required for first public release, but implementation can begin after Shopify pilot if schedule permits; any change requires explicit blueprint revision.
+5. **Native commerce:** first implementation path and hard prerequisite for first public release; Shopify Connect Your Store/Batch B is deferred until a separate product-owner decision.
 6. **Commerce revenue definition:** lock gross/net accounting, taxes, shipping, discounts, refunds, currency, attribution maturity and experiment estimand before reporting lift.
 7. **External infrastructure unknowns:** confirm domain ownership, Shopify account, deployed services, billing and legal readiness separately; absence in repo is not proof of absence in the world.
 8. **Test runner EPERM:** resolve on approved local/CI environment; no false negative or false pass.
@@ -224,7 +230,32 @@ The following obligations remain pending and are intentionally deferred to the f
 
 Required acceptance evidence for this chapter includes direct SQL negative tests for forged actor context, immutable support-grant fields, post-withdrawal action rejection, tenant isolation, audit redaction/immutability, and the complete migration sequence. These references are implemented in `tests/integration/security.integration.test.ts` and `tests/integration/action-outcome.integration.test.ts`; CI execution remains the authoritative PostgreSQL verification environment.
 
-# Chapter 03 — Shopify Commerce Foundation & Durable Provider Operations
+# Native Store First execution strategy
+
+This is an execution-order decision, not a replacement for the locked Foundation, Technical Architecture, or blueprint chapters. The completed Shopify Batch A foundation remains in the repository and remains the reference provider implementation for reusable adapter, contract, webhook and worker patterns. Shopify “Connect Your Store” and Batch B are deferred.
+
+The next ecommerce work is Kablet Native Store: a deliberately narrow, Kablet-authoritative commerce path that reuses the existing identity, RLS, provider-neutral commerce, action, outcome, Experience Runtime, measurement and governance contracts. Native work must reach one complete merchant-to-shopper journey before broad feature parity or additional provider integrations.
+
+| Native slice | Scope | Depends on | Exit evidence |
+|---|---|---|---|
+| NS-01 Commerce authority and catalog truth | Native product, collection, variant, price, currency, inventory and publication model; merchant operations | 02.01–02.05, `03.01` contracts | RLS/constraint tests, authoritative-state ADR, merchant CRUD evidence |
+| NS-02 Storefront foundation | Responsive, server-rendered/crawlable store shell, domain routing, product and collection views | NS-01, `04.01–04.02` | Browser/mobile/a11y/SEO evidence for one published store |
+| NS-03 Durable cart | Tenant-safe cart/session, line validation, inventory reservation policy and idempotent mutations | NS-01, NS-02 | Cart persistence, expiry/concurrency and replay tests |
+| NS-04 Checkout and payment boundary | Checkout state machine, Stripe Connect decision, server-side payment intents/webhooks, unknown outcome recovery | NS-03, owner decisions below | Sandbox payment evidence, no-card-storage proof, webhook/retry tests |
+| NS-05 Verified order and merchant operations | Atomic order creation, inventory transition, order states, refunds/cancellations and reconciliation | NS-04 | Verified receipt, merchant order view, recovery and audit evidence |
+| NS-06 Adaptive commerce experience | Discovery, comparison, reassurance and ready-to-buy compositions using Visitor State and governed Decisions | NS-01, NS-02; verified catalog before claims | Decision→experience→action lineage and browser fixtures |
+| NS-07 Measurement and first experiment | Verified purchase outcome, attribution coverage, control/treatment assignment, validity diagnostics and honest reporting | NS-05, `06.01–06.04` | Four revenue quantities, valid/inconclusive experiment package |
+| NS-08 Pilot hardening | Security, backups/restore, telemetry/SLOs, support, merchant onboarding and rollback | NS-05–NS-07, `07`, `08.01` | Pilot dossier and explicit GO/LIMITED GO/NO-GO |
+
+**First working storefront gate:** one authorized merchant can create and publish a small native catalog; an anonymous shopper can browse a responsive/crawlable storefront, select a valid variant, add it to a durable cart, and receive a deterministic governed experience. No payment or revenue claim is implied by this gate.
+
+**First verified purchase gate:** a supported merchant payment account, server-created payment intent, authenticated provider outcome, idempotent order creation, inventory transition, merchant order visibility, refund/cancellation semantics and unknown-outcome recovery are all demonstrated against a disposable/sandbox environment. A client redirect or payment-intent creation alone is not purchase proof.
+
+**First adaptive experiment gate:** a preregistered control and treatment differ only in the approved experience policy, assignment/exposure are durable and sticky, verified purchases are linked with visible coverage, and SRM/contamination/maturity checks can produce `INCONCLUSIVE` or `NO-GO`. No causal lift is claimed from observational or incomplete data.
+
+**Product-owner decisions required before implementation:** launch geography/currency/tax/shipping scope; merchant-of-record and Stripe Connect charge model; refund/chargeback responsibility; inventory reservation TTL; store domain/subdomain and SSR strategy; native order state machine; merchant onboarding and support boundary; attribution estimand and experiment eligibility; privacy/PCI/legal acceptance; and the criteria for reactivating Shopify Connect Your Store.
+
+# Chapter 03 — Provider-Neutral Commerce & Shopify Batch A Foundation
 
 **Outcome:** Establish verified Shopify truth and resilient provider integration, not just catalog screenshots.
 
@@ -268,23 +299,23 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 ## 03.05 — Commerce actions and safe checkout handoff
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Governed cart/add-to-cart and Shopify checkout handoff; stable operation IDs, unknown outcome handling, idempotency and visitor confirmation.
-- **Definition of done:** Sandbox end-to-end checkout path; no blind retry or fabricated confirmation.
+- **Status:** NOT STARTED — Native Store implementation; Shopify checkout handoff is DEFERRED with Connect Your Store/Batch B.
+- **Build / verify:** Implement the provider-neutral action boundary for native cart/checkout/payment execution; keep Shopify handoff contracts reusable but paused.
+- **Definition of done:** Native sandbox checkout path with stable operation IDs, explicit confirmation, idempotency, verified/unknown outcome handling and no blind retry or fabricated confirmation.
 - **Blueprint / audit references:** B3.5 B3.7 B3.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
 ## 03.06 — Order, refund and cancellation reconciliation
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Authoritative provider order ingestion, currency/tax/discount/shipping/refund semantics, evidence references and reconciliation lag.
-- **Definition of done:** Provider-reconciled order and refund facts; mismatches flagged.
+- **Status:** NOT STARTED — Native Store implementation; Shopify order reconciliation remains deferred with Batch B.
+- **Build / verify:** Establish authoritative native order, refund and cancellation state machines, evidence references, reconciliation lag and unmatched/delayed outcome handling.
+- **Definition of done:** Native verified order/refund facts and merchant-visible reconciliation state; mismatches and unknown outcomes are flagged rather than converted into success.
 - **Blueprint / audit references:** Audit E-C/D; B3.6 B3.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
-# Chapter 04 — Full Adaptive Ecommerce Frontend & Experience Design
+# Chapter 04 — Full Adaptive Native Storefront & Experience Design
 
 **Outcome:** Build the actual Kablet-owned shopper frontend and its visual design, not a Shopify theme widget masquerading as the product.
 
@@ -293,7 +324,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 ## 04.01 — Frontend delivery architecture and domain strategy
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Select Kablet-owned headless frontend delivery on approved merchant domain/subdomain; define Shopify API boundaries, SSR/SEO and checkout handoff.
+- **Build / verify:** Select Kablet-owned storefront delivery on an approved merchant domain/subdomain; define native commerce boundaries, SSR/SEO and the deferred provider handoff boundary.
 - **Definition of done:** Architecture decision record; URL/session/canonical and checkout continuity proof; a cross-vertical capability matrix identifies shared runtime primitives and vertical extensions for ecommerce, booking, B2B lead and SaaS subscription journeys.
 - **Blueprint / audit references:** B1.1 B3.3 B4.1 B4.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
@@ -311,8 +342,8 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 ## 04.03 — Product discovery and browsing
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Build real collections, search/filter/product cards, product details and merchant-truth rendering.
-- **Definition of done:** Real synced products visible; authoritative prices/availability; SEO crawlable; fixtures prove the shared experience runtime can render product discovery, service selection, lead qualification and plan/trial comparison without fabricating vertical truth.
+- **Build / verify:** Build native collections, search/filter/product cards, product details and merchant-truth rendering; reuse the Shopify catalog vocabulary without assuming Shopify authority.
+- **Definition of done:** Published native products visible with authoritative prices/availability; SEO crawlable; fixtures prove the shared Experience Runtime can render native product discovery and future service, lead and subscription journeys without fabricating vertical truth.
 - **Blueprint / audit references:** B4.2 B4.5 B4.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -329,8 +360,8 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 ## 04.05 — Commerce UX and continuity
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Product variant selection, cart, checkout handoff, recovery, mobile and keyboard accessibility; preserve cart during adaptation.
-- **Definition of done:** Real browser tests through Shopify checkout and graceful fallback.
+- **Build / verify:** Product variant selection, native cart, checkout continuity, recovery, mobile and keyboard accessibility; preserve cart during adaptation.
+- **Definition of done:** Real browser tests through the Native Store checkout boundary, with any future Shopify handoff covered by a separate deferred gate.
 - **Blueprint / audit references:** B4.4 B4.6 B4.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -344,9 +375,9 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
-## 04.07 — Controlled Shopify merchant demo
+## 04.07 — Controlled Shopify merchant demo (deferred)
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** DEFERRED — Connect Your Store/Batch B; not part of the next Native Store implementation batch.
 - **Build / verify:** Run one Kablet-owned full frontend against authorized Shopify test shop, not just the legacy lead demo.
 - **Definition of done:** Real product discovery → cart → provider checkout → verified order with evidence.
 - **Blueprint / audit references:** B4.10 B6.10.
@@ -560,9 +591,9 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
-# Chapter 08 — Shopify Pilot, Native Commerce & First Public Release
+# Chapter 08 — Native Store Pilot, Shopify Deferral & First Public Release
 
-**Outcome:** Keep pilot scope distinct from the locked two-path public launch commitment.
+**Outcome:** Establish the Native Store as the first product path while keeping the locked two-path public launch commitment and Shopify track independently gated.
 
 **Chapter status:** NOT COMPLETE. Task-level statuses below reflect **new roadmap exit gates**, not denial of existing reusable code.
 
@@ -575,11 +606,11 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
 
-## 08.02 — One-merchant bounded Shopify pilot
+## 08.02 — One-merchant bounded Native Store pilot
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Authorized real shop, limited eligible traffic, full Kablet-owned frontend, real checkout, monitoring and support.
-- **Definition of done:** Verified end-to-end purchase and reconciled outcome; no unsupported lift claim.
+- **Build / verify:** Authorized real native merchant, limited eligible traffic, full Kablet-owned storefront, real/sandbox checkout as approved, monitoring and support.
+- **Definition of done:** Verified end-to-end native purchase and reconciled outcome; no unsupported lift claim. A future Shopify pilot remains a separate deferred track.
 - **Blueprint / audit references:** B1.10 B6.10.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -595,7 +626,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 ## 08.04 — Minimal Kablet-native commerce domain
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** NOT STARTED — first implementation track; no native runtime code exists at this baseline.
 - **Build / verify:** Independent merchant onboarding, catalog/variants/inventory, taxes/shipping rules as applicable, cart/order/fulfillment contracts.
 - **Definition of done:** Tenant-safe native commerce domain and operational policies tested.
 - **Blueprint / audit references:** B1.5 B3.4 B3.6.
@@ -615,7 +646,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Kablet-owned frontend, domain/SEO, merchant setup, reporting and shared governed intelligence/measurement.
-- **Definition of done:** Merchant creates and runs minimal native store without Shopify.
+- **Definition of done:** Merchant creates and runs minimal native store without Shopify, with shared governed intelligence and measurement contracts.
 - **Blueprint / audit references:** B1.5 B4.1.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -646,7 +677,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 2. Get a permitted runner/CI environment to execute Vitest and E2E; capture pass/fail and avoid blaming code for `spawn EPERM` (01.02).
 3. Close service/route integration tests for the demo guard and free-text flow without building new AI prematurely (01.03).
 4. Set up minimal CI and security baseline (01.05); begin tenant auth design (02.01).
-5. Plan the **Shopify commerce pilot spine** as a thin integration slice across 02–04 and 06; include one verified order and minimal reporting, not a general platform rewrite.
+5. Plan the **Native Store commerce spine** as the next thin implementation slice across 03, 04 and 06; include one verified native order and minimal reporting, not a general platform rewrite. Preserve Shopify Batch A as the reusable provider track.
 
 # Appendix B — Source authority and conflict resolution
 
@@ -654,7 +685,7 @@ Required acceptance evidence for this chapter includes direct SQL negative tests
 
 **Known mismatches:**
 - Codex recommends Shopify theme/app extension or embedding as an option; locked Chapter 1/4 requires Kablet to own the complete frontend. A Shopify-connected headless implementation can still use Shopify for commerce authority and provider checkout.
-- Codex's proposed sequence stops at Shopify pilot/public launch; locked Chapter 1/3 requires a **native commerce path before first public release**.
+- The prior Shopify-first sequence is superseded by the approved Native Store First execution order; the locked requirement for a native commerce path before first public release remains unchanged.
 - Codex calls several modules VERIFIED based on historical evidence; current tests did not run. This roadmap reserves `VERIFIED DONE` for fresh, linked evidence.
 - The earlier Codex audit did not have the blueprint files. That historical lack-of-blueprint finding was an access limitation, not missing strategic work; the files are now present under `docs/blueprint/`.
 
@@ -804,6 +835,25 @@ This register makes the distinction explicit for every parent task. All roadmap 
 | `08.07` | NOT FOUND | NOT STARTED | NOT RUN |
 | `08.08` | NOT FOUND | NOT STARTED | NOT RUN |
 
+# Native Store strategy amendments and explicit deferrals
+
+The following are intentional execution changes only; they do not supersede the six locked blueprint chapters or the completed Milestone 02 security decisions:
+
+1. **Native Store first:** the next implementation batch begins with `NS-01` through `NS-03` (native catalog truth, storefront foundation and durable cart), then proceeds to payment/order proof and adaptive commerce.
+2. **Shopify preserved:** `03.01–03.04` and the Shopify Batch A source, migrations, tests and worker remain retained and reusable. They are not the current product onboarding path.
+3. **Shopify deferred:** Connect Your Store, Shopify Batch B, live Shopify installation, live provider catalog/webhook proof and Shopify checkout/order reconciliation are deferred until a separate product-owner decision and the Native Store has a verified commercial spine.
+4. **No premature parity:** multi-warehouse inventory, broad international tax/currency, app marketplace, complex wholesale, large carrier networks and drag-and-drop page building are outside the first Native Store boundary.
+5. **No false completion:** payment credentials, live provider outcomes, verified purchases, revenue attribution and causal experiment results remain unimplemented until their server-side evidence gates pass.
+
+## Affected dependency corrections
+
+- Native catalog truth precedes native discovery, comparison and adaptive product claims.
+- Native cart and inventory reservation precede payment initiation.
+- Authenticated payment outcomes and atomic order creation precede verified revenue measurement.
+- Verified order reconciliation and attribution coverage precede incremental RPV or causal claims.
+- Production safeguards, restore drills and support ownership precede the native merchant pilot.
+- The shared Experience Runtime remains downstream of governed Decisions and merchant truth; it is not replaced by a storefront-specific AI layer.
+
 # Appendix G — Independently verifiable sub-milestones
 
 Parent task IDs remain the roadmap reporting units. The following child IDs are the minimum decomposition required before a parent can become `VERIFIED DONE`.
@@ -841,7 +891,7 @@ These dependencies are hard gates, not advisory sequencing suggestions:
 4. Verified provider orders and reconciliation (`03.06`) precede commercial RPV reporting (`06.01–06.05`) or any causal claim.
 5. Experiment assignment, contamination, SRM and maturity checks (`06.03–06.04`) precede causal lift claims and promotion (`06.05–06.06`).
 6. Production safeguards—secrets, monitoring, backups, rollback, rate limits and incident ownership (`07.01–07.07`)—precede real merchant traffic (`08.02`).
-7. Kablet-native commerce (`08.04–08.06`) is a hard prerequisite for first public release (`08.07`), while Shopify-connected pilot and public-release tracks remain independently gated.
+7. Kablet-native commerce (`NS-01–NS-08`, mapped to `08.04–08.06`) is the first implementation and a hard prerequisite for first public release (`08.07`); Shopify Batch A remains reusable, while Connect Your Store/Batch B and Shopify-connected pilot/public-release tracks remain independently deferred and gated.
 8. Platform safety/legal limits outrank merchant policy; merchant-approved policy outranks visitor/runtime authorization; visitor authorization outranks AI suggestion. Every consequential action must be Authorized, Validated, Idempotent, Verifiable and Recoverable.
 9. AI budgets require an atomic claim/settlement path, per-tenant and platform caps, anomaly handling, and deterministic fallback before live AI traffic.
 10. Unknown payment/order outcomes are neither success nor failure; reconciliation must precede retry or customer confirmation.
@@ -850,8 +900,9 @@ These dependencies are hard gates, not advisory sequencing suggestions:
 
 | Track | May launch independently? | Minimum gate |
 |---|---|---|
-| Controlled Shopify pilot | Yes, with explicit scope limits | `08.01`, `08.02`, applicable Shopify/provider gates, monitored rollback and verified order evidence |
-| Shopify-connected public release | Yes, as its own release track | `08.07` connected-path gates, operations, legal, billing, support and evidence package |
-| Kablet-native public release | Yes, as its own release track, but not omitted from first public-release scope | `08.04–08.07`, inventory concurrency, payment/recovery, native SEO/domain and merchant operations |
+| Controlled Native Store pilot | First product track, after explicit pilot gates | `NS-01–NS-08`, `08.01–08.03`, inventory/payment/recovery, monitored rollback and verified order evidence |
+| Controlled Shopify pilot | Deferred, independently gated | Retained Batch A plus approved Batch B/connection gates, monitored rollback and verified provider order evidence |
+| Shopify-connected public release | Deferred, independently gated | `08.07` connected-path gates, operations, legal, billing, support and evidence package |
+| Kablet-native public release | Required for first public release | `08.04–08.07`, inventory concurrency, payment/recovery, native SEO/domain and merchant operations |
 
 No track may claim causal lift from a verified order alone. Pilot limitations must be disclosed and must not silently redefine the dual-path public-release requirement.
