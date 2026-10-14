@@ -82,7 +82,6 @@ $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kablet_control') THEN
-    GRANT USAGE ON SCHEMA public TO kablet_control;
     GRANT SELECT, INSERT, UPDATE ON kablet_users TO kablet_control;
     GRANT SELECT, INSERT, UPDATE (revoked_at) ON kablet_auth_sessions TO kablet_control;
     GRANT SELECT ON kablet_platform_operators, kablet_memberships TO kablet_control;
@@ -90,7 +89,19 @@ BEGIN
     GRANT SELECT, INSERT, UPDATE ON kablet_platform_safety_rules TO kablet_control;
     GRANT SELECT, INSERT ON kablet_audit_events TO kablet_control;
     GRANT SELECT ON organizations, businesses TO kablet_control;
+  END IF;
+END
+$$;
+
+-- The privacy function is owned by the privacy-owner role. Grant only its
+-- explicit execution privilege under that owner; ordinary migration roles do
+-- not implicitly gain authority over the function.
+SET LOCAL ROLE kablet_privacy_owner;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kablet_control') THEN
     GRANT EXECUTE ON FUNCTION kablet_visitor_privacy_delete(uuid, uuid) TO kablet_control;
   END IF;
 END
 $$;
+RESET ROLE;
