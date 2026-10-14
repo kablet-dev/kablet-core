@@ -69,7 +69,7 @@ export function normalizeShopifyProduct(input: unknown, observedAt = new Date())
   const providerRevision = typeof source.updated_at === 'string' ? source.updated_at : null;
   const sourceEvidence = { providerRevision, state: providerRevision ? ('authoritative' as const) : ('unknown' as const) };
   const product = commerceProductSchema.parse({ contractVersion: 'commerce.v1', provider: 'shopify', externalId, title: String(source.title ?? ''), description: String(source.body_html ?? ''), status: source.status === 'active' || source.status === 'draft' || source.status === 'archived' ? source.status : 'unknown', availability: 'unknown', sourceUpdatedAt: source.updated_at ?? null, observedAt, ingestionRevision: 1, sourceEvidence, imageUrls: Array.isArray(source.images) ? source.images.flatMap(image => image && typeof image === 'object' && typeof (image as Record<string, unknown>).src === 'string' ? [(image as Record<string, unknown>).src] : []) : [] });
-  const variants = Array.isArray(source.variants) ? source.variants.map((value, index) => {
+  const variants = Array.isArray(source.variants) ? source.variants.map(value => {
     const variant = value as Record<string, unknown>;
     const quantity = typeof variant.inventory_quantity === 'number' && Number.isInteger(variant.inventory_quantity) && variant.inventory_quantity >= 0 ? variant.inventory_quantity : null;
     const currency = typeof source.currency === 'string' && /^[A-Z]{3}$/.test(source.currency) ? source.currency : null;

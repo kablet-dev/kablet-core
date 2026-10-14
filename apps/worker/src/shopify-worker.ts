@@ -12,7 +12,7 @@ export function normalizeShopifyProduct(payload: Record<string, unknown>, observ
   const providerRevision = typeof payload.updated_at === 'string' ? payload.updated_at : null;
   const sourceEvidence = { providerRevision, state: providerRevision ? ('authoritative' as const) : ('unknown' as const) };
   const product = commerceProductSchema.parse({ contractVersion: 'commerce.v1', provider: 'shopify', externalId, title: String(payload.title ?? ''), description: String(payload.body_html ?? ''), status: payload.status === 'active' || payload.status === 'draft' || payload.status === 'archived' ? payload.status : 'unknown', availability: 'unknown', sourceUpdatedAt: payload.updated_at ?? null, observedAt, ingestionRevision: 1, sourceEvidence, imageUrls: Array.isArray(payload.images) ? payload.images.flatMap(image => image && typeof image === 'object' && typeof (image as Record<string, unknown>).src === 'string' ? [(image as Record<string, unknown>).src] : []) : [] });
-  const variants = Array.isArray(payload.variants) ? payload.variants.map((item, index) => {
+  const variants = Array.isArray(payload.variants) ? payload.variants.map(item => {
     const variant = item as Record<string, unknown>;
     const quantity = typeof variant.inventory_quantity === 'number' && Number.isInteger(variant.inventory_quantity) && variant.inventory_quantity >= 0 ? variant.inventory_quantity : null;
     const currency = typeof payload.currency === 'string' && /^[A-Z]{3}$/.test(payload.currency) ? payload.currency : null;
