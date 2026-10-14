@@ -96,7 +96,7 @@ These are roadmap acceptance constraints, not claims that future vertical featur
 2. **Pilot traffic design:** preserve incumbent merchant site where needed; design eligible cohort and holdout without pretending observational exposure proves causal lift.
 3. **Infrastructure vendor and region:** choose based on constraints, cost, data location, recovery and operational capability; no vendor selection inferred from audit.
 4. **Provider-specific contracts:** verify Shopify scopes, rate limits, webhooks and commerce APIs against current provider documentation during implementation.
-5. **Native commerce:** first implementation path and hard prerequisite for first public release; Shopify Connect Your Store/Batch B is deferred until a separate product-owner decision.
+5. **Native commerce:** first implementation path and hard prerequisite for first public release; global merchant/store foundations and BYOP payment boundaries are required, while Shopify Connect Your Store/Batch B is deferred until a separate product-owner decision.
 6. **Commerce revenue definition:** lock gross/net accounting, taxes, shipping, discounts, refunds, currency, attribution maturity and experiment estimand before reporting lift.
 7. **External infrastructure unknowns:** confirm domain ownership, Shopify account, deployed services, billing and legal readiness separately; absence in repo is not proof of absence in the world.
 8. **Test runner EPERM:** resolve on approved local/CI environment; no false negative or false pass.
@@ -238,22 +238,24 @@ The next ecommerce work is Kablet Native Store: a deliberately narrow, Kablet-au
 
 | Native slice | Scope | Depends on | Exit evidence |
 |---|---|---|---|
-| NS-01 Commerce authority and catalog truth | Native product, collection, variant, price, currency, inventory and publication model; merchant operations | 02.01–02.05, `03.01` contracts | RLS/constraint tests, authoritative-state ADR, merchant CRUD evidence |
-| NS-02 Storefront foundation | Responsive, server-rendered/crawlable store shell, domain routing, product and collection views | NS-01, `04.01–04.02` | Browser/mobile/a11y/SEO evidence for one published store |
-| NS-03 Durable cart | Tenant-safe cart/session, line validation, inventory reservation policy and idempotent mutations | NS-01, NS-02 | Cart persistence, expiry/concurrency and replay tests |
-| NS-04 Checkout and payment boundary | Checkout state machine, Stripe Connect decision, server-side payment intents/webhooks, unknown outcome recovery | NS-03, owner decisions below | Sandbox payment evidence, no-card-storage proof, webhook/retry tests |
-| NS-05 Verified order and merchant operations | Atomic order creation, inventory transition, order states, refunds/cancellations and reconciliation | NS-04 | Verified receipt, merchant order view, recovery and audit evidence |
+| NS-01 Commerce authority and catalog truth | Global-ready merchant/store onboarding; native product, collection, variant, price, currency, inventory and publication model | 02.01–02.05, `03.01` contracts | Country/eligibility, RLS/constraint, currency and merchant CRUD evidence |
+| NS-02 Storefront foundation | Internationally accessible responsive, server-rendered/crawlable store shell, domain routing, product and collection views | NS-01, `04.01–04.02` | Browser/mobile/a11y/SEO evidence for one published store; accessibility is distinct from payment/legal availability |
+| NS-03 Durable cart | Tenant-safe cart/session, original-currency line validation, inventory reservation policy and idempotent mutations | NS-01, NS-02 | Money-integrity, cart persistence, expiry/concurrency and replay tests |
+| NS-04 Checkout and payment boundary | Bring-your-own-payments adapter boundary, one provider selected after country/API/onboarding verification, hosted checkout, server-side callbacks and unknown recovery | NS-03, owner decisions below | Provider sandbox evidence, merchant-owned account proof, no-card-storage and webhook/retry tests |
+| NS-05 Verified order and merchant operations | Separate payment confirmation, order management, refunds, fulfillment and reconciliation responsibilities | NS-04 | Verified receipt, merchant order view, refund/fulfillment recovery and audit evidence |
 | NS-06 Adaptive commerce experience | Discovery, comparison, reassurance and ready-to-buy compositions using Visitor State and governed Decisions | NS-01, NS-02; verified catalog before claims | Decision→experience→action lineage and browser fixtures |
-| NS-07 Measurement and first experiment | Verified purchase outcome, attribution coverage, control/treatment assignment, validity diagnostics and honest reporting | NS-05, `06.01–06.04` | Four revenue quantities, valid/inconclusive experiment package |
+| NS-07 Measurement and first experiment | Verified purchase outcome in original transaction currency, attribution coverage, control/treatment assignment, validity diagnostics and honest reporting | NS-05, `06.01–06.04` | Currency-preserving revenue evidence; explicit FX policy/source before cross-currency aggregation; valid/inconclusive experiment package |
 | NS-08 Pilot hardening | Security, backups/restore, telemetry/SLOs, support, merchant onboarding and rollback | NS-05–NS-07, `07`, `08.01` | Pilot dossier and explicit GO/LIMITED GO/NO-GO |
+
+**Global currency baseline:** the first native implementation must support approved ISO 4217 store currencies including USD, EUR, GBP, AED, CAD and AUD, plus zero-decimal conventions where applicable. Each store has one primary selling currency initially; shopper-side FX and multi-currency checkout are deferred. Money must use minor units or another explicitly precision-safe representation, never floating-point arithmetic.
 
 **First working storefront gate:** one authorized merchant can create and publish a small native catalog; an anonymous shopper can browse a responsive/crawlable storefront, select a valid variant, add it to a durable cart, and receive a deterministic governed experience. No payment or revenue claim is implied by this gate.
 
-**First verified purchase gate:** a supported merchant payment account, server-created payment intent, authenticated provider outcome, idempotent order creation, inventory transition, merchant order visibility, refund/cancellation semantics and unknown-outcome recovery are all demonstrated against a disposable/sandbox environment. A client redirect or payment-intent creation alone is not purchase proof.
+**First verified purchase gate:** a merchant-owned account with a selected supported payment provider, provider-hosted or otherwise card-data-isolated checkout, authenticated provider outcome, idempotent order creation, inventory transition, merchant order visibility, separate refund/fulfillment responsibilities and unknown-outcome recovery are demonstrated against a disposable/sandbox environment. A client redirect or payment-intent creation alone is not purchase proof.
 
 **First adaptive experiment gate:** a preregistered control and treatment differ only in the approved experience policy, assignment/exposure are durable and sticky, verified purchases are linked with visible coverage, and SRM/contamination/maturity checks can produce `INCONCLUSIVE` or `NO-GO`. No causal lift is claimed from observational or incomplete data.
 
-**Product-owner decisions required before implementation:** launch geography/currency/tax/shipping scope; merchant-of-record and Stripe Connect charge model; refund/chargeback responsibility; inventory reservation TTL; store domain/subdomain and SSR strategy; native order state machine; merchant onboarding and support boundary; attribution estimand and experiment eligibility; privacy/PCI/legal acceptance; and the criteria for reactivating Shopify Connect Your Store.
+**Product-owner decisions required before implementation:** initial global country/eligibility policy; supported store currencies and zero-decimal handling; merchant-configured shipping destinations/zones/rates; tax-provider boundary; merchant-owned payment-provider selection after coverage/API/onboarding verification; seller-of-record/refund/chargeback responsibilities; inventory reservation TTL; store domain/subdomain and SSR strategy; native order state machine; merchant onboarding/support; attribution estimand and experiment eligibility; privacy/PCI/legal acceptance; and criteria for reactivating Shopify Connect Your Store.
 
 # Chapter 03 — Provider-Neutral Commerce & Shopify Batch A Foundation
 
@@ -627,8 +629,8 @@ The next ecommerce work is Kablet Native Store: a deliberately narrow, Kablet-au
 ## 08.04 — Minimal Kablet-native commerce domain
 
 - **Status:** NOT STARTED — first implementation track; no native runtime code exists at this baseline.
-- **Build / verify:** Independent merchant onboarding, catalog/variants/inventory, taxes/shipping rules as applicable, cart/order/fulfillment contracts.
-- **Definition of done:** Tenant-safe native commerce domain and operational policies tested.
+- **Build / verify:** Global merchant registration and country-aware eligibility; one primary store currency per store; currency-safe money including zero-decimal conventions; merchant-configured shipping destinations, zones and rates; catalog/variants/inventory, cart/order/fulfillment contracts; tax-provider boundary reserved for later.
+- **Definition of done:** Tenant-safe native commerce domain and operational policies tested without UAE-specific assumptions; merchant country, store currency, shopper locale, shipping destination and provider availability remain separate fields.
 - **Blueprint / audit references:** B1.5 B3.4 B3.6.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -636,8 +638,8 @@ The next ecommerce work is Kablet Native Store: a deliberately narrow, Kablet-au
 ## 08.05 — Native checkout, payments and verified outcomes
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
-- **Build / verify:** Authorized payment provider, safe payment lifecycle, refunds, notifications, reconciliation and secure checkout UX.
-- **Definition of done:** Independent native real/sandbox purchase and refund/recovery proof.
+- **Build / verify:** Bring-your-own-payments adapter boundary with one provider selected only after country coverage, API compatibility and merchant onboarding verification; prefer merchant-owned accounts and provider-hosted checkout; safe payment lifecycle, refunds, notifications and reconciliation.
+- **Definition of done:** Independent native sandbox purchase and refund/recovery proof using authenticated provider callbacks/webhooks; Kablet never holds customer funds, manages payouts or charges transaction commissions; payment, order, fulfillment and verified-revenue states remain distinct.
 - **Blueprint / audit references:** B3.4 B3.5 B3.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._

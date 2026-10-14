@@ -48,43 +48,43 @@ The Native Store is not a site-builder-only product and not a chatbot. Shopify B
 
 ## 5. Implementation slices and acceptance criteria
 
-### NS-01 — Native commerce authority and catalog truth
+### NS-01 — Global-ready native commerce authority and catalog truth
 
 Dependencies: Milestone 02 security acceptance and existing `03.01` contracts.
 
-Implement products, collections, variants, money, publication, inventory and freshness with explicit ownership and revision semantics.
+Implement global merchant registration and country-aware eligibility; products, collections, variants, publication, inventory and freshness with explicit ownership and revision semantics; and one primary selling currency per store. Model merchant country, store currency, customer locale, shipping destination and payment-provider availability separately. Support USD, EUR, GBP, AED, CAD, AUD and other approved ISO 4217 currencies, including zero-decimal conventions, using minor units or another explicitly precision-safe representation. Support merchant-configured shipping destinations, zones and rates while keeping future tax-provider integration behind a boundary.
 
-Acceptance: merchant CRUD is authenticated and tenant-scoped; invalid price/currency/variant states are rejected; RLS and negative cross-tenant tests pass; unpublished records never appear publicly; catalog revisions are auditable and deterministic.
+Acceptance: merchant CRUD and eligibility are authenticated and tenant-scoped; no UAE-specific assumption exists; invalid price/currency/variant states and floating-point money are rejected; zero-decimal and fractional currencies are represented correctly; RLS and negative cross-tenant tests pass; unpublished records never appear publicly; catalog revisions and shipping configuration are auditable and deterministic.
 
-### NS-02 — First responsive storefront
+### NS-02 — First globally accessible responsive storefront
 
 Dependencies: NS-01, `04.01–04.02` delivery/design decisions.
 
-Implement a Kablet-owned, responsive, crawlable storefront with collection/product/variant views and deterministic no-AI fallback.
+Implement a Kablet-owned, responsive, internationally accessible and crawlable storefront with collection/product/variant views, locale-aware presentation that does not silently convert currency, and deterministic no-AI fallback. Accessibility and storefront reachability must remain distinct from payment availability or legal eligibility.
 
 Acceptance: one merchant can publish; an anonymous shopper can browse and select a valid variant; browser/mobile/keyboard/a11y/SEO checks pass; no unavailable or stale value is presented as guaranteed.
 
-### NS-03 — Durable cart
+### NS-03 — Durable cart with currency and price integrity
 
 Dependencies: NS-01 and NS-02.
 
-Implement tenant-safe cart/session persistence, line validation, idempotent add/update/remove, inventory reservation policy and expiry.
+Implement tenant-safe cart/session persistence, line validation against the store's primary currency and authoritative catalog revision, idempotent add/update/remove, inventory reservation policy and expiry. Do not introduce shopper-side FX or multi-currency checkout in this slice.
 
-Acceptance: cart survives refresh and adaptation; invalid/obsolete lines fail safely; concurrent updates cannot over-reserve; retries do not duplicate lines or reservations; tenant isolation and replay tests pass.
+Acceptance: cart survives refresh and adaptation; amounts preserve original currency and precision; invalid/obsolete lines fail safely; concurrent updates cannot over-reserve; retries do not duplicate lines or reservations; tenant isolation and replay tests pass.
 
-### NS-04 — Checkout and payment boundary
+### NS-04 — Bring-your-own-payments checkout boundary
 
-Dependencies: NS-03 plus owner decisions on geography, currency, merchant of record, Stripe Connect model and compliance.
+Dependencies: NS-03 plus owner decisions on global country/eligibility policy, supported currencies, merchant-owned payment-provider selection, provider country coverage/API/onboarding, seller-of-record responsibilities and compliance.
 
-Implement the payment adapter boundary, server-created payment intent, explicit confirmation, webhook verification and unknown/pending recovery. Never handle raw card data.
+Implement a provider-neutral BYOP adapter boundary. Start with one provider only after verifying country coverage, API compatibility and merchant onboarding requirements; do not assume Stripe Connect, another platform program or a provider choice before that verification. Prefer merchant-owned accounts and provider-hosted checkout, use supported OAuth/authorization where available, and never handle raw card data. Verify payment server-side through authenticated callbacks/webhooks and reconciliation, with explicit confirmation and unknown/pending recovery.
 
-Acceptance: disposable/sandbox payment success, decline, duplicate webhook, timeout and unknown outcome are handled; payment state and order state are separate; client redirects cannot confirm success; secrets are server-only.
+Acceptance: disposable/sandbox payment success, decline, duplicate webhook, timeout and unknown outcome are handled; payment state, order state, fulfillment state and verified-revenue state are separate; the merchant remains seller of record and Kablet does not hold funds, manage payouts or charge transaction commissions; client redirects cannot confirm success; secrets are server-only; provider approval, PCI, security and legal obligations are documented.
 
 ### NS-05 — Verified orders and merchant operations
 
 Dependencies: NS-04.
 
-Implement atomic order creation, inventory transition, order lifecycle, refund/cancellation states, merchant order view and reconciliation.
+Implement atomic order creation and inventory transition, while keeping payment confirmation, order management, refunds, fulfillment and reconciliation as separate responsibilities and state machines. The merchant remains responsible for fulfillment, refunds, chargebacks and customer obligations under its provider agreement.
 
 Acceptance: only verified provider/native evidence creates a completed order; retries are idempotent; inventory cannot be oversold; refunds/cancellations and delayed outcomes reconcile; merchant can inspect status without secret exposure.
 
@@ -100,7 +100,7 @@ Acceptance: the same visitor can transition through governed compositions; decis
 
 Dependencies: NS-05 and `06.01–06.04`.
 
-Link verified orders to visitor/session lineage, expose unmatched coverage, retain four distinct revenue quantities, and run a preregistered control/treatment experiment.
+Link verified orders to visitor/session lineage, expose unmatched coverage, retain four distinct revenue quantities in each order's original transaction currency, and run a preregistered control/treatment experiment. Do not aggregate different currencies or claim cross-currency revenue without an explicit FX conversion policy, source, timestamp and audit trail.
 
 Acceptance: assignment is sticky; exposure and outcome windows are explicit; SRM, contamination, maturity and missing-coverage states block causal claims; results can be `INCONCLUSIVE`; no lift is reported without valid evidence.
 
@@ -116,7 +116,7 @@ Acceptance: named owner, SLOs, backup/restore drill, incident playbook, secret r
 
 **First working storefront:** NS-01 through NS-03 for one merchant and a small catalog. This proves a real native shopper journey and adaptive runtime integration, but not payment or revenue.
 
-**First verified purchase:** NS-04 and NS-05 with a sandbox payment account, server-verified payment outcome, durable order, inventory transition, merchant order visibility and recovery evidence.
+**First verified purchase:** NS-04 and NS-05 with a merchant-owned sandbox payment account, provider-hosted/card-data-isolated checkout, server-verified payment outcome, durable order, inventory transition, merchant order visibility and recovery evidence.
 
 **First adaptive conversion experiment:** NS-06 and NS-07 with a deterministic control, one governed treatment, valid exposure/purchase lineage, coverage diagnostics and an honest valid/inconclusive result.
 
@@ -130,8 +130,10 @@ Acceptance: named owner, SLOs, backup/restore drill, incident playbook, secret r
 
 ## 8. Risks and unresolved decisions
 
-- Merchant-of-record, Stripe Connect account/charge model, fees, refunds and chargebacks.
-- Initial geography, currency, tax and shipping model.
+- Initial country eligibility, supported ISO 4217 currencies and zero-decimal handling.
+- Payment-provider selection after country coverage, API compatibility and onboarding verification; merchant-owned authorization flow; seller-of-record, refunds, chargebacks and fulfillment responsibilities.
+- Shipping destinations, zones and rates; future tax-provider boundary.
+- Original-currency revenue reporting and any future FX policy/source.
 - Inventory reservation TTL and oversell policy.
 - Store domains, SSR/hosting and tenant routing.
 - Native order state machine and unknown payment recovery owner.
@@ -141,4 +143,4 @@ Acceptance: named owner, SLOs, backup/restore drill, incident playbook, secret r
 
 ## 9. Required CI and external gates
 
-Every implementation slice requires typecheck, lint, unit tests, PostgreSQL migration/integration tests, relevant browser tests, `git diff --check` and secret scanning. NS-04/NS-05 additionally require controlled payment-provider sandbox evidence. Live payment, merchant pilot, production provisioning and any future Shopify path require external credentials, infrastructure and human acceptance; mocked tests must never be reported as live verification.
+Every implementation slice requires typecheck, lint, unit tests, PostgreSQL migration/integration tests, relevant browser tests, `git diff --check` and secret scanning. NS-04/NS-05 additionally require controlled sandbox evidence from the selected merchant-owned payment provider. Live payment, merchant pilot, production provisioning and any future Shopify path require external credentials, infrastructure and human acceptance; mocked tests must never be reported as live verification.
