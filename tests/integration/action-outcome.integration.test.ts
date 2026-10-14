@@ -155,6 +155,8 @@ describe('Action and Outcome PostgreSQL integration', () => {
         await createMeasurementRepository(resource.runtime.db, tx).insertExposure({ contractVersion: 'experience-exposure.v1', id: 'a1000000-0000-4000-8000-000000000013', organizationId: org, businessId: business, visitorIdentityId: visitor, visitorSessionId: session, interactionSessionId: decision, decisionId: action, exposureKind: 'server_response', exposedAt: new Date('2026-01-01T00:00:00Z') });
         await tx.execute(sql`insert into visitor_contact_records(id,organization_id,business_id,visitor_identity_id,session_id,name,email,source_observation_id,idempotency_key) values (${contact}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'Private Name','private@example.test',${revision}::uuid,'concurrent-contact')`);
         await tx.execute(sql`insert into visitor_consents(id,organization_id,business_id,visitor_identity_id,session_id,purpose,version,status,source_observation_id,idempotency_key) values (${consent}::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,${session}::uuid,'follow_up','1','granted',${revision}::uuid,'concurrent-consent')`);
+        await tx.execute(sql`insert into kablet_consents(id,organization_id,business_id,visitor_identity_id,purpose,version,granted_at) values ('a1000000-0000-4000-8000-000000000019'::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,'follow_up','1',now())`);
+        await tx.execute(sql`insert into kablet_consents(id,organization_id,business_id,visitor_identity_id,purpose,version,granted_at,revoked_at) values ('a1000000-0000-4000-8000-000000000020'::uuid,${org}::uuid,${business}::uuid,${visitor}::uuid,'analytics','privacy.v1',now(),now())`);
       });
       let dispatches = 0;
       const adapter = {
@@ -167,8 +169,16 @@ describe('Action and Outcome PostgreSQL integration', () => {
       const results = await Promise.all([1, 2].map(() => service.confirm({ handle, decisionId: action, idempotencyKey: 'concurrent-confirmation', visitorConfirmed: true })));
       expect(dispatches).toBe(1);
       expect(new Set(results.map(result => result.actionRequestId)).size).toBe(1);
+      await resource.runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`);
+        await tx.execute(sql`update kablet_consents set revoked_at=now() where visitor_identity_id=${visitor}::uuid and organization_id=${org}::uuid and business_id=${business}::uuid and purpose='follow_up' and version='1'`);
+      });
+      await expect(service.confirm({ handle, decisionId: action, idempotencyKey: 'after-control-withdrawal', visitorConfirmed: true })).rejects.toThrow('action is not eligible');
+      await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); await tx.execute(sql`update kablet_consents set revoked_at=null where visitor_identity_id=${visitor}::uuid and organization_id=${org}::uuid and business_id=${business}::uuid and purpose='follow_up' and version='1'`); });
+      await expect(service.confirm({ handle, decisionId: action, idempotencyKey: 'after-control-regrant', visitorConfirmed: true })).resolves.toMatchObject({ status: 'verified' });
+      expect(dispatches).toBe(2);
       const counts = await resource.runtime.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id',${org},true),set_config('kablet.business_id',${business},true)`); return tx.execute(sql`select (select count(*) from action_requests)::int as requests,(select count(*) from execution_attempts)::int as attempts,(select count(*) from action_outcomes)::int as outcomes`); });
-      expect(counts.rows[0]).toMatchObject({ requests: 1, attempts: 1, outcomes: 1 });
+      expect(counts.rows[0]).toMatchObject({ requests: 2, attempts: 2, outcomes: 2 });
     } finally { await cleanup(resource); }
   }, 90000);
 

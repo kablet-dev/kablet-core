@@ -1,0 +1,45 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { createDb, createSecurityRepository } from '@kablet/db';
+import { loadControlServerConfig, loadServerConfig } from '@kablet/config';
+import { authorizeControlCapability, resolveControlContext, resolveSupportControlContext } from '../../../../lib/control-auth';
+
+const inputSchema = z.object({
+  action: z.enum(['grant_consent', 'revoke_consent', 'export', 'delete']), organizationId: z.string().uuid(), businessId: z.string().uuid(), visitorId: z.string().uuid(),
+  purpose: z.enum(['contact', 'personalization', 'intelligence_context', 'analytics', 'follow_up']).optional(), version: z.string().trim().min(1).max(64).optional(), supportGrantId: z.string().uuid().optional(),
+}).strict();
+
+export async function POST(request: Request) {
+  let runtime: ReturnType<typeof createDb> | undefined;
+  let control: ReturnType<typeof createDb> | undefined;
+  try {
+    const input = inputSchema.parse(await request.json());
+    if ((input.action === 'grant_consent' || input.action === 'revoke_consent') && (!input.purpose || (input.action === 'grant_consent' && !input.version))) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
+    const context = input.supportGrantId
+      ? await resolveSupportControlContext(input.organizationId, input.businessId, input.supportGrantId, 'privacy.manage')
+      : await resolveControlContext(input.organizationId, input.businessId);
+    if (!authorizeControlCapability(context, 'privacy.manage')) return NextResponse.json({ code: 'unauthorized' }, { status: 403 });
+    runtime = createDb(loadServerConfig().DATABASE_URL);
+    const security = createSecurityRepository(runtime.db);
+    const supportAccess = Boolean(input.supportGrantId);
+    const auditSecurity = supportAccess
+      ? (control = createDb(loadControlServerConfig().DATABASE_URL), createSecurityRepository(control.db))
+      : security;
+    if (input.action === 'grant_consent') await security.grantConsent({ organizationId: input.organizationId, businessId: input.businessId, visitorId: input.visitorId, purpose: input.purpose!, version: input.version! });
+    if (input.action === 'revoke_consent') await security.revokeConsent({ organizationId: input.organizationId, businessId: input.businessId, visitorId: input.visitorId, purpose: input.purpose! });
+    if (input.action === 'export') {
+      const exported = await security.exportVisitor({ organizationId: input.organizationId, businessId: input.businessId, visitorId: input.visitorId });
+      if (supportAccess) await auditSecurity.auditPlatform({ actorId: context!.actorId, sessionId: context!.sessionId!, action: 'privacy.export', resourceType: 'visitor', resourceId: input.visitorId });
+      else await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action: 'privacy.export', resourceType: 'visitor', resourceId: input.visitorId });
+      return NextResponse.json({ action: input.action, data: exported }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (input.action === 'delete') await security.deleteVisitor({ organizationId: input.organizationId, businessId: input.businessId, visitorId: input.visitorId });
+    if (supportAccess) await auditSecurity.auditPlatform({ actorId: context!.actorId, sessionId: context!.sessionId!, action: `privacy.${input.action.replace('_consent', '')}`, resourceType: 'visitor', resourceId: input.visitorId, metadata: input.purpose ? { purpose: input.purpose, version: input.version } : {} });
+    else await security.audit({ organizationId: input.organizationId, businessId: input.businessId, actorId: context!.actorId, actorType: context!.actorType, action: `privacy.${input.action.replace('_consent', '')}`, resourceType: 'visitor', resourceId: input.visitorId, metadata: input.purpose ? { purpose: input.purpose, version: input.version } : {} });
+    return NextResponse.json({ action: input.action, accepted: true, ...(input.action === 'delete' ? { propagationStatus: 'pending' } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ code: 'invalid_request' }, { status: 400 });
+    if (error instanceof Error && error.message === 'support_access_denied') return NextResponse.json({ code: 'unauthorized' }, { status: 403 });
+    return NextResponse.json({ code: 'unavailable' }, { status: 503 });
+  } finally { await control?.pool.end().catch(() => undefined); await runtime?.pool.end().catch(() => undefined); }
+}

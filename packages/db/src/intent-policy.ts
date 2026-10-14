@@ -52,6 +52,8 @@ export function createIntentPolicyRepository(db: Database['db'], existingTx?: Tx
       return scoped(db, organizationId, businessId, async inner => {
         const base = await inner.execute(sql`select * from business_intent_policy_revisions where organization_id=${organizationId}::uuid and business_id=${businessId}::uuid and id=${revisionId}::uuid`);
         if (!base.rows[0]) throw new Error('policy revision not found');
+        const safety = await inner.execute(sql`select effect from kablet_platform_safety_rules where rule_key=${base.rows[0].policy_key} or rule_key='*' order by case when rule_key=${base.rows[0].policy_key} then 0 else 1 end limit 1`);
+        if (!safety.rows[0] || safety.rows[0].effect !== 'allow') throw new Error('platform_safety_denied');
         const requirements = await inner.execute(sql`select requirement_key,prompt,options from business_intent_policy_requirements where organization_id=${organizationId}::uuid and business_id=${businessId}::uuid and policy_revision_id=${revisionId}::uuid order by requirement_key`);
         const rules = await inner.execute(sql`select intent from business_intent_policy_rules where organization_id=${organizationId}::uuid and business_id=${businessId}::uuid and policy_revision_id=${revisionId}::uuid order by intent`);
         const refs = await inner.execute(sql`select intent,requirement_key from business_intent_policy_rule_requirements where organization_id=${organizationId}::uuid and business_id=${businessId}::uuid and policy_revision_id=${revisionId}::uuid order by intent,requirement_key`);
@@ -60,6 +62,8 @@ export function createIntentPolicyRepository(db: Database['db'], existingTx?: Tx
     },
     async getCurrent(organizationId: string, businessId: string, policyKey: string): Promise<BusinessIntentPolicyRevision> {
       return scoped(db, organizationId, businessId, async tx => {
+        const safety = await tx.execute(sql`select effect from kablet_platform_safety_rules where rule_key=${policyKey} or rule_key='*' order by case when rule_key=${policyKey} then 0 else 1 end limit 1`);
+        if (!safety.rows[0] || safety.rows[0].effect !== 'allow') throw new Error('platform_safety_denied');
         const current = await tx.execute(sql`select revision_id from business_intent_policy_publications where organization_id=${organizationId}::uuid and business_id=${businessId}::uuid and policy_key=${policyKey}`);
         if (!current.rows[0]) throw new Error('published intent policy not found');
         return this.getById(organizationId, businessId, String(current.rows[0].revision_id), tx);

@@ -9,6 +9,20 @@
 
 ## How to read and maintain this roadmap
 
+## Approved multi-vertical architecture decisions
+
+These decisions preserve the locked blueprint boundary while allowing the first commercial implementation to remain Shopify-focused:
+
+- Ecommerce is Kablet's first vertical, not its permanent product boundary.
+- Shared intelligence, visitor, decision, experience, action, outcome and measurement contracts remain vertical-neutral.
+- Product/catalog, booking, lead and subscription capabilities extend shared contracts without duplicating the core intelligence platform.
+- Provider-specific semantics remain inside explicit adapters and must not become canonical Kablet truth.
+- Verified financial outcomes remain distinct from nonfinancial conversion indicators.
+- Intelligence knowledge is separated into business-specific, vertical-level and generalized layers with privacy, consent and opt-out controls.
+- Platform governance, merchant authority and runtime execution remain separate planes; platform safety outranks approved merchant policy, which outranks runtime decisions.
+
+These are roadmap acceptance constraints, not claims that future vertical features already exist.
+
 - **Strategic LOCKED ≠ engineering DONE.** Locked blueprint sections are requirements, not implementation evidence.
 - **Three independent statuses are required for every task:** `Existing implementation` describes repository evidence at the baseline; `Roadmap gate` describes completion of the task's full intended scope; `Fresh verification` describes executable evidence for the current implementation. These statuses must not be collapsed.
 - **Existing implementation statuses:** `AUDIT-VERIFIED (historical)`, `IMPLEMENTED–UNVERIFIED`, `PARTIAL`, `SCAFFOLD`, `NOT FOUND`.
@@ -142,52 +156,73 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 **Outcome:** Secure the tenant and merchant authority boundaries before handling real merchant connections.
 
-**Chapter status:** NOT COMPLETE. Task-level statuses below reflect **new roadmap exit gates**, not denial of existing reusable code.
+**Chapter status:** COMPLETE. Security acceptance passed and GitHub CI run `38556853479` verified the workspace, secret scan, disposable PostgreSQL integration, and E2E gates.
 
 ## 02.01 — Merchant and operator identity
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Implement merchant sign-in/session lifecycle and separate platform operator identities; avoid assuming existing tenant IDs are authentication.
 - **Definition of done:** Authenticated flows, session expiry/revocation, negative authorization tests.
 - **Blueprint / audit references:** Audit G; B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/drizzle/0029_trusted_control_role.sql`, `apps/web/lib/control-auth.ts`, `tests/integration/security.integration.test.ts`.
 
 ## 02.02 — Membership, RBAC and approvals
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Organization/business membership, roles, scoped permissions, merchant approval evidence and internal break-glass constraints.
 - **Definition of done:** Cross-tenant denial, approval provenance, support-access expiry tests.
 - **Blueprint / audit references:** B2.7 B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/security.ts`, `apps/web/app/api/control/`, `packages/db/drizzle/0029_trusted_control_role.sql`, `tests/integration/security.integration.test.ts`.
 
 ## 02.03 — Consent, privacy and lifecycle
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED. Downstream propagation remains explicitly deferred.
 - **Build / verify:** Implement consent collection, visitor privacy controls, retention/deletion/export workflows and safe model context boundaries.
 - **Definition of done:** Consent gate, deletion propagation, revoked-access and restore tests.
 - **Blueprint / audit references:** Audit D; B4.9 B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/security.ts`, `apps/web/app/api/control/privacy/route.ts`, `packages/db/drizzle/0030_consent_purpose_authority.sql`, `tests/integration/security.integration.test.ts`, `tests/integration/action-outcome.integration.test.ts`.
 
 ## 02.04 — Secret and provider credential boundary
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** COMPLETE AT REPOSITORY BOUNDARY — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED. Live provider execution remains explicitly deferred.
 - **Build / verify:** Encrypted token storage, key rotation, provider scopes, environment separation, audit records.
 - **Definition of done:** Secret never exposed in logs; revocation and least-privilege tests.
 - **Blueprint / audit references:** B3.7 B6.3 B6.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/credential-vault.ts`, `packages/db/src/security.ts`, `packages/db/drizzle/0026_provider_credential_lifecycle.sql`, `tests/integration/security.integration.test.ts`.
 
 ## 02.05 — Audit trail and merchant-policy enforcement
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Connect persisted policy versions to authenticated approval and runtime enforcement.
 - **Definition of done:** Actor/version/action lineage verified; unsafe changes rejected.
 - **Blueprint / audit references:** Audit E/F; B2.7 B6.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, `tests/integration/security.integration.test.ts`.
+
+### Chapter 02 completion and deferred obligations
+
+The current implementation establishes the following reusable security boundaries:
+
+- **02.01:** Supabase-backed merchant and platform-operator session issuance, expiry, revocation and server-side membership/operator resolution in `apps/web/lib/supabase-auth.ts`, `apps/web/lib/control-auth.ts` and `packages/db/src/security.ts`.
+- **02.02:** Canonical capabilities, tenant-scoped membership authorization, requester/approver separation and time-bounded support grants in `packages/domain/src/security.ts`, `packages/db/src/security.ts`, migrations `0019`, `0020`, `0024`, and control-plane routes under `apps/web/app/api/control/`.
+- **02.03:** Tenant-scoped export, transactional deletion, consent records and a durable pending deletion-request boundary in `packages/db/src/security.ts`, `apps/web/app/api/control/privacy/route.ts`, and migrations `0021` and `0027`.
+- **02.04:** Server-side encrypted credential storage, key-versioned decryption, rotation, revocation and scope checks in `packages/db/src/credential-vault.ts`, `packages/db/src/security.ts`, and migration `0026`.
+- **02.05:** Approval-linked policy publication, runtime platform-safety checks, append-only audit evidence and redacted metadata in `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, and migrations `0020`, `0024`, `0025`.
+- **02-F5/closure remediation:** Authenticated platform session provenance is bound to the server-only `kablet_control` database role in migration `0029_trusted_control_role.sql`; support-grant approval identity and server timestamps are enforced there. Runtime consent-dependent action eligibility now uses exact purpose/version matching in `apps/web/lib/action-service.ts`, with `follow_up` represented in `packages/domain/src/security.ts` and migration `0030_consent_purpose_authority.sql`.
+
+Security acceptance evidence consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38556853479`, plus focused security and action-outcome integration coverage. The chapter is complete for its current repository-level scope; the obligations below remain explicitly deferred and are not represented as implemented.
+
+The following obligations remain pending and are intentionally deferred to the first real provider/downstream integration milestone:
+
+1. Every provider adapter must call the credential authorization boundary immediately before execution and reject revoked, expired or insufficiently scoped credentials. No live external provider adapter currently exists in the repository.
+2. Every downstream processor that stores visitor-derived data must consume `kablet_privacy_deletion_requests` with retryable, idempotent processing, durable attempts and completion receipts. No external downstream processor currently exists; deletion remains visibly `pending` until one is implemented.
+3. Deployment key management, rotation operations and production incident controls remain infrastructure obligations; missing encryption configuration must continue to fail closed.
+
+Required acceptance evidence for this chapter includes direct SQL negative tests for forged actor context, immutable support-grant fields, post-withdrawal action rejection, tenant isolation, audit redaction/immutability, and the complete migration sequence. These references are implemented in `tests/integration/security.integration.test.ts` and `tests/integration/action-outcome.integration.test.ts`; CI execution remains the authoritative PostgreSQL verification environment.
 
 # Chapter 03 — Shopify Commerce Foundation & Durable Provider Operations
 
@@ -199,7 +234,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Define normalized shop, product, variant, price, inventory, cart, order and provider receipt contracts without losing provider-specific authority.
-- **Definition of done:** Contract tests; no invented prices, stock, or payment statuses.
+- **Definition of done:** Contract tests; no invented prices, stock, or payment statuses; normalized contracts support product/catalog, service/booking, lead and subscription capabilities without duplicating core intelligence; provider-specific fields remain adapter-owned.
 - **Blueprint / audit references:** B3.2 B3.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -259,7 +294,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Select Kablet-owned headless frontend delivery on approved merchant domain/subdomain; define Shopify API boundaries, SSR/SEO and checkout handoff.
-- **Definition of done:** Architecture decision record; URL/session/canonical and checkout continuity proof.
+- **Definition of done:** Architecture decision record; URL/session/canonical and checkout continuity proof; a cross-vertical capability matrix identifies shared runtime primitives and vertical extensions for ecommerce, booking, B2B lead and SaaS subscription journeys.
 - **Blueprint / audit references:** B1.1 B3.3 B4.1 B4.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -277,7 +312,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Build real collections, search/filter/product cards, product details and merchant-truth rendering.
-- **Definition of done:** Real synced products visible; authoritative prices/availability; SEO crawlable.
+- **Definition of done:** Real synced products visible; authoritative prices/availability; SEO crawlable; fixtures prove the shared experience runtime can render product discovery, service selection, lead qualification and plan/trial comparison without fabricating vertical truth.
 - **Blueprint / audit references:** B4.2 B4.5 B4.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -328,7 +363,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Connect provider adapter to durable invocation executor; bounded context, privacy, output validation and provider failure behavior.
-- **Definition of done:** Non-demo input understood in controlled evaluation; no invented commerce claims.
+- **Definition of done:** Non-demo input understood in controlled evaluation; no invented commerce claims; context and learned knowledge are explicitly partitioned into business, vertical and generalized layers with tenant isolation and consent controls.
 - **Blueprint / audit references:** Audit C AI; B2.4 B2.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -355,7 +390,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Authenticated merchant dashboard for business truth, brand, integration status, policy authoring/approval, budgets, reports and audit.
-- **Definition of done:** Merchant can approve a change and see safe runtime effect; tenant-isolated.
+- **Definition of done:** Merchant can approve a change and see safe runtime effect; tenant-isolated; merchant authority cannot mutate platform governance or bypass runtime capability validation.
 - **Blueprint / audit references:** B2.7 B4.7 B5.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -364,7 +399,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Internal operations, model/config governance, incident/cost/quality, tenant support controls and audit evidence.
-- **Definition of done:** Operator controls distinct from merchant controls; no silent overrides.
+- **Definition of done:** Operator controls distinct from merchant controls; no silent overrides; platform safety controls and support access are separately authorized, time-bounded and auditable.
 - **Blueprint / audit references:** B2.7 B6.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -388,7 +423,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Define Class A deterministic, B partial diagnostics, C unmatched; enforce consent, windows, refunds and provider verification.
-- **Definition of done:** Unmatched orders never become fabricated Class A conversions.
+- **Definition of done:** Unmatched orders never become fabricated Class A conversions; the shared taxonomy distinguishes verified financial outcomes, nonfinancial indicators, reversals/refunds/cancellations, delayed outcomes and unmatched outcomes.
 - **Blueprint / audit references:** B5.2 B5.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -397,7 +432,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Separate Shopify total revenue, reliably linked revenue, experimental arm revenue and estimated incremental Kablet revenue.
-- **Definition of done:** Reproducible queries, coverage/lag disclosures, refund handling.
+- **Definition of done:** Reproducible queries, coverage/lag disclosures, refund handling; no causal or incremental-lift claim is emitted before valid experiment integrity and maturity gates pass.
 - **Blueprint / audit references:** B5.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -424,7 +459,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Implement net-revenue estimand, confidence intervals, minimum sample/power planning and inconclusive states.
-- **Definition of done:** Synthetic known-effect tests and reproducible evidence report.
+- **Definition of done:** Synthetic known-effect tests and reproducible evidence report; causal and incremental claims fail closed for invalid, contaminated, underpowered or immature experiments.
 - **Blueprint / audit references:** B5.1 B5.10.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -598,7 +633,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 - **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
 - **Build / verify:** Track real operating costs, incidents, onboarding, merchant retention and experiments; prioritize next integrations only after evidence.
-- **Definition of done:** Versioned roadmap and measured expansion decisions.
+- **Definition of done:** Versioned roadmap and measured expansion decisions; evidence records whether shared contracts remain compatible with future booking, B2B lead and SaaS subscription verticals without duplicating the core intelligence platform.
 - **Blueprint / audit references:** B1.9 B1.10 B5.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
@@ -721,11 +756,11 @@ This register makes the distinction explicit for every parent task. All roadmap 
 | `01.03` | PARTIAL | NOT STARTED | BLOCKED — runner environment |
 | `01.04` | IMPLEMENTED–UNVERIFIED | NOT STARTED | NOT RUN |
 | `01.05` | NOT FOUND | NOT STARTED | NOT RUN |
-| `02.01` | NOT FOUND | NOT STARTED | NOT RUN |
-| `02.02` | PARTIAL | NOT STARTED | NOT RUN |
-| `02.03` | PARTIAL | NOT STARTED | NOT RUN |
-| `02.04` | NOT FOUND | NOT STARTED | NOT RUN |
-| `02.05` | PARTIAL | NOT STARTED | NOT RUN |
+| `02.01` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
+| `02.02` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
+| `02.03` | IMPLEMENTED; downstream deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; downstream propagation deferred |
+| `02.04` | IMPLEMENTED at repository boundary; provider execution deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; provider execution deferred |
+| `02.05` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
 | `03.01` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.02` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.03` | NOT FOUND | NOT STARTED | NOT RUN |

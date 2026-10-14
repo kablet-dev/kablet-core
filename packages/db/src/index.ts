@@ -15,3 +15,5 @@ export * from './conversion.js';
 export * from './measurement-query.js';
 export * from './intent-policy.js';
 export * from './ai-intent.js';
+export * from './security.js';
+export * from './credential-vault.js';

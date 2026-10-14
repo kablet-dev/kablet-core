@@ -20,6 +20,18 @@
     { "idx": 15, "version": "7", "when": 1760572800000, "tag": "0015_business_intent_policy", "breakpoints": true },
     { "idx": 16, "version": "7", "when": 1760659200000, "tag": "0016_ai_intent_invocations", "breakpoints": true },
     { "idx": 17, "version": "7", "when": 1760745600000, "tag": "0017_ai_intent_settlement_accounting", "breakpoints": true },
-    { "idx": 18, "version": "7", "when": 1760832000000, "tag": "0018_ai_invocation_privacy_lineage", "breakpoints": true }
+    { "idx": 18, "version": "7", "when": 1760832000000, "tag": "0018_ai_invocation_privacy_lineage", "breakpoints": true },
+    { "idx": 19, "version": "7", "when": 1760918400000, "tag": "0019_identity_security", "breakpoints": true },
+    { "idx": 20, "version": "7", "when": 1761004800000, "tag": "0020_control_plane_hardening", "breakpoints": true },
+    { "idx": 21, "version": "7", "when": 1761091200000, "tag": "0021_privacy_delete_security_consents", "breakpoints": true },
+    { "idx": 22, "version": "7", "when": 1761177600000, "tag": "0022_privacy_consent_delete_grant", "breakpoints": true },
+    { "idx": 23, "version": "7", "when": 1761264000000, "tag": "0023_privacy_consent_select_grant", "breakpoints": true },
+    { "idx": 24, "version": "7", "when": 1761350400000, "tag": "0024_platform_safety_support_access", "breakpoints": true },
+    { "idx": 25, "version": "7", "when": 1761436800000, "tag": "0025_platform_audit_policy_repair", "breakpoints": true },
+    { "idx": 26, "version": "7", "when": 1761523200000, "tag": "0026_provider_credential_lifecycle", "breakpoints": true },
+    { "idx": 27, "version": "7", "when": 1761609600000, "tag": "0027_privacy_deletion_propagation", "breakpoints": true },
+    { "idx": 28, "version": "7", "when": 1761696000000, "tag": "0028_security_context_and_support_grant_hardening", "breakpoints": true },
+    { "idx": 29, "version": "7", "when": 1761782400000, "tag": "0029_trusted_control_role", "breakpoints": true },
+    { "idx": 30, "version": "7", "when": 1761868800000, "tag": "0030_consent_purpose_authority", "breakpoints": true }
   ]
 }
