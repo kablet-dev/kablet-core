@@ -1,5 +1,3 @@
-SET LOCAL ROLE kablet_privacy_owner;
-
 CREATE TABLE IF NOT EXISTS kablet_privacy_deletion_requests (
   id uuid PRIMARY KEY,
   organization_id uuid NOT NULL REFERENCES organizations(id),
@@ -23,6 +21,9 @@ CREATE POLICY kablet_privacy_deletion_request_isolation ON kablet_privacy_deleti
 
 GRANT SELECT ON kablet_privacy_deletion_requests TO kablet_dev;
 
+ALTER TABLE kablet_privacy_deletion_requests OWNER TO kablet_privacy_owner;
+
+SET LOCAL ROLE kablet_privacy_owner;
 CREATE OR REPLACE FUNCTION kablet_visitor_privacy_delete(p_organization_id uuid, p_visitor_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE deleted boolean;
 BEGIN
