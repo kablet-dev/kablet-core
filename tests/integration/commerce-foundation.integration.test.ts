@@ -35,11 +35,16 @@ describe.skipIf(!enabled)('commerce provider foundation', () => {
       const admin = new pg.Pool({ connectionString: process.env.TEST_ROLE_ADMIN_URL, max: 1 });
       await admin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
       try { await migrate(bootstrap.db, { migrationsFolder }); } finally { await admin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await admin.end(); }
-      await bootstrap.db.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Commerce Foundation')`);
-      await bootstrap.db.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Commerce Business')`);
-      await bootstrap.db.execute(sql`insert into organizations(id,name) values (${otherOrg}::uuid,'Other Commerce Foundation')`);
-      await bootstrap.db.execute(sql`insert into businesses(id,organization_id,name) values (${otherBusiness}::uuid,${otherOrg}::uuid,'Other Commerce Business')`);
-      await bootstrap.db.execute(sql`insert into kablet_users(id,auth_provider,provider_subject) values ('75000000-0000-4000-8000-000000000001','test','commerce-foundation-user')`);
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Commerce Foundation')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${org}::uuid,'Commerce Business')`);
+        await tx.execute(sql`select set_config('kablet.organization_id',${otherOrg},true)`);
+        await tx.execute(sql`insert into organizations(id,name) values (${otherOrg}::uuid,'Other Commerce Foundation')`);
+        await tx.execute(sql`insert into businesses(id,organization_id,name) values (${otherBusiness}::uuid,${otherOrg}::uuid,'Other Commerce Business')`);
+        await tx.execute(sql`select set_config('kablet.organization_id',${org},true)`);
+        await tx.execute(sql`insert into kablet_users(id,auth_provider,provider_subject) values ('75000000-0000-4000-8000-000000000001','test','commerce-foundation-user')`);
+      });
       runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       control = createDb(`postgresql://kablet_control:${encodeURIComponent(process.env.TEST_CONTROL_PASSWORD ?? '')}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       const repository = createCommerceRepository(runtime.db);
@@ -74,7 +79,7 @@ describe.skipIf(!enabled)('commerce provider foundation', () => {
       expect(policies.rows).toHaveLength(5);
       for (const row of policies.rows) expect(row).toMatchObject({ relforcerowsecurity: true });
       const runtimePrivileges = await bootstrap.db.execute(sql`select has_table_privilege('kablet_dev','kablet_provider_webhook_inbox','INSERT') as can_insert, has_table_privilege('kablet_dev','kablet_provider_webhook_inbox','UPDATE') as can_update`);
-      expect(runtimePrivileges.rows[0]).toMatchObject({ can_insert: true, can_update: true });
+      expect(runtimePrivileges.rows[0]).toMatchObject({ can_insert: false, can_update: true });
       const controlPrivileges = await bootstrap.db.execute(sql`select has_table_privilege('kablet_control','kablet_provider_oauth_states','INSERT') as oauth_insert, has_table_privilege('kablet_control','kablet_provider_oauth_states','UPDATE') as oauth_update, has_table_privilege('kablet_control','kablet_provider_webhook_inbox','INSERT') as webhook_insert`);
       expect(controlPrivileges.rows[0]).toMatchObject({ oauth_insert: true, oauth_update: true, webhook_insert: true });
     } finally {

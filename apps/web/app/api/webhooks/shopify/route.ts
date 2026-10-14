@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createCommerceRepository, createDb } from '@kablet/db';
 import { providerEventSchema } from '@kablet/domain';
 import { loadControlServerConfig } from '@kablet/config';
-import { normalizeShopifyDomain, verifyShopifyWebhook } from '../../../../../lib/shopify-provider';
+import { normalizeShopifyDomain, verifyShopifyWebhook } from '../../../../lib/shopify-provider';
 
 export async function POST(request: Request) {
   let runtime: ReturnType<typeof createDb> | undefined;
