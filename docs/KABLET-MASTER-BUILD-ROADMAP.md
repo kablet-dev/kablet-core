@@ -156,11 +156,11 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 **Outcome:** Secure the tenant and merchant authority boundaries before handling real merchant connections.
 
-**Chapter status:** IN PROGRESS. Existing security implementation is materially present; this closure pass adds a server-only control-role boundary and purpose/version-scoped runtime consent enforcement. A fresh CI run is required before closure.
+**Chapter status:** COMPLETE. Security acceptance passed and GitHub CI run `38556853479` verified the workspace, secret scan, disposable PostgreSQL integration, and E2E gates.
 
 ## 02.01 — Merchant and operator identity
 
-- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Implement merchant sign-in/session lifecycle and separate platform operator identities; avoid assuming existing tenant IDs are authentication.
 - **Definition of done:** Authenticated flows, session expiry/revocation, negative authorization tests.
 - **Blueprint / audit references:** Audit G; B6.3.
@@ -169,7 +169,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 ## 02.02 — Membership, RBAC and approvals
 
-- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Organization/business membership, roles, scoped permissions, merchant approval evidence and internal break-glass constraints.
 - **Definition of done:** Cross-tenant denial, approval provenance, support-access expiry tests.
 - **Blueprint / audit references:** B2.7 B6.3.
@@ -178,7 +178,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 ## 02.03 — Consent, privacy and lifecycle
 
-- **Status:** IMPLEMENTED; DOWNSTREAM PROPAGATION DEFERRED; FRESH CI VERIFICATION PENDING.
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED. Downstream propagation remains explicitly deferred.
 - **Build / verify:** Implement consent collection, visitor privacy controls, retention/deletion/export workflows and safe model context boundaries.
 - **Definition of done:** Consent gate, deletion propagation, revoked-access and restore tests.
 - **Blueprint / audit references:** Audit D; B4.9 B6.3.
@@ -187,7 +187,7 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 ## 02.04 — Secret and provider credential boundary
 
-- **Status:** IMPLEMENTED AT REPOSITORY BOUNDARY; PROVIDER EXECUTION DEFERRED; FRESH CI VERIFICATION PENDING.
+- **Status:** COMPLETE AT REPOSITORY BOUNDARY — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED. Live provider execution remains explicitly deferred.
 - **Build / verify:** Encrypted token storage, key rotation, provider scopes, environment separation, audit records.
 - **Definition of done:** Secret never exposed in logs; revocation and least-privilege tests.
 - **Blueprint / audit references:** B3.7 B6.3 B6.8.
@@ -196,14 +196,14 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 ## 02.05 — Audit trail and merchant-policy enforcement
 
-- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
+- **Status:** COMPLETE — IMPLEMENTED AND SECURITY-ACCEPTED; GITHUB CI VERIFIED.
 - **Build / verify:** Connect persisted policy versions to authenticated approval and runtime enforcement.
 - **Definition of done:** Actor/version/action lineage verified; unsafe changes rejected.
 - **Blueprint / audit references:** Audit E/F; B2.7 B6.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
 - **Evidence:** `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, `tests/integration/security.integration.test.ts`.
 
-### Chapter 02 remediation status — not a completion declaration
+### Chapter 02 completion and deferred obligations
 
 The current implementation establishes the following reusable security boundaries:
 
@@ -214,7 +214,7 @@ The current implementation establishes the following reusable security boundarie
 - **02.05:** Approval-linked policy publication, runtime platform-safety checks, append-only audit evidence and redacted metadata in `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, and migrations `0020`, `0024`, `0025`.
 - **02-F5/closure remediation:** Authenticated platform session provenance is bound to the server-only `kablet_control` database role in migration `0029_trusted_control_role.sql`; support-grant approval identity and server timestamps are enforced there. Runtime consent-dependent action eligibility now uses exact purpose/version matching in `apps/web/lib/action-service.ts`, with `follow_up` represented in `packages/domain/src/security.ts` and migration `0030_consent_purpose_authority.sql`.
 
-Fresh verification evidence currently consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38552804542`, plus focused security and action-outcome integration coverage. The new control-role and consent-authority changes in this revision require a fresh CI run; the chapter remains **IN PROGRESS** until that evidence is reviewed.
+Security acceptance evidence consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38556853479`, plus focused security and action-outcome integration coverage. The chapter is complete for its current repository-level scope; the obligations below remain explicitly deferred and are not represented as implemented.
 
 The following obligations remain pending and are intentionally deferred to the first real provider/downstream integration milestone:
 
@@ -756,11 +756,11 @@ This register makes the distinction explicit for every parent task. All roadmap 
 | `01.03` | PARTIAL | NOT STARTED | BLOCKED — runner environment |
 | `01.04` | IMPLEMENTED–UNVERIFIED | NOT STARTED | NOT RUN |
 | `01.05` | NOT FOUND | NOT STARTED | NOT RUN |
-| `02.01` | IMPLEMENTED | IN PROGRESS | PENDING CI — fresh migration `0029` and control-role execution |
-| `02.02` | IMPLEMENTED | IN PROGRESS | PENDING CI — fresh RLS and forged-session regression execution |
-| `02.03` | IMPLEMENTED; downstream deferred | IN PROGRESS | PENDING CI — consent authority and privacy lifecycle regression execution |
-| `02.04` | IMPLEMENTED at repository boundary; provider execution deferred | IN PROGRESS | PENDING CI — credential lifecycle regression execution |
-| `02.05` | IMPLEMENTED | IN PROGRESS | PENDING CI — platform audit and policy enforcement regression execution |
+| `02.01` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
+| `02.02` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
+| `02.03` | IMPLEMENTED; downstream deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; downstream propagation deferred |
+| `02.04` | IMPLEMENTED at repository boundary; provider execution deferred | COMPLETE | VERIFIED — GitHub CI run `38556853479`; provider execution deferred |
+| `02.05` | IMPLEMENTED | COMPLETE | VERIFIED — GitHub CI run `38556853479` |
 | `03.01` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.02` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.03` | NOT FOUND | NOT STARTED | NOT RUN |
