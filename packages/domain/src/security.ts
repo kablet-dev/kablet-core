@@ -53,7 +53,7 @@ export function authorizePolicyApproval(context: AuthContext | null, organizatio
   return authorize(context, { actorType: 'merchant_user', organizationId, businessId, capability: 'policy.approve' });
 }
 
-export const consentPurposeSchema = z.enum(['contact', 'personalization', 'intelligence_context', 'analytics']);
+export const consentPurposeSchema = z.enum(['contact', 'personalization', 'intelligence_context', 'analytics', 'follow_up']);
 export type ConsentPurpose = z.infer<typeof consentPurposeSchema>;
 
 export function isConsentActive(input: { purpose: ConsentPurpose; grantedAt: Date | null; revokedAt: Date | null }, now = new Date()): boolean {

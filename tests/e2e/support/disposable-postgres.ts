@@ -11,7 +11,7 @@ export const organizationId = '84000000-0000-4000-8000-000000000001';
 export const businessId = '84000000-0000-4000-8000-000000000002';
 const cookieSecret = 'e2e-only-kablet-interaction-cookie-secret-2026';
 
-export type BrowserDatabase = { database: string; runtimeUrl: string; organizationId: string; businessId: string; cookieSecret: string; offeringId: string; offeringRevisionId: string; definitionId: string; cleanup: () => Promise<void> };
+export type BrowserDatabase = { database: string; runtimeUrl: string; controlUrl: string; organizationId: string; businessId: string; cookieSecret: string; offeringId: string; offeringRevisionId: string; definitionId: string; cleanup: () => Promise<void> };
 
 export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
   const manager = loadTestManagerConfig();
@@ -19,7 +19,8 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
   const bootstrapPassword = process.env.TEST_BOOTSTRAP_PASSWORD;
   const roleAdminUrl = process.env.TEST_ROLE_ADMIN_URL;
   const appPassword = process.env.TEST_APP_PASSWORD;
-  if (!bootstrapUser || !bootstrapPassword || !roleAdminUrl || !appPassword) throw new Error('Browser PostgreSQL test credentials are required');
+  const controlPassword = process.env.TEST_CONTROL_PASSWORD;
+  if (!bootstrapUser || !bootstrapPassword || !roleAdminUrl || !appPassword || !controlPassword) throw new Error('Browser PostgreSQL test credentials are required');
   const base = `postgresql://${encodeURIComponent(manager.TEST_MANAGER_USER)}:${encodeURIComponent(manager.TEST_MANAGER_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}`;
   const database = `kablet_e2e_${randomBytes(12).toString('hex')}`;
   const managerPool = new pg.Pool({ connectionString: `${base}/postgres`, max: 1 });
@@ -31,6 +32,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
   try {
     await managerPool.query(`create database "${database}" owner "${manager.TEST_MANAGER_USER}"`);
     await managerPool.query(`grant connect, create on database "${database}" to "${bootstrapUser}"`);
+    await managerPool.query(`grant connect on database "${database}" to kablet_control`);
     target = new pg.Pool({ connectionString: `${base}/${database}`, max: 1 });
     await target.query(`grant usage, create on schema public to "${bootstrapUser}"`);
     await target.query('grant usage, create on schema public to kablet_privacy_owner');
@@ -55,7 +57,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
     runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
     await seedBaselineIntentPolicy(runtime.db, organizationId, businessId);
     await createConversionRepository(runtime.db).createDefinition({ id: definitionId, organizationId, businessId, definitionKey: 'lead', definitionVersion: 'v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', outcomeType: 'lead.delivered', active: true });
-    return { database, runtimeUrl: `postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, organizationId, businessId, cookieSecret, offeringId, offeringRevisionId, definitionId, cleanup: async () => { try { await runtime?.pool.end(); } finally { await managerPool.query(`drop database if exists "${database}"`); await managerPool.end(); } } };
+    return { database, runtimeUrl: `postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, controlUrl: `postgresql://kablet_control:${encodeURIComponent(controlPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, organizationId, businessId, cookieSecret, offeringId, offeringRevisionId, definitionId, cleanup: async () => { try { await runtime?.pool.end(); } finally { await managerPool.query(`drop database if exists "${database}"`); await managerPool.end(); } } };
   } catch (error) {
     await target?.end().catch(() => undefined);
     await bootstrap?.pool.end().catch(() => undefined);

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../apps/web/lib/control-auth', () => ({ resolveControlContext: mocks.resolveControlContext, authorizeControlCapability: mocks.authorizeControlCapability, resolvePlatformOperatorContext: mocks.resolvePlatformOperatorContext, authorizePlatformCapability: mocks.authorizePlatformCapability, resolveSupportControlContext: mocks.resolveSupportControlContext }));
 vi.mock('../../apps/web/lib/control-credential-vault', () => ({ loadControlCredentialVault: mocks.loadControlCredentialVault }));
-vi.mock('@kablet/config', () => ({ loadServerConfig: () => ({ DATABASE_URL: 'postgres://test' }) }));
+vi.mock('@kablet/config', () => ({ loadServerConfig: () => ({ DATABASE_URL: 'postgres://test' }), loadControlServerConfig: () => ({ DATABASE_URL: 'postgres://control-test' }) }));
 vi.mock('@kablet/db', () => ({ createDb: mocks.createDb, createSecurityRepository: mocks.createSecurityRepository, createIntentPolicyRepository: mocks.createIntentPolicyRepository }));
 
 import { POST as membershipPost } from '../../apps/web/app/api/control/membership/route';

@@ -6,7 +6,7 @@ import { createCredentialVault, createDb, createSecurityRepository, createVisito
 import { loadTestManagerConfig } from '@kablet/config';
 import { describe, expect, it } from 'vitest';
 
-const enabled = Boolean(process.env.TEST_MANAGER_PASSWORD && process.env.TEST_BOOTSTRAP_USER && process.env.TEST_BOOTSTRAP_PASSWORD && process.env.TEST_ROLE_ADMIN_URL && process.env.TEST_APP_PASSWORD);
+const enabled = Boolean(process.env.TEST_MANAGER_PASSWORD && process.env.TEST_BOOTSTRAP_USER && process.env.TEST_BOOTSTRAP_PASSWORD && process.env.TEST_ROLE_ADMIN_URL && process.env.TEST_APP_PASSWORD && process.env.TEST_CONTROL_PASSWORD);
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
 const orgA = '61000000-0000-4000-8000-000000000001';
 const orgB = '61000000-0000-4000-8000-000000000002';
@@ -21,9 +21,11 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
     const managerPool = new pg.Pool({ connectionString: `${base}/postgres`, max: 1 });
     let bootstrapPool: pg.Pool | undefined;
     let runtimePool: pg.Pool | undefined;
+    let controlPool: pg.Pool | undefined;
     try {
       await managerPool.query(`create database "${database}" owner "${manager.TEST_MANAGER_USER}"`);
       await managerPool.query(`grant connect, create on database "${database}" to "${process.env.TEST_BOOTSTRAP_USER}"`);
+      await managerPool.query(`grant connect on database "${database}" to kablet_control`);
       const target = new pg.Pool({ connectionString: `${base}/${database}`, max: 1 });
       await target.query(`grant usage, create on schema public to "${process.env.TEST_BOOTSTRAP_USER}"`);
       await target.query('grant usage, create on schema public to kablet_privacy_owner');
@@ -76,18 +78,27 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       const runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       runtimePool = runtime.pool;
       const security = createSecurityRepository(runtime.db);
+      const control = createDb(`postgresql://kablet_control:${encodeURIComponent(process.env.TEST_CONTROL_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
+      controlPool = control.pool;
+      const controlSecurity = createSecurityRepository(control.db);
+      const controlIdentity = await controlPool.query("select current_user, session_user");
+      expect(controlIdentity.rows).toHaveLength(1);
+      expect(controlIdentity.rows[0]).toMatchObject({ current_user: 'kablet_control', session_user: 'kablet_control' });
       const visitors = createVisitorStateRepository(runtime.db);
       const runtimeIdentity = await runtimePool.query("select current_user, has_table_privilege(current_user, 'businesses', 'SELECT') as can_read_businesses");
       expect(runtimeIdentity.rows).toHaveLength(1);
       expect(runtimeIdentity.rows[0]).toMatchObject({ current_user: 'kablet_dev', can_read_businesses: true });
-      const operatorSession = await security.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
-      const supportApproverSession = await security.createSession(supportApproverUser, new Date(Date.now() + 60_000), 'platform_operator');
-      await expect(security.resolvePlatformContext(operatorSession.token)).resolves.toMatchObject({ actorId: operatorUser, actorType: 'platform_operator', organizationId: null, businessId: null });
+      const operatorSession = await controlSecurity.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
+      const supportApproverSession = await controlSecurity.createSession(supportApproverUser, new Date(Date.now() + 60_000), 'platform_operator');
+      const expiredOperatorSession = await controlSecurity.createSession(operatorUser, new Date(Date.now() - 60_000), 'platform_operator');
+      const revokedOperatorSession = await controlSecurity.createSession(operatorUser, new Date(Date.now() + 60_000), 'platform_operator');
+      await controlSecurity.revokeSession(revokedOperatorSession.id);
+      await expect(controlSecurity.resolvePlatformContext(operatorSession.token)).resolves.toMatchObject({ actorId: operatorUser, actorType: 'platform_operator', organizationId: null, businessId: null });
       await expect(security.resolveMerchantContext(operatorSession.token, orgA, businessA)).resolves.toBeNull();
-      const session = await security.createSession(userA, new Date(Date.now() + 60_000));
+      const session = await controlSecurity.createSession(userA, new Date(Date.now() + 60_000));
       await expect(security.resolveMerchantContext(session.token, orgA, businessA)).resolves.toMatchObject({ actorId: userA, organizationId: orgA, businessId: businessA });
       await expect(security.resolveMerchantContext(session.token, orgB, businessB)).resolves.toBeNull();
-      const expiredSession = await security.createSession(userA, new Date(Date.now() - 60_000));
+      const expiredSession = await controlSecurity.createSession(userA, new Date(Date.now() - 60_000));
       await expect(security.resolveSession(expiredSession.token)).resolves.toBeNull();
       const visitor = await visitors.createVisitor(orgA, businessA, new Date(Date.now() + 60_000));
       const unrelatedVisitor = await visitors.createVisitor(orgB, businessB, new Date(Date.now() + 60_000));
@@ -192,12 +203,12 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       expect(approved.rows).toHaveLength(1);
       await expect(security.isPolicyApproved({ organizationId: orgA, businessId: businessA, policyKey: 'baseline', revisionId, approvalId: String(approved.rows[0].id) })).resolves.toBe(true);
       expect(String(requested.rows[0].id)).not.toBe(String(approved.rows[0].id));
-      const supportGrant = await security.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Investigate an authorized tenant issue', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 60_000) });
+      const supportGrant = await controlSecurity.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Investigate an authorized tenant issue', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 60_000) });
       const supportGrantId = String(supportGrant.rows[0].id);
-      await expect(security.approveSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, grantId: supportGrantId })).rejects.toThrow('support_grant_self_approval');
-      await expect(security.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId })).resolves.toMatchObject({ rows: [{ id: supportGrantId }] });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).resolves.toMatchObject({ grantId: supportGrantId, organizationId: orgA, businessId: businessA });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgB, businessId: businessB, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      await expect(controlSecurity.approveSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, grantId: supportGrantId })).rejects.toThrow('support_grant_self_approval');
+      await expect(controlSecurity.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId })).resolves.toMatchObject({ rows: [{ id: supportGrantId }] });
+      await expect(controlSecurity.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).resolves.toMatchObject({ grantId: supportGrantId, organizationId: orgA, businessId: businessA });
+      await expect(controlSecurity.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgB, businessId: businessB, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
       const forgedGrantUpdate = await runtimePool.connect();
       try {
         await forgedGrantUpdate.query('begin');
@@ -207,18 +218,18 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await forgedGrantUpdate.query('rollback').catch(() => undefined);
         forgedGrantUpdate.release();
       }
-      await security.revokeSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId });
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
-      const expiringGrant = await security.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Verify expiry enforcement safely', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 2_000) });
+      await controlSecurity.revokeSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId });
+      await expect(controlSecurity.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: supportGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      const expiringGrant = await controlSecurity.requestSupportGrant({ actorId: operatorUser, sessionId: operatorSession.id, organizationId: orgA, businessId: businessA, purpose: 'Verify expiry enforcement safely', capabilities: ['privacy.manage'], expiresAt: new Date(Date.now() + 2_000) });
       const expiringGrantId = String(expiringGrant.rows[0].id);
-      await security.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId });
+      await controlSecurity.approveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId });
       await new Promise(resolve => setTimeout(resolve, 2_100));
-      await expect(security.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
-      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'deny', reason: 'Blocked during a safety review' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'deny' }] });
-      await expect(security.assertPlatformSafety('baseline')).rejects.toThrow('platform_safety_denied');
+      await expect(controlSecurity.resolveSupportGrant({ actorId: supportApproverUser, sessionId: supportApproverSession.id, grantId: expiringGrantId, organizationId: orgA, businessId: businessA, capability: 'privacy.manage' })).rejects.toThrow('support_access_denied');
+      await expect(controlSecurity.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'deny', reason: 'Blocked during a safety review' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'deny' }] });
+      await expect(controlSecurity.assertPlatformSafety('baseline')).rejects.toThrow('platform_safety_denied');
       await expect(security.setPlatformSafetyRule({ actorId: userA, sessionId: session.id, ruleKey: 'baseline', effect: 'allow', reason: 'Merchant cannot override safety' })).rejects.toThrow('platform_safety_denied');
-      await expect(security.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
-      await security.auditPlatform({ actorId: supportApproverUser, sessionId: supportApproverSession.id, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
+      await expect(controlSecurity.setPlatformSafetyRule({ actorId: supportApproverUser, sessionId: supportApproverSession.id, ruleKey: 'baseline', effect: 'allow', reason: 'Restore the verified platform baseline' })).resolves.toMatchObject({ rows: [{ rule_key: 'baseline', effect: 'allow' }] });
+      await controlSecurity.auditPlatform({ actorId: supportApproverUser, sessionId: supportApproverSession.id, action: 'security.support.test', resourceType: 'support_grant', resourceId: supportGrantId, metadata: { providerToken: 'must-not-persist' } });
       const unauthorizedPlatformAudit = await runtimePool.connect();
       try {
         await unauthorizedPlatformAudit.query('begin');
@@ -236,14 +247,47 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
         await forgedPlatformAudit.query('rollback').catch(() => undefined);
         forgedPlatformAudit.release();
       }
-      await bootstrapConnection.query('select set_config($1,$2,false)', ['kablet.auth_session_id', supportApproverSession.id]);
+      const forgedPlatformContext = await runtimePool.connect();
       try {
-        const platformAudit = await bootstrapConnection.query("select actor_id,organization_id,business_id,metadata from kablet_audit_events where action='security.support.test'");
+        await forgedPlatformContext.query('begin');
+        for (const sessionId of [expiredOperatorSession.id, revokedOperatorSession.id]) {
+          await forgedPlatformContext.query('select set_config($1,$2,true)', ['kablet.auth_session_id', sessionId]);
+          const inactive = await forgedPlatformContext.query("select public.kablet_current_actor() as actor");
+          expect(inactive.rows[0].actor).toBeNull();
+        }
+        await forgedPlatformContext.query('reset kablet.auth_session_id');
+        await forgedPlatformContext.query('select set_config($1,$2,true)', ['kablet.auth_session_id', supportApproverSession.id]);
+        const forgedSessionOnly = await forgedPlatformContext.query("select public.kablet_current_actor() as actor");
+        expect(forgedSessionOnly.rows[0].actor).toBeNull();
+        await forgedPlatformContext.query('reset kablet.auth_session_id');
+        await forgedPlatformContext.query('select set_config($1,$2,true),set_config($3,$4,true)', ['kablet.actor_id', supportApproverUser, 'kablet.auth_session_id', supportApproverSession.id]);
+        const forged = await forgedPlatformContext.query("select public.kablet_current_actor() as actor");
+        expect(forged.rows).toHaveLength(1);
+        expect(forged.rows[0].actor).toBeNull();
+        await expect(forgedPlatformContext.query("insert into kablet_audit_events(id,organization_id,business_id,actor_id,actor_type,action,resource_type,metadata) values ($1,null,null,$2,'platform_operator','security.forged-both','security_test','{}'::jsonb)", [randomUUID(), supportApproverUser])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await forgedPlatformContext.query('rollback').catch(() => undefined);
+        forgedPlatformContext.release();
+      }
+      const forgedPlatformSession = await runtimePool.connect();
+      try {
+        await forgedPlatformSession.query('begin');
+        await expect(forgedPlatformSession.query("insert into kablet_auth_sessions(id,user_id,token_hash,actor_type,expires_at) values ($1,$2,$3,'platform_operator',now()+interval '1 hour')", [randomUUID(), supportApproverUser, randomBytes(32)])).rejects.toMatchObject({ code: '42501' });
+        await expect(forgedPlatformSession.query("update kablet_auth_sessions set actor_type='platform_operator' where id=$1", [session.id])).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await forgedPlatformSession.query('rollback').catch(() => undefined);
+        forgedPlatformSession.release();
+      }
+      const controlAuditClient = await controlPool.connect();
+      try {
+        await controlAuditClient.query('begin');
+        await controlAuditClient.query('select set_config($1,$2,true)', ['kablet.auth_session_id', supportApproverSession.id]);
+        const platformAudit = await controlAuditClient.query("select actor_id,organization_id,business_id,metadata from kablet_audit_events where action='security.support.test'");
         expect(platformAudit.rows).toHaveLength(1);
         expect(platformAudit.rows[0]).toMatchObject({ actor_id: supportApproverUser, organization_id: null, business_id: null, metadata: { providerToken: '[redacted]' } });
       } finally {
-        await bootstrapConnection.query('reset kablet.actor_id');
-        await bootstrapConnection.query('reset kablet.auth_session_id');
+        await controlAuditClient.query('rollback').catch(() => undefined);
+        controlAuditClient.release();
       }
       await security.audit({ organizationId: orgA, businessId: businessA, actorId: userA, actorType: 'merchant_user', action: 'security.test', resourceType: 'security_test', metadata: { providerToken: 'must-not-persist' } });
       const auditClient = await runtimePool.connect();
@@ -268,6 +312,7 @@ describe.skipIf(!enabled)('identity, RLS, consent and audit integration', () => 
       await expect(security.resolveSession(session.token)).resolves.toBeNull();
     } finally {
       await runtimePool?.end();
+      await controlPool?.end();
       await bootstrapPool?.end();
       await managerPool.query(`drop database if exists "${database}"`).catch(() => undefined);
       await managerPool.end();

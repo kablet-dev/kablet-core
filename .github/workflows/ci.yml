@@ -82,6 +82,7 @@ jobs:
       TEST_BOOTSTRAP_PASSWORD: ci-${{ github.run_id }}
       TEST_ROLE_ADMIN_URL: postgresql://postgres:ci-${{ github.run_id }}@localhost:5432/postgres
       TEST_APP_PASSWORD: ci-${{ github.run_id }}
+      TEST_CONTROL_PASSWORD: ci-${{ github.run_id }}
       TEST_UNAUTHORIZED_USER: kablet_unauthorized
       TEST_UNAUTHORIZED_PASSWORD: ci-${{ github.run_id }}
       DATABASE_URL: postgresql://kablet_dev:ci-${{ github.run_id }}@localhost:5432/kablet_dev
@@ -108,6 +109,7 @@ jobs:
           CREATE ROLE kablet_test_manager LOGIN PASSWORD 'ci-${{ github.run_id }}' CREATEDB;
           CREATE ROLE kablet_test_bootstrap LOGIN PASSWORD 'ci-${{ github.run_id }}' NOSUPERUSER NOCREATEDB;
           CREATE ROLE kablet_dev LOGIN PASSWORD 'ci-${{ github.run_id }}' NOSUPERUSER NOCREATEDB;
+          CREATE ROLE kablet_control LOGIN PASSWORD 'ci-${{ github.run_id }}' NOSUPERUSER NOCREATEDB;
           CREATE ROLE kablet_unauthorized LOGIN PASSWORD 'ci-${{ github.run_id }}' NOSUPERUSER NOCREATEDB;
           SQL
       - name: Verify test manager boundary

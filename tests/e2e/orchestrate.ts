@@ -117,6 +117,7 @@ async function main() {
       NODE_ENV: 'development',
       DATABASE_URL: database.runtimeUrl,
       TEST_DATABASE_URL: database.runtimeUrl,
+      CONTROL_DATABASE_URL: database.controlUrl,
       KABLET_INTERACTION_ORGANIZATION_ID: database.organizationId,
       KABLET_INTERACTION_BUSINESS_ID: database.businessId,
       KABLET_INTERACTION_COOKIE_SECRET: database.cookieSecret,

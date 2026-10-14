@@ -156,52 +156,52 @@ For each task update `Status`, `Evidence`, `Commit`, `Date`, `Remaining risks`, 
 
 **Outcome:** Secure the tenant and merchant authority boundaries before handling real merchant connections.
 
-**Chapter status:** NOT COMPLETE. Task-level statuses below reflect **new roadmap exit gates**, not denial of existing reusable code.
+**Chapter status:** IN PROGRESS. Existing security implementation is materially present; this closure pass adds a server-only control-role boundary and purpose/version-scoped runtime consent enforcement. A fresh CI run is required before closure.
 
 ## 02.01 — Merchant and operator identity
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
 - **Build / verify:** Implement merchant sign-in/session lifecycle and separate platform operator identities; avoid assuming existing tenant IDs are authentication.
 - **Definition of done:** Authenticated flows, session expiry/revocation, negative authorization tests.
 - **Blueprint / audit references:** Audit G; B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/drizzle/0029_trusted_control_role.sql`, `apps/web/lib/control-auth.ts`, `tests/integration/security.integration.test.ts`.
 
 ## 02.02 — Membership, RBAC and approvals
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
 - **Build / verify:** Organization/business membership, roles, scoped permissions, merchant approval evidence and internal break-glass constraints.
 - **Definition of done:** Cross-tenant denial, approval provenance, support-access expiry tests.
 - **Blueprint / audit references:** B2.7 B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/security.ts`, `apps/web/app/api/control/`, `packages/db/drizzle/0029_trusted_control_role.sql`, `tests/integration/security.integration.test.ts`.
 
 ## 02.03 — Consent, privacy and lifecycle
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED; DOWNSTREAM PROPAGATION DEFERRED; FRESH CI VERIFICATION PENDING.
 - **Build / verify:** Implement consent collection, visitor privacy controls, retention/deletion/export workflows and safe model context boundaries.
 - **Definition of done:** Consent gate, deletion propagation, revoked-access and restore tests.
 - **Blueprint / audit references:** Audit D; B4.9 B6.3.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/security.ts`, `apps/web/app/api/control/privacy/route.ts`, `packages/db/drizzle/0030_consent_purpose_authority.sql`, `tests/integration/security.integration.test.ts`, `tests/integration/action-outcome.integration.test.ts`.
 
 ## 02.04 — Secret and provider credential boundary
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED AT REPOSITORY BOUNDARY; PROVIDER EXECUTION DEFERRED; FRESH CI VERIFICATION PENDING.
 - **Build / verify:** Encrypted token storage, key rotation, provider scopes, environment separation, audit records.
 - **Definition of done:** Secret never exposed in logs; revocation and least-privilege tests.
 - **Blueprint / audit references:** B3.7 B6.3 B6.8.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `packages/db/src/credential-vault.ts`, `packages/db/src/security.ts`, `packages/db/drizzle/0026_provider_credential_lifecycle.sql`, `tests/integration/security.integration.test.ts`.
 
 ## 02.05 — Audit trail and merchant-policy enforcement
 
-- **Status:** NOT STARTED (roadmap gate; existing code may be PARTIAL or AUDIT-VERIFIED historically).
+- **Status:** IMPLEMENTED; FRESH CI VERIFICATION PENDING.
 - **Build / verify:** Connect persisted policy versions to authenticated approval and runtime enforcement.
 - **Definition of done:** Actor/version/action lineage verified; unsafe changes rejected.
 - **Blueprint / audit references:** Audit E/F; B2.7 B6.9.
 - **Dependencies:** Validate prerequisites from earlier chapters and cross-cutting security/hosting/consent before implementation; record exact blocked dependencies in slice kickoff.
-- **Evidence:** _Pending: commit, test results, demo/receipt where relevant, reviewer, date._
+- **Evidence:** `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, `tests/integration/security.integration.test.ts`.
 
 ### Chapter 02 remediation status — not a completion declaration
 
@@ -212,9 +212,9 @@ The current implementation establishes the following reusable security boundarie
 - **02.03:** Tenant-scoped export, transactional deletion, consent records and a durable pending deletion-request boundary in `packages/db/src/security.ts`, `apps/web/app/api/control/privacy/route.ts`, and migrations `0021` and `0027`.
 - **02.04:** Server-side encrypted credential storage, key-versioned decryption, rotation, revocation and scope checks in `packages/db/src/credential-vault.ts`, `packages/db/src/security.ts`, and migration `0026`.
 - **02.05:** Approval-linked policy publication, runtime platform-safety checks, append-only audit evidence and redacted metadata in `apps/web/lib/policy-governance.ts`, `packages/db/src/intent-policy.ts`, `packages/db/src/security.ts`, and migrations `0020`, `0024`, `0025`.
-- **02-F5 remediation:** Authenticated platform session provenance and support-grant lifecycle hardening are implemented in migration `0028_security_context_and_support_grant_hardening.sql`; runtime consent-dependent action eligibility now fails closed when a control-plane consent is revoked in `apps/web/lib/action-service.ts`.
+- **02-F5/closure remediation:** Authenticated platform session provenance is bound to the server-only `kablet_control` database role in migration `0029_trusted_control_role.sql`; support-grant approval identity and server timestamps are enforced there. Runtime consent-dependent action eligibility now uses exact purpose/version matching in `apps/web/lib/action-service.ts`, with `follow_up` represented in `packages/domain/src/security.ts` and migration `0030_consent_purpose_authority.sql`.
 
-Fresh verification evidence currently consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38551341338`, plus the focused security and action-outcome integration coverage. The roadmap gate remains **NOT COMPLETE** until the fresh evidence is independently reviewed and the unresolved boundaries below are closed or explicitly accepted by the decision owner.
+Fresh verification evidence currently consists of the disposable PostgreSQL integration and E2E workflow reported for CI run `38552804542`, plus focused security and action-outcome integration coverage. The new control-role and consent-authority changes in this revision require a fresh CI run; the chapter remains **IN PROGRESS** until that evidence is reviewed.
 
 The following obligations remain pending and are intentionally deferred to the first real provider/downstream integration milestone:
 
@@ -756,11 +756,11 @@ This register makes the distinction explicit for every parent task. All roadmap 
 | `01.03` | PARTIAL | NOT STARTED | BLOCKED — runner environment |
 | `01.04` | IMPLEMENTED–UNVERIFIED | NOT STARTED | NOT RUN |
 | `01.05` | NOT FOUND | NOT STARTED | NOT RUN |
-| `02.01` | PARTIAL | IN PROGRESS | BLOCKED — local dependency/runtime environment; provider/session integration verification pending |
-| `02.02` | PARTIAL | IN PROGRESS | BLOCKED — local dependency/runtime environment; real PostgreSQL RLS verification pending |
-| `02.03` | PARTIAL | IN PROGRESS | BLOCKED — local dependency/runtime environment; lifecycle integration verification pending |
-| `02.04` | PARTIAL | IN PROGRESS | BLOCKED — local dependency/runtime environment; key-management/rotation operational verification pending |
-| `02.05` | PARTIAL | IN PROGRESS | BLOCKED — local dependency/runtime environment; authenticated policy/audit integration verification pending |
+| `02.01` | IMPLEMENTED | IN PROGRESS | PENDING CI — fresh migration `0029` and control-role execution |
+| `02.02` | IMPLEMENTED | IN PROGRESS | PENDING CI — fresh RLS and forged-session regression execution |
+| `02.03` | IMPLEMENTED; downstream deferred | IN PROGRESS | PENDING CI — consent authority and privacy lifecycle regression execution |
+| `02.04` | IMPLEMENTED at repository boundary; provider execution deferred | IN PROGRESS | PENDING CI — credential lifecycle regression execution |
+| `02.05` | IMPLEMENTED | IN PROGRESS | PENDING CI — platform audit and policy enforcement regression execution |
 | `03.01` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.02` | NOT FOUND | NOT STARTED | NOT RUN |
 | `03.03` | NOT FOUND | NOT STARTED | NOT RUN |
