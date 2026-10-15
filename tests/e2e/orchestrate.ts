@@ -97,7 +97,7 @@ async function waitForServer(url: string, child: ReturnType<typeof spawn>) {
 }
 
 async function warmDevelopmentRoutes(baseURL: string): Promise<void> {
-  for (const path of ['/experience/interactive', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action']) {
+  for (const path of ['/experience/interactive', '/api/interaction/start', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action']) {
     const response = await fetch(`${baseURL}${path}`, { method: 'GET' });
     if (response.status === 500) throw new Error(`web server failed while compiling ${path}`);
   }

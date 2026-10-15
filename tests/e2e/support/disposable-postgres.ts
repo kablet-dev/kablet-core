@@ -12,6 +12,7 @@ export const businessId = '84000000-0000-4000-8000-000000000002';
 const nativeStoreId = '85000000-0000-4000-8000-000000000001';
 const nativeVisibleProductId = '85000000-0000-4000-8000-000000000002';
 const nativeDraftProductId = '85000000-0000-4000-8000-000000000003';
+const nativeSecondProductId = '85000000-0000-4000-8000-000000000004';
 const cookieSecret = 'e2e-only-kablet-interaction-cookie-secret-2026';
 
 export type BrowserDatabase = { database: string; runtimeUrl: string; controlUrl: string; organizationId: string; businessId: string; cookieSecret: string; offeringId: string; offeringRevisionId: string; definitionId: string; cleanup: () => Promise<void> };
@@ -56,6 +57,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
       await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offeringId}::uuid,${offeringRevisionId}::uuid)`);
       await tx.execute(sql`insert into kablet_native_stores(id,organization_id,business_id,public_slug,name,primary_currency,status) values (${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'browser-native-store','Native Store Collection','USD','published')`);
       await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,amount_minor,currency,status,availability) values (${nativeVisibleProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'browser-native-product','Browser Native Product','A product rendered from the native catalog.','2400','USD','published','available')`);
+      await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,amount_minor,currency,status,availability) values (${nativeSecondProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'browser-native-alternate','Browser Native Alternate','A second published product for comparison coverage.','3600','USD','published','stale')`);
       await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,amount_minor,currency,status,availability) values (${nativeDraftProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'private-draft-product','Private Draft Product','This must never render publicly.','9900','USD','draft','available')`);
     });
     await bootstrap.pool.end();
