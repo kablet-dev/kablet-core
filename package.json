@@ -13,6 +13,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "tsx tests/e2e/orchestrate.ts",
     "seed:native-store": "node scripts/seed-native-store.mjs",
+    "seed:velora-demo": "node scripts/seed-velora-demo.mjs",
     "db:migrate": "pnpm --filter @kablet/db db:migrate",
     "db:verify": "pnpm --filter @kablet/db db:verify",
     "worker": "pnpm --filter @kablet/worker start"

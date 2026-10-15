@@ -2,6 +2,50 @@ import type { NativeProduct } from '@kablet/domain';
 
 export type CanvasComposition = 'entry' | 'discovery' | 'comparison' | 'spotlight';
 export type CanvasIntent = 'find' | 'specific' | 'compare' | 'best';
+export type EntryStrategy = 'editorial' | 'product-led' | 'typography-led';
+
+export type EntryStrategyInput = {
+  approvedEditorialImageUrl: string | null;
+  publishedProductImageId: string | null;
+  visitorIntent: CanvasIntent | null;
+  acquisitionContext: 'exploratory' | 'product' | null;
+  presentationConstraint?: 'no-photography' | null;
+};
+
+export type EntryCompositionPlan = {
+  contractVersion: 'entry.v1';
+  strategy: EntryStrategy;
+  approvedEditorialImageUrl: string | null;
+  publishedProductImageId: string | null;
+};
+
+function isProductOriented(input: EntryStrategyInput): boolean {
+  return input.acquisitionContext === 'product' || input.visitorIntent === 'specific' || input.visitorIntent === 'compare';
+}
+
+function isExploratory(input: EntryStrategyInput): boolean {
+  return input.acquisitionContext === 'exploratory' || input.visitorIntent === 'find' || input.visitorIntent === 'best';
+}
+
+export function selectEntryStrategy(input: EntryStrategyInput): EntryCompositionPlan {
+  if (input.presentationConstraint === 'no-photography') {
+    return { contractVersion: 'entry.v1', strategy: 'typography-led', approvedEditorialImageUrl: null, publishedProductImageId: null };
+  }
+
+  if (input.publishedProductImageId && isProductOriented(input)) {
+    return { contractVersion: 'entry.v1', strategy: 'product-led', approvedEditorialImageUrl: null, publishedProductImageId: input.publishedProductImageId };
+  }
+
+  if (input.approvedEditorialImageUrl && (isExploratory(input) || !input.publishedProductImageId)) {
+    return { contractVersion: 'entry.v1', strategy: 'editorial', approvedEditorialImageUrl: input.approvedEditorialImageUrl, publishedProductImageId: null };
+  }
+
+  if (input.publishedProductImageId) {
+    return { contractVersion: 'entry.v1', strategy: 'product-led', approvedEditorialImageUrl: null, publishedProductImageId: input.publishedProductImageId };
+  }
+
+  return { contractVersion: 'entry.v1', strategy: 'typography-led', approvedEditorialImageUrl: null, publishedProductImageId: null };
+}
 
 export type NativeCanvasState = {
   composition: CanvasComposition;
