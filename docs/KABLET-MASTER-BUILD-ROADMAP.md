@@ -27,6 +27,20 @@ These decisions preserve the locked blueprint boundary while changing ecommerce 
 
 These are roadmap acceptance constraints, not claims that future vertical features already exist.
 
+### Conversion Laws as roadmap acceptance constraints
+
+The Kablet Conversion Laws are permanent acceptance constraints for every roadmap chapter and slice. They preserve the required progression rather than replacing completed work or silently advancing future capabilities:
+
+1. Native commerce foundation establishes merchant authority, catalog truth, publication, price/currency integrity, inventory boundaries, tenant isolation, and deterministic server-side actions.
+2. A functional adaptive canvas establishes a useful cold-start experience and in-session Entry, Discovery, Comparison, and product-evaluation transitions without requiring a traditional page funnel.
+3. Premium reusable canvas components improve hierarchy, clarity, accessibility, performance, and visitor control without fabricating Business Truth.
+4. Governed visitor intelligence and behavior interpretation add legitimate context conservatively, with privacy boundaries and safe deterministic fallback.
+5. Decision-driven experience composition connects Visitor State, policy, approved truth, composition contracts, exposure, and action lineage.
+6. Verified commerce conversion connects authorized commerce actions to provider/native-confirmed purchases, orders, revenue, and recovery states; engagement alone is not conversion proof.
+7. Evidence-based experimentation and learning require valid assignment, exposure, attribution, outcome coverage, uncertainty handling, merchant authority, and explicit promotion gates.
+
+The roadmap must distinguish implemented behavior, planned architecture, and future capability at each gate. The four governed blueprint compositions—Discovery, Comparison, Reassurance, and Ready-to-Buy—remain the canonical roadmap vocabulary. A current Native Store Entry state or Product Spotlight is an implementation-level composition and must not be treated as a replacement for those governed composition requirements.
+
 - **Strategic LOCKED ≠ engineering DONE.** Locked blueprint sections are requirements, not implementation evidence.
 - **Three independent statuses are required for every task:** `Existing implementation` describes repository evidence at the baseline; `Roadmap gate` describes completion of the task's full intended scope; `Fresh verification` describes executable evidence for the current implementation. These statuses must not be collapsed.
 - **Existing implementation statuses:** `AUDIT-VERIFIED (historical)`, `IMPLEMENTED–UNVERIFIED`, `PARTIAL`, `SCAFFOLD`, `NOT FOUND`.

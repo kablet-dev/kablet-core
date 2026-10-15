@@ -45,6 +45,7 @@ The Native Store is not a site-builder-only product and not a chatbot. Shopify B
 5. **Experience:** The Native Store consumes the existing Experience Runtime. It does not create a Native-only rendering or decision path.
 6. **Measurement:** A provider-confirmed/native-confirmed order is evidence of an outcome, not automatically attributable revenue or causal lift.
 7. **Privacy:** New visitor-derived commerce data must inherit consent, export, deletion, tenant and downstream-propagation gates.
+8. **Conversion Laws:** The native canvas must begin with a useful deterministic experience, reduce unnecessary friction, preserve visitor control, use only approved published truth, and treat verified commerce outcomes—not clicks or visual engagement—as the conversion evidence boundary.
 
 ## 5. Implementation slices and acceptance criteria
 
@@ -92,9 +93,9 @@ Acceptance: only verified provider/native evidence creates a completed order; re
 
 Dependencies: NS-01 and NS-02; verified catalog truth before product claims.
 
-Add native fixtures and composition rules for discovery, comparison, reassurance and ready-to-buy journeys using Visitor State, Decisions and the existing renderer.
+Add native fixtures and composition rules for discovery, comparison, reassurance and ready-to-buy journeys using Visitor State, Decisions and the existing renderer. The canvas must preserve useful context across transitions, interpret behavioral signals conservatively, and provide a deterministic useful fallback when context or intelligence is unavailable.
 
-Acceptance: the same visitor can transition through governed compositions; decision and exposure lineage is durable; policy and platform safety outrank runtime suggestions; unsupported intent degrades deterministically.
+Acceptance: the same visitor can transition through governed compositions; decision and exposure lineage is durable; policy and platform safety outrank runtime suggestions; unsupported intent degrades deterministically; no claim, availability, urgency, or recommendation is fabricated; and conversion improvement is not inferred from engagement without verified outcome evidence.
 
 ### NS-07 — Verified measurement and first controlled experiment
 

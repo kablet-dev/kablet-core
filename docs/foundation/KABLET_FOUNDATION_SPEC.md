@@ -548,6 +548,79 @@ The foundation must not merely describe the current technical architecture.
 
 ---
 
+## 00.21 The Kablet Conversion Laws
+
+The following laws are permanent product and architectural principles. They govern how Kablet selects, renders, measures, and improves customer-facing experiences. They do not authorize Kablet to override Business Truth, merchant policy, platform safety, consent, privacy, or visitor control.
+
+### Law 1 — Every Visitor Deserves a Relevant Experience
+
+Kablet should adapt the storefront using legitimate available context, including acquisition source, device, expressed intent, behavior, and other permitted signals. The objective is relevance, not artificial uniqueness. Similar visitors may receive similar experiences, and a cold-start visitor must still receive a useful storefront through a deterministic baseline experience.
+
+### Law 2 — The Canvas Has One Job: Conversion
+
+The storefront exists to help a visitor achieve the merchant-approved conversion objective. Kablet optimizes for verified business outcomes, including purchases and revenue per visitor in ecommerce, subject to trust, retention, merchant economics, safety, privacy, and accessibility. Visual quality supports conversion; it is not the ultimate objective.
+
+### Law 3 — Hesitation Is Data
+
+Scrolling, inactivity, repeated comparison, and abandoned actions may indicate uncertainty or friction, but no single signal proves hesitation. Kablet must interpret such signals conservatively. The appropriate response may be reassurance, simplification, or no intervention. Nudges must not become intrusive or manipulative.
+
+### Law 4 — The Session Is a Conversation
+
+The adaptive canvas responds to visitor behavior throughout the session. Discovery, comparison, evaluation, and purchase readiness are fluid compositions rather than rigid page destinations. Kablet preserves useful context as the canvas evolves. The canvas is the storefront and the response; this does not prohibit pages or navigation where they are useful, but it prohibits treating a predetermined page funnel as the product model.
+
+### Law 5 — Every Eligible Session Contributes Evidence
+
+Interactions and verified outcomes contribute governed evidence to Kablet's learning system. Improvement requires measurement, attribution, appropriate experiments, and sufficient evidence. More clicks do not automatically mean better conversion, and unverified learning changes must never be deployed automatically.
+
+**Kablet does not learn how to talk better. It learns how to convert better.**
+
+### Law 6 — Friction Is the Enemy
+
+Kablet should reduce unnecessary navigation, questions, competing choices, and steps between intent and conversion. It must not remove information, consent, meaningful visitor control, or safety checks merely to increase conversion.
+
+### Law 7 — The Merchant Sets the Goal; Kablet Finds the Way
+
+Merchants provide Business Truth, branding, goals, policies, inventory, prices, and constraints. Kablet controls the customer-facing composition and selects experiences only within those approved boundaries. The authority hierarchy is permanent:
+
+**Platform safety and consent > merchant-approved policies and Business Truth > runtime decisions.**
+
+The Kablet Intelligence Command Center, Merchant Business Intelligence Manager, and Intelligence Execution Plane remain separate logical planes with separate authority and responsibilities.
+
+### Law 8 — Trust Is a Conversion Asset
+
+Kablet must never fabricate reviews, claims, stock levels, discounts, guarantees, urgency, or social proof. It must not use deceptive patterns or manipulate visitors. Privacy, customer confidence, merchant reputation, and long-term business outcomes are conversion concerns, not externalities.
+
+---
+
+## 00.22 Conversion Laws — Engineering Requirements and Status
+
+The laws translate into the following engineering requirements. Status language is explicit so that architectural intent is not mistaken for operational capability:
+
+- **Already implemented** means repository behavior or durable contracts exist and have been identified as such.
+- **Architecturally planned** means the requirement is defined in the foundation, blueprint, architecture, or build plan but is not complete in the current product.
+- **Future implementation** means the requirement depends on later product, provider, governance, or evidence work.
+
+| Area | Already implemented | Architecturally planned | Future implementation |
+|---|---|---|---|
+| Adaptive canvas composition contracts | Versioned Experience/Component contracts, controlled component vocabulary, native Entry/Discovery/Comparison/Spotlight proof compositions | Governed cross-vertical composition selection with durable composition and exposure references | Broader reusable composition control and merchant-configurable composition policies |
+| Visitor state and context | Tenant-scoped visitor/session state, revisions, consent-aware records, decision and exposure lineage | Purpose-limited acquisition, device, intent, behavior, and context assembly with retention rules | Richer cross-session context where identity, consent, and merchant authority permit it |
+| Intent and decisions | Deterministic decisions, explicit rationale, validated experience rendering, development-only demo interpretation | Policy-driven intent interpretation and composition decisions with bounded fallback | Production real-time interpretation and model-assisted strategy selection behind governed contracts |
+| Behavioral signals and privacy | Explicit tenant boundaries, RLS, consent/privacy foundations, append-oriented evidence and deletion boundaries | Conservative signal semantics, minimization, purpose limitation, retention, export/deletion propagation, and no-signal-safe behavior | Additional behavioral inference only after privacy, safety, quality, and governance evidence |
+| Deterministic versus real-time intelligence | Deterministic baseline and safe fallback are the required runtime baseline; AI providers are replaceable | Selective, bounded AI may interpret intent or propose experiences without becoming authority | Real-time AI routing, budgets, evaluation, and rollback under platform governance |
+| Evidence-based learning | Decision, exposure, interaction, action, outcome, attribution, and conversion foundations exist in the repository | Valid experiments, coverage diagnostics, attribution classes, uncertainty, and promotion gates | Automated strategy promotion only after evidence, merchant approval, and release governance |
+| Merchant authority and governance | Business Truth is separated from generated experience; tenant ownership and policy boundaries are foundational | Command Center, Merchant Business Intelligence Manager, and Execution Plane controls are fully operational and auditable | Cross-merchant learning and generalized patterns subject to consent, opt-out, privacy, and governance |
+| Conversion measurement | Conversion is Business-defined; verified action/outcome lineage is distinct from engagement | Purchases, revenue per eligible visitor, attribution coverage, guardrails, and original-currency integrity | Verified incremental net revenue per eligible visitor and production commercial proof |
+| Component reusability | Semantic components and validated renderers are the capability boundary | Small typed composition libraries that preserve truth references and visitor control | Broader component and composition registries; never arbitrary AI-generated production UI |
+| Performance, accessibility, and control | Runtime validation, predictable degradation, responsive/native browser tests, and accessible interaction contracts | Mobile-first latency budgets, reduced-motion behavior, stable loading/error states, focus management, and keyboard/touch control at each composition | Continuous performance and accessibility monitoring tied to release and experiment gates |
+
+These requirements preserve the existing system loop:
+
+`Business Truth + Visitor Context + Visitor State + governed Learning → Decision → Validated Experience → Interaction → Authorized Action → Verified Outcome → Evidence`
+
+No future intelligence capability may be described as operational merely because its contract is defined. In particular, behavioral interpretation, real-time AI, causal learning, cross-merchant learning, and incremental revenue optimization remain planned or future capabilities until their evidence and governance gates are met.
+
+---
+
 # 00.A Core Foundation Invariants
 
 The following invariants summarize Section 00 and apply across the platform:
