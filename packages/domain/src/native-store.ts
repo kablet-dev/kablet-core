@@ -5,16 +5,22 @@ export const nativeStoreSlugSchema = z.string().trim().toLowerCase().regex(/^[a-
 export const nativeStoreStatusSchema = z.enum(['draft', 'published', 'unavailable']);
 export const nativeProductStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const nativeProductAvailabilitySchema = z.enum(['unknown', 'available', 'unavailable', 'stale']);
+export const nativeProductSkuSchema = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/, 'sku must be a stable product identifier');
+export const nativeInventoryQuantitySchema = z.number().int().nonnegative().nullable();
+export const nativePriceRevisionSchema = z.number().int().positive();
 
 export const nativeProductSchema = z.object({
   id: z.string().uuid(),
   storeId: z.string().uuid(),
   slug: nativeStoreSlugSchema,
+  sku: nativeProductSkuSchema,
   title: z.string().trim().min(1).max(200),
   description: z.string().max(5000),
   imageUrl: z.string().url().nullable(),
   amountMinor: z.string().regex(/^\d+$/, 'amountMinor must be a non-negative integer string'),
   currency: nativeStoreCurrencySchema,
+  inventoryQuantity: nativeInventoryQuantitySchema,
+  priceRevision: nativePriceRevisionSchema,
   status: nativeProductStatusSchema,
   availability: nativeProductAvailabilitySchema,
 });
@@ -38,6 +44,18 @@ export const nativeStorefrontSchema = nativeStoreSchema.extend({ products: z.arr
 export type NativeStore = z.infer<typeof nativeStoreSchema>;
 export type NativeProduct = z.infer<typeof nativeProductSchema>;
 export type NativeStorefront = z.infer<typeof nativeStorefrontSchema>;
+export type NativeInventoryAvailability = z.infer<typeof nativeProductAvailabilitySchema>;
+
+// A null quantity preserves legacy catalog records that have not yet been
+// operationally configured for sale. A non-null quantity is authoritative
+// for future cart validation and is always paired with a price revision.
+export const nativeInventoryStateSchema = z.object({
+  productId: z.string().uuid(),
+  sku: nativeProductSkuSchema,
+  inventoryQuantity: z.number().int().nonnegative(),
+  availability: nativeProductAvailabilitySchema,
+}).strict();
+export type NativeInventoryState = z.infer<typeof nativeInventoryStateSchema>;
 
 const zeroDecimalCurrencies = new Set(['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF']);
 const threeDecimalCurrencies = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND']);

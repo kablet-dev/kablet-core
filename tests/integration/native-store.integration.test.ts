@@ -37,14 +37,31 @@ describe.skipIf(!enabled)('native store persistence and public isolation', () =>
         await tx.execute(sql`insert into organizations(id,name) values (${organization}::uuid,'Native Store Test')`);
         await tx.execute(sql`insert into businesses(id,organization_id,name) values (${business}::uuid,${organization}::uuid,'Native Store Test Business')`);
         await tx.execute(sql`insert into kablet_native_stores(id,organization_id,business_id,public_slug,name,primary_currency,status) values (${store}::uuid,${organization}::uuid,${business}::uuid,'native-test','Native Test Store','EUR','published')`);
-        await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,amount_minor,currency,status,availability) values (${product}::uuid,${store}::uuid,${organization}::uuid,${business}::uuid,'visible','Visible Product','Visible','999','EUR','published','available')`);
-        await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,amount_minor,currency,status,availability) values (${draft}::uuid,${store}::uuid,${organization}::uuid,${business}::uuid,'draft','Draft Product','Draft','100','EUR','draft','available')`);
+        await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${product}::uuid,${store}::uuid,${organization}::uuid,${business}::uuid,'visible','VISIBLE-001','Visible Product','Visible','999','EUR',1,1,'published','available')`);
+        await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${draft}::uuid,${store}::uuid,${organization}::uuid,${business}::uuid,'draft','DRAFT-001','Draft Product','Draft','100','EUR',3,1,'draft','available')`);
       });
       runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       const storefront = await createNativeStoreRepository(runtime.db).getPublishedStorefront('native-test');
       expect(storefront).not.toBeNull();
       expect(storefront?.products).toHaveLength(1);
-      expect(storefront?.products[0]).toMatchObject({ title: 'Visible Product', amountMinor: '999', currency: 'EUR' });
+      expect(storefront?.products[0]).toMatchObject({ title: 'Visible Product', sku: 'VISIBLE-001', amountMinor: '999', currency: 'EUR', inventoryQuantity: 1, priceRevision: 1 });
+      const nativeStore = createNativeStoreRepository(runtime.db);
+      expect(await nativeStore.setInventory({ organizationId: organization, businessId: business, productId: product, quantity: 1, availability: 'available' })).toMatchObject({ productId: product, sku: 'VISIBLE-001', inventoryQuantity: 1, availability: 'available' });
+      const insufficient = await nativeStore.decrementInventory({ organizationId: organization, businessId: business, productId: product, quantity: 2 });
+      expect(insufficient).toBeNull();
+      const concurrentDecrements = await Promise.all([
+        nativeStore.decrementInventory({ organizationId: organization, businessId: business, productId: product, quantity: 1 }),
+        nativeStore.decrementInventory({ organizationId: organization, businessId: business, productId: product, quantity: 1 }),
+      ]);
+      expect(concurrentDecrements.filter(Boolean)).toHaveLength(1);
+      expect(concurrentDecrements.filter(value => value === null)).toHaveLength(1);
+      expect(concurrentDecrements.find(Boolean)).toMatchObject({ productId: product, sku: 'VISIBLE-001', inventoryQuantity: 0, availability: 'unavailable' });
+      const unavailable = await nativeStore.decrementInventory({ organizationId: organization, businessId: business, productId: product, quantity: 1 });
+      expect(unavailable).toBeNull();
+      const unpublished = await nativeStore.decrementInventory({ organizationId: organization, businessId: business, productId: draft, quantity: 1 });
+      expect(unpublished).toBeNull();
+      const crossTenant = await nativeStore.decrementInventory({ organizationId: randomUUID(), businessId: randomUUID(), productId: product, quantity: 1 });
+      expect(crossTenant).toBeNull();
       await expect(createNativeStoreRepository(runtime.db).getPublishedStorefront('missing-store')).resolves.toBeNull();
       const hidden = await runtime.db.execute(sql`select id from kablet_native_products where id = ${draft}::uuid`);
       expect(hidden.rows).toHaveLength(0);

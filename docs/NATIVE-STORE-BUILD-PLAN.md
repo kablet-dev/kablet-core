@@ -57,6 +57,8 @@ Implement global merchant registration and country-aware eligibility; products, 
 
 Acceptance: merchant CRUD and eligibility are authenticated and tenant-scoped; no UAE-specific assumption exists; invalid price/currency/variant states and floating-point money are rejected; zero-decimal and fractional currencies are represented correctly; RLS and negative cross-tenant tests pass; unpublished records never appear publicly; catalog revisions and shipping configuration are auditable and deterministic.
 
+Operational requirement for the current one-variant foundation: inventory writes must be invoked only by a merchant-authorized server-side control path that has already resolved organization, business, membership, capability, and approval context. The repository mutation is tenant-scoped and RLS-protected, but it is not itself a merchant UI or actor-authentication boundary. Public storefront requests must remain read-only.
+
 ### NS-02 — First globally accessible responsive storefront
 
 Dependencies: NS-01, `04.01–04.02` delivery/design decisions.

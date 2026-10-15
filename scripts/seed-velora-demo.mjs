@@ -49,14 +49,14 @@ async function main() {
     await client.query("insert into businesses(id,organization_id,name) values($1,$2,'VELORA Development Fixture') on conflict(id) do update set name=excluded.name,active=true", [ids.business, ids.organization]);
     await client.query("insert into kablet_native_stores(id,organization_id,business_id,public_slug,name,brand_mark,primary_currency,status) values($1,$2,$3,'velora-demo','VELORA','V','USD','published') on conflict(id) do update set name=excluded.name,brand_mark=excluded.brand_mark,primary_currency=excluded.primary_currency,status=excluded.status,updated_at=now()", [ids.store, ids.organization, ids.business]);
     const products = [
-      [ids.products[0], 'botanical-veil-cleanser', 'Botanical Veil Cleanser', 'A 150 ml cleanser in the VELORA botanical collection.', '2400', 'products/botanical-veil-cleanser.jpg'],
-      [ids.products[1], 'canopy-dew-serum', 'Canopy Dew Serum', 'A 30 ml serum in the VELORA botanical collection.', '3600', 'products/canopy-dew-serum.jpg'],
-      [ids.products[2], 'mosslight-barrier-cream', 'Mosslight Barrier Cream', 'A 50 ml cream in the VELORA botanical collection.', '4200', 'products/mosslight-barrier-cream.jpg'],
-      [ids.products[3], 'sunlit-herb-balm', 'Sunlit Herb Balm', 'A 30 ml balm in the VELORA botanical collection.', '2800', 'products/sunlit-herb-balm.jpg'],
+      [ids.products[0], 'botanical-veil-cleanser', 'VELORA-CLEAN-001', 'Botanical Veil Cleanser', 'A 150 ml cleanser in the VELORA botanical collection.', '2400', 24, 'products/botanical-veil-cleanser.jpg'],
+      [ids.products[1], 'canopy-dew-serum', 'VELORA-SERUM-001', 'Canopy Dew Serum', 'A 30 ml serum in the VELORA botanical collection.', '3600', 18, 'products/canopy-dew-serum.jpg'],
+      [ids.products[2], 'mosslight-barrier-cream', 'VELORA-CREAM-001', 'Mosslight Barrier Cream', 'A 50 ml cream in the VELORA botanical collection.', '4200', 12, 'products/mosslight-barrier-cream.jpg'],
+      [ids.products[3], 'sunlit-herb-balm', 'VELORA-BALM-001', 'Sunlit Herb Balm', 'A 30 ml balm in the VELORA botanical collection.', '2800', 30, 'products/sunlit-herb-balm.jpg'],
     ];
-    for (const [id, slug, title, description, amount, asset] of products) {
+    for (const [id, slug, sku, title, description, amount, inventoryQuantity, asset] of products) {
       const imageUrl = `http://127.0.0.1:3000/demo/velora/${asset}`;
-      await client.query("insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,title,description,image_url,amount_minor,currency,status,availability) values($1,$2,$3,$4,$5,$6,$7,$8,$9,'USD','published','available') on conflict(id) do update set title=excluded.title,description=excluded.description,image_url=excluded.image_url,amount_minor=excluded.amount_minor,currency=excluded.currency,status=excluded.status,availability=excluded.availability,updated_at=now()", [id, ids.store, ids.organization, ids.business, slug, title, description, imageUrl, amount]);
+      await client.query("insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,image_url,amount_minor,currency,inventory_quantity,price_revision,status,availability) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'USD',$11,1,'published','available') on conflict(id) do update set sku=excluded.sku,title=excluded.title,description=excluded.description,image_url=excluded.image_url,amount_minor=excluded.amount_minor,currency=excluded.currency,inventory_quantity=excluded.inventory_quantity,price_revision=excluded.price_revision,status=excluded.status,availability=excluded.availability,updated_at=now()", [id, ids.store, ids.organization, ids.business, slug, sku, title, description, imageUrl, amount, inventoryQuantity]);
     }
     await client.query('commit');
     console.log('VELORA development fixture seeded at /store/velora-demo');

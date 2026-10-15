@@ -3,8 +3,8 @@ import { initialNativeCanvasState, selectEntryStrategy, selectIntent, selectProd
 import type { NativeProduct } from '@kablet/domain';
 
 const products: NativeProduct[] = [
-  { id: '85000000-0000-4000-8000-000000000002', storeId: '85000000-0000-4000-8000-000000000001', slug: 'first', title: 'First', description: 'First product', imageUrl: null, amountMinor: '1000', currency: 'USD', status: 'published', availability: 'available' },
-  { id: '85000000-0000-4000-8000-000000000003', storeId: '85000000-0000-4000-8000-000000000001', slug: 'second', title: 'Second', description: 'Second product', imageUrl: null, amountMinor: '2000', currency: 'USD', status: 'published', availability: 'stale' },
+  { id: '85000000-0000-4000-8000-000000000002', storeId: '85000000-0000-4000-8000-000000000001', slug: 'first', sku: 'FIRST-001', title: 'First', description: 'First product', imageUrl: null, amountMinor: '1000', currency: 'USD', inventoryQuantity: 5, priceRevision: 1, status: 'published', availability: 'available' },
+  { id: '85000000-0000-4000-8000-000000000003', storeId: '85000000-0000-4000-8000-000000000001', slug: 'second', sku: 'SECOND-001', title: 'Second', description: 'Second product', imageUrl: null, amountMinor: '2000', currency: 'USD', inventoryQuantity: 0, priceRevision: 1, status: 'published', availability: 'stale' },
 ];
 
 describe('native adaptive canvas transitions', () => {

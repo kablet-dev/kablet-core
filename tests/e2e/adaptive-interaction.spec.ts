@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 test('supports accessible free-text adaptive interaction without fabricating unsupported intent', async ({ page }) => {
+  // The first browser navigation can include a cold Next.js development
+  // compilation. Keep this budget local to the startup-sensitive experience
+  // test; the initialization response remains the readiness signal.
+  test.setTimeout(120_000);
+  page.setDefaultNavigationTimeout(120_000);
+
   const initializationResponse = page.waitForResponse(response => {
     const pathname = new URL(response.url()).pathname;
     return response.ok()
