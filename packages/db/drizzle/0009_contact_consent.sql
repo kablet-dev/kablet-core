@@ -5,11 +5,13 @@ CREATE TABLE IF NOT EXISTS visitor_consents (id uuid PRIMARY KEY, organization_i
 DO $$ DECLARE t text; BEGIN FOREACH t IN ARRAY ARRAY['visitor_contact_records','visitor_consents'] LOOP EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',t); EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY',t); EXECUTE format('CREATE POLICY %I ON %I USING (organization_id = kablet_current_org() AND business_id = kablet_current_business()) WITH CHECK (organization_id = kablet_current_org() AND business_id = kablet_current_business())',t||'_isolation',t); END LOOP; END $$;
 GRANT SELECT, INSERT ON visitor_contact_records, visitor_consents TO kablet_dev;
 GRANT SELECT, DELETE ON visitor_contact_records, visitor_consents TO kablet_privacy_owner;
+GRANT TRIGGER ON visitor_contact_records, visitor_consents TO kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 GRANT EXECUTE ON FUNCTION kablet_visitor_immutable() TO kablet_test_bootstrap;
-RESET ROLE;
 CREATE TRIGGER visitor_contact_records_immutable BEFORE UPDATE OR DELETE ON visitor_contact_records FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
 CREATE TRIGGER visitor_consents_immutable BEFORE UPDATE OR DELETE ON visitor_consents FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
+RESET ROLE;
+REVOKE TRIGGER ON visitor_contact_records, visitor_consents FROM kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 REVOKE EXECUTE ON FUNCTION kablet_visitor_immutable() FROM kablet_test_bootstrap;
 RESET ROLE;

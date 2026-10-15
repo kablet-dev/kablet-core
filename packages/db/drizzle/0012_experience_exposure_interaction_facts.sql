@@ -9,11 +9,13 @@ GRANT SELECT, DELETE ON experience_exposures, interaction_facts TO kablet_privac
 CREATE INDEX experience_exposures_session_idx ON experience_exposures (organization_id,business_id,interaction_session_id,exposed_at);
 CREATE INDEX interaction_facts_visitor_idx ON interaction_facts (organization_id,business_id,visitor_identity_id,occurred_at);
 CREATE INDEX interaction_facts_decision_idx ON interaction_facts (organization_id,business_id,decision_id,occurred_at);
+GRANT TRIGGER ON experience_exposures, interaction_facts TO kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 GRANT EXECUTE ON FUNCTION kablet_visitor_immutable() TO kablet_test_bootstrap;
-RESET ROLE;
 CREATE TRIGGER experience_exposures_immutable BEFORE UPDATE OR DELETE ON experience_exposures FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
 CREATE TRIGGER interaction_facts_immutable BEFORE UPDATE OR DELETE ON interaction_facts FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
+RESET ROLE;
+REVOKE TRIGGER ON experience_exposures, interaction_facts FROM kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 REVOKE EXECUTE ON FUNCTION kablet_visitor_immutable() FROM kablet_test_bootstrap;
 RESET ROLE;

@@ -96,6 +96,13 @@ async function waitForServer(url: string, child: ReturnType<typeof spawn>) {
   throw new Error('web server did not become ready');
 }
 
+async function warmDevelopmentRoutes(baseURL: string): Promise<void> {
+  for (const path of ['/experience/interactive', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action']) {
+    const response = await fetch(`${baseURL}${path}`, { method: 'GET' });
+    if (response.status === 500) throw new Error(`web server failed while compiling ${path}`);
+  }
+}
+
 async function main() {
   const runId = randomUUID();
   const database = await provisionBrowserDatabase();
@@ -130,6 +137,7 @@ async function main() {
     const launcher = pnpmLauncher();
     server = spawn(launcher.command, [...launcher.prefix, '--filter', '@kablet/web', 'dev'], { env: environment, stdio: 'inherit', detached: process.platform !== 'win32' });
     await waitForServer(baseURL, server);
+    await warmDevelopmentRoutes(baseURL);
     const result = await run(launcher.command, [...launcher.prefix, 'exec', 'playwright', 'test'], environment);
     if (result !== 0) throw new Error(`Playwright exited with status ${result}`);
   } catch (error) {

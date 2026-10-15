@@ -175,7 +175,7 @@ export function InteractiveExperience() {
         </button>
         <label htmlFor='visitor-need'>Or tell us what you need</label>
         <textarea id='visitor-need' value={needText} onChange={event => setNeedText(event.target.value)} maxLength={4000} placeholder='For example: My employer just fired me. I need help.' />
-        <button className='intent-submit' type='button' onClick={() => void submitNeed()} disabled={busy || !experience || !needText.trim()}>
+        <button aria-label='Help me find the right next step' className='intent-submit' type='button' onClick={() => void submitNeed()} disabled={busy || !experience || !needText.trim()}>
           {busy ? 'Working...' : 'Help me find the right next step'}
         </button>
       </div>}

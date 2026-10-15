@@ -22,11 +22,16 @@ describe.skipIf(!enabled)('native store persistence and public isolation', () =>
       await managerPool.query(`create database "${database}" owner "${manager.TEST_MANAGER_USER}"`);
       await managerPool.query(`grant connect, create on database "${database}" to "${process.env.TEST_BOOTSTRAP_USER}"`);
       const target = new pg.Pool({ connectionString: `${base}/${database}`, max: 1 });
-      await target.query(`grant usage, create on schema public to "${process.env.TEST_BOOTSTRAP_USER}"`); await target.end();
+      await target.query(`grant usage, create on schema public to "${process.env.TEST_BOOTSTRAP_USER}"`);
+      await target.query('grant usage, create on schema public to kablet_privacy_owner');
+      await target.end();
       bootstrap = createDb(`postgresql://${encodeURIComponent(process.env.TEST_BOOTSTRAP_USER!)}:${encodeURIComponent(process.env.TEST_BOOTSTRAP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
       const admin = new pg.Pool({ connectionString: process.env.TEST_ROLE_ADMIN_URL, max: 1 });
       await admin.query('grant kablet_privacy_owner to kablet_test_bootstrap with set true, inherit false');
       try { await migrate(bootstrap.db, { migrationsFolder }); } finally { await admin.query('revoke kablet_privacy_owner from kablet_test_bootstrap'); await admin.end(); }
+      const migrationSecurity = await bootstrap.db.execute(sql`select pg_get_userbyid(p.proowner) as owner, has_function_privilege('kablet_dev', p.oid, 'EXECUTE') as dev_can_execute from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='kablet_visitor_immutable'`);
+      expect(migrationSecurity.rows).toHaveLength(1);
+      expect(migrationSecurity.rows[0]).toMatchObject({ owner: 'kablet_privacy_owner', dev_can_execute: false });
       await bootstrap.db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${organization}, true), set_config('kablet.business_id', ${business}, true)`);
         await tx.execute(sql`insert into organizations(id,name) values (${organization}::uuid,'Native Store Test')`);

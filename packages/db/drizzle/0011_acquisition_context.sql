@@ -6,10 +6,12 @@ CREATE POLICY acquisition_context_isolation ON acquisition_contexts USING (organ
 GRANT SELECT, INSERT ON acquisition_contexts TO kablet_dev;
 GRANT SELECT, DELETE ON interaction_sessions TO kablet_privacy_owner;
 GRANT SELECT, DELETE ON acquisition_contexts TO kablet_privacy_owner;
+GRANT TRIGGER ON acquisition_contexts TO kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 GRANT EXECUTE ON FUNCTION kablet_visitor_immutable() TO kablet_test_bootstrap;
-RESET ROLE;
 CREATE TRIGGER acquisition_contexts_immutable BEFORE UPDATE OR DELETE ON acquisition_contexts FOR EACH ROW EXECUTE FUNCTION kablet_visitor_immutable();
+RESET ROLE;
+REVOKE TRIGGER ON acquisition_contexts FROM kablet_privacy_owner;
 SET LOCAL ROLE kablet_privacy_owner;
 REVOKE EXECUTE ON FUNCTION kablet_visitor_immutable() FROM kablet_test_bootstrap;
 CREATE OR REPLACE FUNCTION kablet_visitor_privacy_delete(p_organization_id uuid, p_visitor_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
