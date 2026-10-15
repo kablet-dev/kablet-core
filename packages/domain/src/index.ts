@@ -26,3 +26,4 @@ export * from './intent-interpretation';
 export * from './intent-executor';
 export * from './security';
 export * from './commerce';
+export * from './native-store';

@@ -36,6 +36,7 @@
     { "idx": 31, "version": "7", "when": 1761955200000, "tag": "0031_commerce_provider_foundation", "breakpoints": true },
     { "idx": 32, "version": "7", "when": 1762041600000, "tag": "0032_commerce_recovery_guards", "breakpoints": true },
     { "idx": 33, "version": "7", "when": 1762128000000, "tag": "0033_shopify_oauth_control_read", "breakpoints": true },
-    { "idx": 34, "version": "7", "when": 1762214400000, "tag": "0034_shopify_webhook_control_read", "breakpoints": true }
+    { "idx": 34, "version": "7", "when": 1762214400000, "tag": "0034_shopify_webhook_control_read", "breakpoints": true },
+    { "idx": 35, "version": "7", "when": 1762300800000, "tag": "0035_native_store_foundation", "breakpoints": true }
   ]
 }

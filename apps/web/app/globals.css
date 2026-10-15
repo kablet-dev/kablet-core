@@ -48,3 +48,25 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: Aria
 .intent-submit:focus-visible, .intent-option:focus-visible, .interactive-error button:focus-visible { outline: 3px solid #df8b5b; outline-offset: 3px; }
 .interactive-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e4baba; border-radius: 14px; padding: 14px; color: #8b3d3d; }
 .interactive-error button { border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; }
+.native-store-shell { min-height: 100vh; width: min(1180px, 100%); margin: 0 auto; padding: 28px clamp(18px, 5vw, 64px) 56px; }
+.native-store-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 22px; }
+.native-store-brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: -.02em; }
+.native-store-brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--ink); color: white; font-size: .8rem; text-transform: uppercase; }
+.native-store-currency { color: var(--muted); font-size: .78rem; font-weight: 700; letter-spacing: .12em; }
+.native-store-hero { max-width: 720px; padding: clamp(64px, 10vw, 120px) 0 58px; }
+.native-store-hero h1, .native-store-unavailable h1 { max-width: 740px; margin: 12px 0 18px; font-size: clamp(2.5rem, 7vw, 6.4rem); line-height: .94; letter-spacing: -.065em; }
+.native-store-hero > p:last-child, .native-store-unavailable > p:last-child { max-width: 520px; color: var(--muted); font-size: 1.05rem; line-height: 1.65; }
+.native-store-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.native-product-card { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--card); box-shadow: 0 18px 50px rgba(23,33,27,.06); }
+.native-product-image { aspect-ratio: 1.2; display: grid; place-items: center; background: linear-gradient(135deg, #dfeae0, #f4e1d7); color: rgba(23,33,27,.32); font-size: clamp(4rem, 10vw, 8rem); font-weight: 700; letter-spacing: -.08em; }
+.native-product-image img { width: 100%; height: 100%; object-fit: cover; }
+.native-product-copy { display: grid; gap: 14px; padding: 22px; }
+.native-product-copy h2 { margin: 4px 0 0; font-size: 1.35rem; letter-spacing: -.03em; }
+.native-product-copy p { margin: 0; color: var(--muted); line-height: 1.55; }
+.native-product-copy strong { color: var(--ink); font-size: 1rem; }
+.native-product-availability { color: var(--accent) !important; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.native-store-empty { grid-column: 1 / -1; border: 1px dashed #b8cbb9; border-radius: 24px; padding: 42px; background: rgba(255,255,255,.42); }
+.native-store-empty h2 { margin-top: 0; }
+.native-store-footer { margin-top: 64px; color: var(--muted); font-size: .82rem; }
+.native-store-unavailable { padding-top: clamp(100px, 18vw, 220px); }
+@media (max-width: 680px) { .native-store-products { grid-template-columns: 1fr; } .native-store-hero { padding-top: 76px; } .native-store-header { padding-bottom: 18px; } }
