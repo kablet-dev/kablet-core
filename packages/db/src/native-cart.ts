@@ -37,6 +37,43 @@ export class NativeCartServiceError extends Error {
 export type NativeCartCreated = { token: string; cart: NativeCart };
 export type NativeCartMutationResult = { cart: NativeCart; idempotent: boolean };
 
+const creationIdempotencyKeyPattern = /^[A-Za-z0-9_-]{43}$/;
+
+function hashCreationKey(key: string): Buffer {
+  if (!creationIdempotencyKeyPattern.test(key)) throw new NativeCartServiceError('invalid_mutation', 'The cart request is invalid.');
+  return createHash('sha256').update(key, 'utf8').digest();
+}
+
+async function cleanupExpiredCartRecords(db: Database['db'], context: NativeCartContext): Promise<void> {
+  await db.transaction(async tx => {
+    await tx.execute(sql`select set_config('kablet.organization_id', ${context.organizationId}, true), set_config('kablet.business_id', ${context.businessId}, true)`);
+    await tx.execute(sql`
+      with expired_tokens as (
+        select id from kablet_native_cart_tokens
+        where organization_id = ${context.organizationId}::uuid
+          and business_id = ${context.businessId}::uuid
+          and store_id = ${context.storeId}::uuid
+          and expires_at <= now()
+        order by expires_at asc
+        limit 100
+      )
+      delete from kablet_native_cart_tokens t using expired_tokens e where t.id = e.id
+    `);
+    await tx.execute(sql`
+      with expired_creations as (
+        select id from kablet_native_cart_creations
+        where organization_id = ${context.organizationId}::uuid
+          and business_id = ${context.businessId}::uuid
+          and store_id = ${context.storeId}::uuid
+          and expires_at <= now()
+        order by expires_at asc
+        limit 100
+      )
+      delete from kablet_native_cart_creations c using expired_creations e where c.id = e.id
+    `);
+  });
+}
+
 const uuidPattern = /^[0-9a-f-]{36}$/i;
 const tokenPattern = /^[A-Za-z0-9_-]{32,512}$/;
 
@@ -134,9 +171,12 @@ async function cartRows(tx: Tx, cart: Record<string, unknown>): Promise<NativeCa
 async function lockCart(tx: Tx, input: NativeCartContext & { token: string }): Promise<Record<string, unknown>> {
   assertUuid(input.organizationId); assertUuid(input.businessId); assertUuid(input.storeId);
   const result = await tx.execute(sql`
-    select id, organization_id, business_id, store_id, currency, status, version, expires_at, last_activity_at
-    from kablet_native_carts
-    where token_hash = ${hashToken(input.token)}
+    select c.id, c.organization_id, c.business_id, c.store_id, c.currency, c.status, c.version, c.expires_at, c.last_activity_at
+    from kablet_native_carts c
+    where (c.token_hash = ${hashToken(input.token)} or exists (
+      select 1 from kablet_native_cart_tokens t
+      where t.cart_id = c.id and t.token_hash = ${hashToken(input.token)} and t.expires_at > now()
+    ))
       and organization_id = ${input.organizationId}::uuid
       and business_id = ${input.businessId}::uuid
       and store_id = ${input.storeId}::uuid
@@ -153,6 +193,7 @@ async function lockCart(tx: Tx, input: NativeCartContext & { token: string }): P
 
 async function renewCart(tx: Tx, cartId: string): Promise<void> {
   await tx.execute(sql`update kablet_native_carts set last_activity_at = now(), expires_at = now() + interval '30 days', updated_at = now() where id = ${cartId}::uuid`);
+  await tx.execute(sql`update kablet_native_cart_tokens set expires_at = (select expires_at from kablet_native_carts where id = ${cartId}::uuid) where cart_id = ${cartId}::uuid and expires_at > now()`);
 }
 
 async function loadPublishedProduct(tx: Tx, context: NativeCartContext, productId: string, quantity: number): Promise<Record<string, unknown>> {
@@ -178,7 +219,7 @@ function validateQuantity(quantity: number | undefined): number {
 }
 
 export interface NativeCartService {
-  createCart(context: NativeCartContext): Promise<NativeCartCreated>;
+  createCart(context: NativeCartContext, options?: { idempotencyKey?: string }): Promise<NativeCartCreated>;
   getCart(context: NativeCartContext & { token: string }): Promise<NativeCart>;
   addLine(input: Omit<NativeCartMutationInput, 'operation'>): Promise<NativeCartMutationResult>;
   updateLine(input: Omit<NativeCartMutationInput, 'operation'>): Promise<NativeCartMutationResult>;
@@ -192,6 +233,7 @@ async function applyMutation(db: Database['db'], input: NativeCartMutationInput 
   const productId = input.productId ?? null;
   const expectedCartVersion = input.expectedCartVersion === undefined ? null : input.expectedCartVersion;
   const requestFingerprint = fingerprint({ operation: input.operation, lineId, productId, quantity, expectedCartVersion });
+  await cleanupExpiredCartRecords(db, input);
   const result = await db.transaction(async tx => {
     await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
     const cart = await lockCart(tx, input);
@@ -244,6 +286,7 @@ async function applyMutation(db: Database['db'], input: NativeCartMutationInput 
     }
     const updated = await tx.execute(sql`update kablet_native_carts set version = version + 1, last_activity_at = now(), expires_at = now() + interval '30 days', updated_at = now() where id = ${String(cart.id)}::uuid returning id, organization_id, business_id, store_id, currency, status, version, expires_at, last_activity_at`);
     const updatedCart = updated.rows[0] as Record<string, unknown>;
+    await tx.execute(sql`update kablet_native_cart_tokens set expires_at = ${updatedCart.expires_at} where cart_id = ${String(cart.id)}::uuid and expires_at > now()`);
     await tx.execute(sql`insert into kablet_native_cart_mutations(id, organization_id, business_id, store_id, cart_id, operation, idempotency_key, request_fingerprint, result_cart_version, result_line_id) values (${randomUUID()}::uuid, ${input.organizationId}::uuid, ${input.businessId}::uuid, ${input.storeId}::uuid, ${String(cart.id)}::uuid, ${input.operation}, ${input.idempotencyKey}, ${requestFingerprint}, ${Number(updatedCart.version)}, ${resultLineId ? sql`${resultLineId}::uuid` : sql`null`})`);
     return { cart: await cartRows(tx, updatedCart), idempotent: false };
   });
@@ -253,19 +296,43 @@ async function applyMutation(db: Database['db'], input: NativeCartMutationInput 
 
 export function createNativeCartService(db: Database['db']): NativeCartService {
   return {
-    async createCart(context: NativeCartContext): Promise<NativeCartCreated> {
+    async createCart(context: NativeCartContext, options?: { idempotencyKey?: string }): Promise<NativeCartCreated> {
       assertUuid(context.organizationId); assertUuid(context.businessId); assertUuid(context.storeId);
-      const token = randomBytes(32).toString('base64url');
+      await cleanupExpiredCartRecords(db, context);
       return db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${context.organizationId}, true), set_config('kablet.business_id', ${context.businessId}, true)`);
+        const creationKeyHash = options?.idempotencyKey ? hashCreationKey(options.idempotencyKey) : null;
+        if (options?.idempotencyKey) {
+          await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${options.idempotencyKey}, 0))`);
+          const existing = await tx.execute(sql`
+            select c.id, c.organization_id, c.business_id, c.store_id, c.currency, c.status, c.version, c.expires_at, c.last_activity_at
+            from kablet_native_cart_creations i
+            join kablet_native_carts c on c.id = i.cart_id
+            where i.organization_id = ${context.organizationId}::uuid
+              and i.business_id = ${context.businessId}::uuid
+              and i.store_id = ${context.storeId}::uuid
+              and i.idempotency_key_hash = ${creationKeyHash}
+              and i.expires_at > now()
+            for update
+          `);
+          if (existing.rows[0]) {
+            if (String(existing.rows[0].status) === 'expired' || new Date(String(existing.rows[0].expires_at)).getTime() <= Date.now()) throw new NativeCartServiceError('cart_expired', 'The cart has expired.');
+            const token = randomBytes(32).toString('base64url');
+            await tx.execute(sql`insert into kablet_native_cart_tokens(id, organization_id, business_id, store_id, cart_id, token_hash, expires_at) values (${randomUUID()}::uuid, ${context.organizationId}::uuid, ${context.businessId}::uuid, ${context.storeId}::uuid, ${String(existing.rows[0].id)}::uuid, ${hashToken(token)}, ${existing.rows[0].expires_at})`);
+            return { token, cart: await cartRows(tx, existing.rows[0] as Record<string, unknown>) };
+          }
+        }
+        const token = randomBytes(32).toString('base64url');
         const store = await tx.execute(sql`select id, primary_currency from kablet_native_stores where id = ${context.storeId}::uuid and organization_id = ${context.organizationId}::uuid and business_id = ${context.businessId}::uuid and status = 'published'`);
         if (!store.rows[0]) throw new NativeCartServiceError('cart_not_found', 'The storefront was not found.');
         const cartId = randomUUID();
         const result = await tx.execute(sql`insert into kablet_native_carts(id, organization_id, business_id, store_id, token_hash, currency, expires_at) values (${cartId}::uuid, ${context.organizationId}::uuid, ${context.businessId}::uuid, ${context.storeId}::uuid, ${hashToken(token)}, ${String(store.rows[0].primary_currency)}, now() + interval '30 days') returning id, organization_id, business_id, store_id, currency, status, version, expires_at, last_activity_at`);
+        if (creationKeyHash) await tx.execute(sql`insert into kablet_native_cart_creations(id, organization_id, business_id, store_id, idempotency_key_hash, cart_id, expires_at) values (${randomUUID()}::uuid, ${context.organizationId}::uuid, ${context.businessId}::uuid, ${context.storeId}::uuid, ${creationKeyHash}, ${cartId}::uuid, now() + interval '1 hour')`);
         return { token, cart: await cartRows(tx, result.rows[0] as Record<string, unknown>) };
       });
     },
     async getCart(context: NativeCartContext & { token: string }): Promise<NativeCart> {
+      await cleanupExpiredCartRecords(db, context);
       const result = await db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${context.organizationId}, true), set_config('kablet.business_id', ${context.businessId}, true)`);
         const cart = await lockCart(tx, context);
