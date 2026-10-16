@@ -20,3 +20,4 @@ export * from './credential-vault.js';
 export * from './commerce.js';
 export * from './native-store.js';
 export * from './native-cart.js';
+export * from './native-checkout.js';

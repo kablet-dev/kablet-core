@@ -28,3 +28,4 @@ export * from './security';
 export * from './commerce';
 export * from './native-store';
 export * from './native-cart';
+export * from './native-checkout';

@@ -95,6 +95,16 @@ The browser token is held only in an HttpOnly, SameSite=Lax cookie whose name is
 
 Dependencies: NS-03 plus owner decisions on global country/eligibility policy, supported currencies, merchant-owned payment-provider selection, provider country coverage/API/onboarding, seller-of-record responsibilities and compliance.
 
+#### NS-04.1 — Native checkout and reservation contracts/schema
+
+Implemented as the foundational contract/schema slice only: versioned native physical/digital checkout session and immutable line snapshot contracts, explicit shipping/contact and not-yet-calculated charge/tax states, reservation lifecycle contracts, provider-neutral payment and verified-order boundaries, migration `0039_native_checkout_reservation_foundation.sql`, tenant/store composite foreign keys, FORCE RLS, reservation lifecycle protection, and bounded expiration indexes. This slice does not create checkout sessions at runtime, reserve or decrement inventory, start payments, persist payment/order records, or render checkout UI.
+
+Reservation invariant: future runtime reservation operations must lock authoritative native product rows and account for active reservations before creating an expiring reservation. Reservations are not inventory decrements; only authenticated payment verification may permit a later atomic reservation commitment and order-creation slice. Unknown payment outcomes remain explicitly unresolved and cannot become paid or failed by assumption.
+
+#### NS-04.2 — Atomic checkout validation and reservation service
+
+Implemented as a server-side repository/service slice: cart ownership and version are revalidated, published catalog truth and explicit stale-price acceptance are checked, merchant shipping/tax calculation is required and fail-closed, product rows are locked in deterministic order, active reservations are counted transactionally, and confirmed reservations expire after 15 minutes without renewal. Durable reservation idempotency hashes prevent duplicate retries and conflicting key reuse. This slice does not expose an API, start payment, decrement inventory, create orders, or commit reservations as paid.
+
 Implement a provider-neutral BYOP adapter boundary. Start with one provider only after verifying country coverage, API compatibility and merchant onboarding requirements; do not assume Stripe Connect, another platform program or a provider choice before that verification. Prefer merchant-owned accounts and provider-hosted checkout, use supported OAuth/authorization where available, and never handle raw card data. Verify payment server-side through authenticated callbacks/webhooks and reconciliation, with explicit confirmation and unknown/pending recovery.
 
 Acceptance: disposable/sandbox payment success, decline, duplicate webhook, timeout and unknown outcome are handled; payment state, order state, fulfillment state and verified-revenue state are separate; the merchant remains seller of record and Kablet does not hold funds, manage payouts or charge transaction commissions; client redirects cannot confirm success; secrets are server-only; provider approval, PCI, security and legal obligations are documented.
