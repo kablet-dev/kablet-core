@@ -44,6 +44,7 @@
     { "idx": 39, "version": "7", "when": 1762646400000, "tag": "0039_native_checkout_reservation_foundation", "breakpoints": true },
     { "idx": 40, "version": "7", "when": 1762732800000, "tag": "0040_native_reservation_idempotency", "breakpoints": true },
     { "idx": 41, "version": "7", "when": 1762819200000, "tag": "0041_native_checkout_reserved_state", "breakpoints": true },
-    { "idx": 42, "version": "7", "when": 1762905600000, "tag": "0042_native_checkout_reservation_privileges", "breakpoints": true }
+    { "idx": 42, "version": "7", "when": 1762905600000, "tag": "0042_native_checkout_reservation_privileges", "breakpoints": true },
+    { "idx": 43, "version": "7", "when": 1762992000000, "tag": "0043_native_payment_reconciliation_foundation", "breakpoints": true }
   ]
 }

@@ -109,6 +109,12 @@ Implement a provider-neutral BYOP adapter boundary. Start with one provider only
 
 Acceptance: disposable/sandbox payment success, decline, duplicate webhook, timeout and unknown outcome are handled; payment state, order state, fulfillment state and verified-revenue state are separate; the merchant remains seller of record and Kablet does not hold funds, manage payouts or charge transaction commissions; client redirects cannot confirm success; secrets are server-only; provider approval, PCI, security and legal obligations are documented.
 
+#### NS-04.3 — Provider-neutral payment and reconciliation foundation
+
+The provider-neutral persistence foundation is implemented in migration `0043_native_payment_reconciliation_foundation.sql` with strict versioned contracts in `packages/domain/src/native-payment.ts`. It models merchant payment accounts, immutable payment-attempt identity, hashed idempotency, untrusted webhook inbox metadata, pending/verified/rejected evidence, and auditable reconciliation states. It stores provider references and payload digests only; raw card data and raw idempotency keys are outside the model. Payment evidence is immutable and the application role has no evidence-write privilege. This slice does not authenticate provider events, create payment sessions, execute charges, resolve unknown reservations, create orders, or expose payment APIs.
+
+Unknown reservation authority for D.2C must be database-enforced: ordinary application roles must not update unknown reservations, and a future dedicated reconciliation execution role/function must require an authenticated evidence reference, exact payment/reservation association, tenant/store scope, and an auditable transition. Expiration and release paths must continue to reject unknown reservations; no generic “resolve unknown” function belongs in this slice. D.2D/D.2E will define provider-specific authentication and the narrowly granted reconciliation boundary before any verified payment or order transition is enabled.
+
 ### NS-05 — Verified orders and merchant operations
 
 Dependencies: NS-04.
