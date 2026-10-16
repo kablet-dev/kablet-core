@@ -75,6 +75,16 @@ Implement tenant-safe cart/session persistence, line validation against the stor
 
 Acceptance: cart survives refresh and adaptation; amounts preserve original currency and precision; invalid/obsolete lines fail safely; concurrent updates cannot over-reserve; retries do not duplicate lines or reservations; tenant isolation and replay tests pass.
 
+#### NS-03.1 — Native cart contract and persistence foundation
+
+Approved cart decisions for the first native slice: anonymous carts persist for 30 days since last valid activity within the same browser; cross-device recovery is deferred; cart lines snapshot SKU, amount, currency, and price revision while current title and image remain catalog truth; stale-price lines remain visible with original and current prices; explicit price acceptance must match the exact current amount, currency, and revision and becomes invalid after any later price change; new unpublished, unavailable, or insufficient-stock additions are rejected; existing invalid lines remain visible with honest status; cart operations never reserve or decrement inventory; cart data follows privacy, minimization, and retention requirements; expired status is enforced on access and cleanup may be deferred.
+
+Implemented in the schema foundation: versioned `native-cart.v1`, `native-cart-line.v1`, and `native-cart-mutation.v1` contracts plus migration `0037_native_cart_foundation.sql`. The migration adds tenant/store-owned carts, cart lines, and idempotency mutation records with opaque token-hash storage, optimistic cart versions, 30-day-compatible expiry fields, SKU/price/revision snapshots, explicit price-acceptance fields, referential integrity, uniqueness constraints, indexes, FORCE RLS, and server-role grants. This slice does not implement cart services, cookies, APIs, canvas rendering, inventory reservation, checkout, payment, or orders.
+
+Price-acceptance invariant: an acceptance is valid only when its stored amount, currency, and price revision exactly equal the current authoritative catalog price. A later catalog revision invalidates the acceptance; no client-provided amount or tenant identifier is authoritative.
+
+Security invariant: cart tables have no anonymous database grants. Future cart service operations must resolve the opaque browser secret, store, organization, and business server-side before setting RLS context. Cart creation and modification must remain deterministic native cart operations, separate from the future checkout/payment action-capability path.
+
 ### NS-04 — Bring-your-own-payments checkout boundary
 
 Dependencies: NS-03 plus owner decisions on global country/eligibility policy, supported currencies, merchant-owned payment-provider selection, provider country coverage/API/onboarding, seller-of-record responsibilities and compliance.
