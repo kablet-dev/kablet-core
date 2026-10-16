@@ -88,16 +88,51 @@ async function exists(path: string): Promise<boolean> {
   try { await access(path); return true; } catch { return false; }
 }
 
-async function waitForServer(url: string, child: ReturnType<typeof spawn>) {
+function redactServerOutput(value: string): string {
+  return value
+    .replace(/postgres(?:ql)?:\/\/[^\s]+/gi, '[database-url redacted]')
+    .replace(/(password|secret|token)=([^\s&]+)/gi, '$1=[redacted]');
+}
+
+function captureServerOutput(child: ReturnType<typeof spawn>): { tail: () => string } {
+  let output = '';
+  const append = (chunk: Buffer | string) => {
+    output = (output + redactServerOutput(String(chunk))).slice(-8000);
+  };
+  child.stdout?.on('data', chunk => { append(chunk); process.stdout.write(chunk); });
+  child.stderr?.on('data', chunk => { append(chunk); process.stderr.write(chunk); });
+  return { tail: () => output.trim() || '[no server output captured]' };
+}
+
+async function waitForServer(url: string, child: ReturnType<typeof spawn>, host: string, port: number, outputTail: () => string) {
+  const startedAt = Date.now();
+  let lastProbe = 'no probe completed';
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    if (child.exitCode !== null) throw new Error(`web server exited before readiness (${child.exitCode})`);
-    try { await fetch(url); return; } catch { await new Promise(resolve => setTimeout(resolve, 500)); }
+    if (child.exitCode !== null) throw new Error(`web server exited before readiness (exit=${child.exitCode}, host=${host}, port=${port}, elapsedMs=${Date.now() - startedAt}, lastProbe=${lastProbe}, output=${outputTail()})`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      lastProbe = `status=${response.status}`;
+      if (response.ok) return;
+    } catch (error) {
+      lastProbe = error instanceof Error ? error.name === 'AbortError' ? 'request timeout' : error.message : String(error);
+    } finally { clearTimeout(timer); }
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error('web server did not become ready');
+  throw new Error(`web server did not become ready (host=${host}, port=${port}, elapsedMs=${Date.now() - startedAt}, lastProbe=${lastProbe}, output=${outputTail()})`);
 }
 
 async function warmDevelopmentRoutes(baseURL: string): Promise<void> {
-  for (const path of ['/experience/interactive', '/api/interaction/start', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action']) {
+  for (const path of [
+    '/experience/interactive',
+    '/api/interaction/start', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action',
+    '/store/browser-native-store',
+    '/api/store/browser-native-store/cart',
+    '/api/store/browser-native-store/cart/lines',
+    '/api/store/browser-native-store/cart/lines/85000000-0000-4000-8000-000000000002',
+    '/api/store/browser-native-store/cart/lines/85000000-0000-4000-8000-000000000002/price-acceptance',
+  ]) {
     const response = await fetch(`${baseURL}${path}`, { method: 'GET' });
     if (response.status === 500) throw new Error(`web server failed while compiling ${path}`);
   }
@@ -132,11 +167,13 @@ async function main() {
       KABLET_E2E_STATE_FILE: stateFile,
       PORT: String(port),
       KABLET_E2E_BASE_URL: baseURL,
+      KABLET_PUBLIC_ORIGIN: baseURL,
     };
     await writeFile(stateFile, JSON.stringify({ database: database.database, organizationId: database.organizationId, businessId: database.businessId, offeringId: database.offeringId, offeringRevisionId: database.offeringRevisionId, definitionId: database.definitionId, runtimeUrl: database.runtimeUrl }));
     const launcher = pnpmLauncher();
-    server = spawn(launcher.command, [...launcher.prefix, '--filter', '@kablet/web', 'dev'], { env: environment, stdio: 'inherit', detached: process.platform !== 'win32' });
-    await waitForServer(baseURL, server);
+    server = spawn(launcher.command, [...launcher.prefix, '--filter', '@kablet/web', 'dev', '--hostname', '127.0.0.1'], { env: environment, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
+    const serverOutput = captureServerOutput(server);
+    await waitForServer(`${baseURL}/api/health`, server, '127.0.0.1', port, serverOutput.tail);
     await warmDevelopmentRoutes(baseURL);
     const result = await run(launcher.command, [...launcher.prefix, 'exec', 'playwright', 'test'], environment);
     if (result !== 0) throw new Error(`Playwright exited with status ${result}`);
