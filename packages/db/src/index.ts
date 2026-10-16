@@ -19,3 +19,4 @@ export * from './security.js';
 export * from './credential-vault.js';
 export * from './commerce.js';
 export * from './native-store.js';
+export * from './native-cart.js';
