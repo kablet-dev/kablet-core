@@ -1,4 +1,4 @@
-import { createCommerceRepository, createCredentialVault, createDb, createSecurityRepository } from '@kablet/db';
+import { createCommerceRepository, createCredentialVault, createDb, createNativeVerifiedOrderWorker, createSecurityRepository } from '@kablet/db';
 import { loadControlServerConfig, loadServerConfig } from '@kablet/config';
 import { syncShopifyCatalog } from './shopify-catalog-sync.js';
 import { processShopifyWebhook } from './shopify-worker.js';
@@ -47,6 +47,24 @@ export async function processAvailableCatalogSyncsOnce() {
   } finally { await control.pool.end(); await runtime.pool.end(); }
 }
 
+/**
+ * Process captured-payment order work from the durable native payment inbox.
+ * This runs on the existing worker process and never exposes a public HTTP
+ * worker endpoint. The control connection is required by the database claim,
+ * commitment, and acknowledgement functions.
+ */
+export async function processAvailableNativeOrderWorkOnce() {
+  const control = createDb(loadControlServerConfig().DATABASE_URL);
+  try {
+    const worker = createNativeVerifiedOrderWorker(control.db);
+    const workerId = `native-order-worker:${process.pid}`;
+    for (let processed = 0; processed < 20; processed += 1) {
+      const result = await worker.processOnce(workerId);
+      if (!result.claimed) break;
+    }
+  } finally { await control.pool.end(); }
+}
+
 let stopping = false;
 let idleHandle: NodeJS.Timeout | undefined;
 async function run() {
@@ -54,8 +72,9 @@ async function run() {
   console.log(`Kablet worker ready on database ${new URL(config.DATABASE_URL).host}`);
   await processAvailableWebhooksOnce();
   await processAvailableCatalogSyncsOnce();
+  await processAvailableNativeOrderWorkOnce();
   idleHandle = setInterval(() => {
-    Promise.all([processAvailableWebhooksOnce(), processAvailableCatalogSyncsOnce()]).catch(error => console.error('Worker cycle failed:', error instanceof Error ? error.message : 'unknown'));
+    Promise.all([processAvailableWebhooksOnce(), processAvailableCatalogSyncsOnce(), processAvailableNativeOrderWorkOnce()]).catch(error => console.error('Worker cycle failed:', error instanceof Error ? error.message : 'unknown'));
   }, Number(process.env.WORKER_POLL_MS ?? 5000));
 }
 function shutdown() { if (stopping) return; stopping = true; if (idleHandle) clearInterval(idleHandle); console.log('Kablet worker stopped'); }

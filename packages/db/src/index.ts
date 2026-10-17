@@ -23,3 +23,5 @@ export * from './native-cart.js';
 export * from './native-checkout.js';
 export * from './native-payment.js';
 export * from './native-stripe.js';
+export * from './native-order.js';
+export * from './native-order-worker.js';

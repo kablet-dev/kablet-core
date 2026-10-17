@@ -49,6 +49,8 @@
     { "idx": 44, "version": "7", "when": 1763078400000, "tag": "0044_native_reconciliation_authority", "breakpoints": true },
     { "idx": 45, "version": "7", "when": 1763164800000, "tag": "0045_native_stripe_verified_ingestion", "breakpoints": true },
     { "idx": 46, "version": "7", "when": 1763251200000, "tag": "0046_native_payment_credential_purposes", "breakpoints": true },
-    { "idx": 47, "version": "7", "when": 1763337600000, "tag": "0047_native_payment_session_binding", "breakpoints": true }
+    { "idx": 47, "version": "7", "when": 1763337600000, "tag": "0047_native_payment_session_binding", "breakpoints": true },
+    { "idx": 48, "version": "7", "when": 1763424000000, "tag": "0048_native_verified_orders", "breakpoints": true },
+    { "idx": 49, "version": "7", "when": 1763510400000, "tag": "0049_native_verified_order_work", "breakpoints": true }
   ]
 }
