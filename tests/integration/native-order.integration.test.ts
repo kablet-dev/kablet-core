@@ -5,7 +5,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { loadTestManagerConfig } from '@kablet/config';
-import { createCredentialVault, createDb, createNativeIntelligenceService, createNativeStripeIngestionRepository, createNativeVerifiedOrderService, createNativeVerifiedOrderWorker } from '@kablet/db';
+import { createCredentialVault, createDb, createNativeExperimentRepository, createNativeIntelligenceService, createNativeStripeIngestionRepository, createNativeVerifiedOrderService, createNativeVerifiedOrderWorker } from '@kablet/db';
 import { nativeCartCookieName } from '../../apps/web/lib/native-cart-api';
 import { nativeIntelligenceCookieName } from '../../apps/web/lib/native-intelligence-api';
 
@@ -78,6 +78,11 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
     const previous = { nodeEnv: process.env.NODE_ENV, publicOrigin: process.env.KABLET_PUBLIC_ORIGIN, testDatabaseUrl: process.env.TEST_DATABASE_URL, controlDatabaseUrl: process.env.CONTROL_DATABASE_URL, vaultKey: process.env.KABLET_CREDENTIAL_KEY, vaultVersion: process.env.KABLET_CREDENTIAL_KEY_VERSION, fetch: globalThis.fetch };
     try {
       const f = await fixture(resource);
+      const experimentId = randomUUID();
+      await resource.bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${f.organizationId}, true), set_config('kablet.business_id', ${f.businessId}, true)`);
+        await tx.execute(sql`insert into kablet_native_experiments(id,organization_id,business_id,store_id,experiment_key,version,state,eligibility,control_composition,treatment_composition,control_allocation_bps,treatment_allocation_bps,starts_at,attribution_window_days,attribution_rule,primary_metric,guardrail_metrics,created_by,approved_by,approved_at) values (${experimentId}::uuid,${f.organizationId}::uuid,${f.businessId}::uuid,${f.storeId}::uuid,'order-results-proof',1,'active',${JSON.stringify({ minPublishedProducts: 1 })}::jsonb,'discovery','entry',5000,5000,now()-interval '1 minute',30,'last_native_exposure.v1',${JSON.stringify({ key: 'verified_purchase', direction: 'maximize' })}::jsonb,'[]'::jsonb,${randomUUID()}::uuid,${randomUUID()}::uuid,now())`);
+      });
       const userId = randomUUID();
       const vaultKey = randomBytes(32);
       const vault = createCredentialVault(vaultKey, 'checkout-route-test');
@@ -104,7 +109,7 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       }) as typeof fetch;
       const { POST: prepare } = await import('../../apps/web/app/api/store/[storeSlug]/checkout/route');
-      const intelligence = createNativeIntelligenceService(resource.runtime.db, { organizationId: f.organizationId, businessId: f.businessId });
+      const intelligence = createNativeIntelligenceService(resource.runtime.db, { organizationId: f.organizationId, businessId: f.businessId, storeId: f.storeId });
       const intelligenceResult = await intelligence.resolve(null, 'discovery', randomBytes(32).toString('base64url'));
       const cookie = `${nativeCartCookieName('order-test-store')}=${f.cartToken}; ${nativeIntelligenceCookieName('order-test-store')}=${intelligenceResult.handle}`;
       const prepareResponse = await prepare(new Request('https://example.test/api/store/order-test-store/checkout', { method: 'POST', headers: { origin: 'https://example.test', host: 'example.test', cookie, 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomBytes(32).toString('base64url'), contact: { email: 'visitor@example.test', name: 'A Visitor', phone: null }, shippingAddress: { recipientName: 'A Visitor', line1: '1 Test Street', line2: null, city: 'Test City', region: 'TS', postalCode: '00001', countryCode: 'US' } }) }), { params: Promise.resolve({ storeSlug: 'order-test-store' }) });
@@ -144,7 +149,12 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
       const committed = await resource.bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${f.organizationId}, true), set_config('kablet.business_id', ${f.businessId}, true)`); return tx.execute(sql`select p.inventory_quantity, count(o.id)::int as order_count from kablet_native_products p left join kablet_native_orders o on o.payment_id=${initiatedPaymentId}::uuid where p.id=${f.productId}::uuid group by p.inventory_quantity`); });
       expect(committed.rows[0]).toMatchObject({ inventory_quantity: 0, order_count: 1 });
       const attribution = await resource.bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${f.organizationId}, true), set_config('kablet.business_id', ${f.businessId}, true)`); return tx.execute(sql`select a.status, a.composition_id, a.composition_version, a.decision_id, a.exposure_id, a.currency, a.revenue_amount_minor from kablet_native_order_attributions a join kablet_native_orders o on o.id=a.order_id where o.payment_id=${initiatedPaymentId}::uuid`); });
-      expect(attribution.rows[0]).toMatchObject({ status: 'linked', composition_id: 'discovery', composition_version: 'native-canvas.v1', decision_id: intelligenceResult.decisionId, exposure_id: intelligenceResult.exposureId, currency: 'USD', revenue_amount_minor: '2400' });
+      expect(attribution.rows[0]).toMatchObject({ status: 'linked', composition_id: intelligenceResult.composition, composition_version: 'native-canvas.v1', decision_id: intelligenceResult.decisionId, exposure_id: intelligenceResult.exposureId, currency: 'USD', revenue_amount_minor: '2400' });
+      const resultsRepository = createNativeExperimentRepository(resource.runtime.db);
+      const resultRows = await resultsRepository.results({ organizationId: f.organizationId, businessId: f.businessId, storeId: f.storeId, experimentId, windowStart: new Date(Date.now() - 60_000), windowEnd: new Date(Date.now() + 60_000) });
+      expect(resultRows).toHaveLength(1);
+      expect(resultRows[0]).toMatchObject({ arm: intelligenceResult.experiment?.arm, assignmentStatus: 'eligible', assignedVisitors: 1, exposedVisitors: 1, verifiedPurchasers: 1, verifiedPurchaseCount: 1, currency: 'USD', verifiedRevenueMinor: '2400', conversionRate: 1, revenuePerAssignedVisitorMinor: '2400' });
+      expect(await resultsRepository.results({ organizationId: f.organizationId, businessId: f.businessId, storeId: f.storeId, experimentId, windowStart: new Date(Date.now() - 60_000), windowEnd: new Date(Date.now() + 60_000) })).toEqual(resultRows);
     } finally {
       globalThis.fetch = previous.fetch;
       if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
@@ -155,7 +165,7 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
       if (previous.vaultVersion === undefined) delete process.env.KABLET_CREDENTIAL_KEY_VERSION; else process.env.KABLET_CREDENTIAL_KEY_VERSION = previous.vaultVersion;
       await dispose(resource);
     }
-  }, 30000);
+  }, 90000);
 
   it('creates exactly one order and decrements inventory once, including concurrent duplicate calls', async () => {
     const resource = await provision();

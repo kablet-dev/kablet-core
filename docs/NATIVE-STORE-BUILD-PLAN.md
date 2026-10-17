@@ -177,6 +177,12 @@ Link verified orders to visitor/session lineage, expose unmatched coverage, reta
 
 Acceptance: assignment is sticky; exposure and outcome windows are explicit; SRM, contamination, maturity and missing-coverage states block causal claims; results can be `INCONCLUSIVE`; no lift is reported without valid evidence.
 
+Step 247 adds the first executable native experiment foundation in migration `0054_native_experiments.sql`. Approved active experiments are store-scoped and assign eligible visitors with the versioned `sha256-bucket.v1` hash; assignments remain sticky across refreshes and intent changes, while unavailable variants record a fallback/noncompliance exposure without relabeling the assigned arm. The native Decision and Exposure flow remains authoritative, shopping falls back safely when experiment data is unavailable, and there is no public experiment activation or automatic winner promotion. Results are reported as tenant-scoped, per-currency assigned/exposed/purchaser counts and verified revenue; they remain observational and may be `INCONCLUSIVE`.
+
+Experiment governance state is serialized with assignment/exposure persistence by a transaction-scoped advisory lock keyed to the tenant, store, and experiment; the database trigger takes the same lock for state/window changes. A pause or end committed before the lock is acquired produces the safe non-experiment composition, while an assignment transaction that acquires the lock first completes under the prior active state. An already-running HTTP response cannot be revoked after its transaction commits.
+
+The results query uses assigned visitors as the denominator, counts a purchaser once per visitor, counts each linked verified order within the attribution window, and keeps revenue grouped by the order's original currency. Orders outside the window or without valid native attribution remain unmatched for experiment analysis; repeat orders are retained as separate verified purchases without inflating purchaser counts. Paused or ended experiments retain historical assignments and exposures for read-only analysis.
+
 ### NS-08 — Native pilot readiness
 
 Dependencies: NS-01 through NS-07 and `07`, `08.01`.

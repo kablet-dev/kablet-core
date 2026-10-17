@@ -28,3 +28,4 @@ export * from './native-order-worker.js';
 export * from './native-attribution.js';
 export * from './native-checkout-policy.js';
 export * from './native-intelligence.js';
+export * from './native-experiment.js';
