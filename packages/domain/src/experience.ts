@@ -82,6 +82,10 @@ export function decisionToExperience(input: unknown, offerings: unknown[] = []):
         return [{ type: 'action-confirmation', heading: 'Ready for the next step?', body: 'Confirm and we will securely send your request using the information you provided.', label: 'Continue securely' }];
       case 'no_safe_decision':
         return [{ type: 'safe-fallback', heading: 'Let’s take this one step at a time', body: 'We do not have enough authoritative information to recommend a next step yet.' }];
+      case 'native_entry':
+      case 'native_discovery':
+      case 'native_comparison':
+        return [{ type: 'safe-fallback', heading: 'Continue exploring', body: 'This native canvas composition is rendered by the storefront runtime.' }];
     }
   })();
   return experienceModelSchema.parse({ contractVersion: 'experience.v1', decisionId: decision.decisionId, businessId: decision.businessId, decisionType: decision.decisionType, components });

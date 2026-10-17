@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const interactionKindSchema = z.enum(['intent_expressed','qualification_answered','contact_submitted','consent_granted','action_confirmed']);
+export const interactionKindSchema = z.enum(['intent_expressed','qualification_answered','contact_submitted','consent_granted','action_confirmed','native_composition_selected']);
 export const interactionFactSchema = z.object({
   contractVersion: z.literal('interaction-fact.v1'),
   id: z.string().uuid(), organizationId: z.string().uuid(), businessId: z.string().uuid(),

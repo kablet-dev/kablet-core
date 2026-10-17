@@ -132,6 +132,7 @@ async function warmDevelopmentRoutes(baseURL: string): Promise<void> {
     '/experience/interactive',
     '/api/interaction/start', '/api/interaction/resume', '/api/interaction/intent', '/api/interaction/offering', '/api/interaction/contact', '/api/interaction/action',
     '/store/browser-native-store',
+    '/api/store/browser-native-store/intelligence',
     '/api/store/browser-native-store/cart',
     '/api/store/browser-native-store/cart/lines',
     '/api/store/browser-native-store/cart/lines/85000000-0000-4000-8000-000000000002',

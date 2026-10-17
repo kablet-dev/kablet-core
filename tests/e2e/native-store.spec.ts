@@ -37,6 +37,7 @@ test('adapts the canvas through discovery, spotlight, and comparison', async ({ 
   await page.getByRole('button', { name: 'Back to collection' }).click();
   await expect(page.getByRole('heading', { name: 'A useful place to begin.' })).toBeVisible();
   await page.getByRole('button', { name: 'Compare products' }).click();
+  await expect(page.getByRole('heading', { name: 'Compare the collection' })).toBeVisible();
   await page.getByRole('button', { name: 'View Browser Native Product' }).first().click();
   await page.getByRole('button', { name: 'View Browser Native Alternate' }).first().click();
   await expect(page.getByRole('heading', { name: 'A clear comparison' })).toBeVisible();

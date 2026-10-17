@@ -53,6 +53,7 @@
     { "idx": 48, "version": "7", "when": 1763424000000, "tag": "0048_native_verified_orders", "breakpoints": true },
     { "idx": 49, "version": "7", "when": 1763510400000, "tag": "0049_native_verified_order_work", "breakpoints": true },
     { "idx": 50, "version": "7", "when": 1763596800000, "tag": "0050_native_checkout_policy_and_fulfillment", "breakpoints": true },
-    { "idx": 51, "version": "7", "when": 1763683200000, "tag": "0051_native_payment_session_persistence", "breakpoints": true }
+    { "idx": 51, "version": "7", "when": 1763683200000, "tag": "0051_native_payment_session_persistence", "breakpoints": true },
+    { "idx": 52, "version": "7", "when": 1763769600000, "tag": "0052_native_intelligence_lineage", "breakpoints": true }
   ]
 }

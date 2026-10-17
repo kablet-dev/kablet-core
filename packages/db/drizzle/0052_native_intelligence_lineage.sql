@@ -1,0 +1,16 @@
+ALTER TABLE visitor_decisions DROP CONSTRAINT IF EXISTS visitor_decisions_decision_type_check;
+ALTER TABLE visitor_decisions ADD CONSTRAINT visitor_decisions_decision_type_check CHECK (decision_type IN ('clarify_intent','present_offering','request_qualification','request_contact','request_time_window','offer_next_step','no_safe_decision','native_entry','native_discovery','native_comparison'));
+ALTER TABLE interaction_facts DROP CONSTRAINT IF EXISTS interaction_facts_interaction_kind_check;
+ALTER TABLE interaction_facts ADD CONSTRAINT interaction_facts_interaction_kind_check CHECK (interaction_kind IN ('intent_expressed','qualification_answered','contact_submitted','consent_granted','action_confirmed','native_composition_selected'));
+ALTER TABLE experience_exposures ADD COLUMN IF NOT EXISTS composition_id varchar(80);
+ALTER TABLE experience_exposures ADD COLUMN IF NOT EXISTS composition_version varchar(40);
+ALTER TABLE experience_exposures ADD COLUMN IF NOT EXISTS exposure_idempotency_key varchar(200);
+UPDATE experience_exposures SET composition_id = 'legacy', composition_version = 'experience.v1' WHERE composition_id IS NULL;
+ALTER TABLE experience_exposures ALTER COLUMN composition_id SET DEFAULT 'legacy';
+ALTER TABLE experience_exposures ALTER COLUMN composition_version SET DEFAULT 'experience.v1';
+ALTER TABLE experience_exposures ALTER COLUMN composition_id SET NOT NULL;
+ALTER TABLE experience_exposures ALTER COLUMN composition_version SET NOT NULL;
+ALTER TABLE experience_exposures ADD CONSTRAINT experience_exposure_composition_id_check CHECK (composition_id ~ '^[a-z0-9._-]+$');
+ALTER TABLE experience_exposures ADD CONSTRAINT experience_exposure_composition_version_check CHECK (composition_version ~ '^[a-zA-Z0-9._-]+$');
+ALTER TABLE experience_exposures ADD CONSTRAINT experience_exposure_idempotency_key_check CHECK (exposure_idempotency_key IS NULL OR exposure_idempotency_key ~ '^[A-Za-z0-9._:-]+$');
+CREATE UNIQUE INDEX experience_exposure_native_idempotency_idx ON experience_exposures (organization_id,business_id,interaction_session_id,exposure_idempotency_key) WHERE exposure_idempotency_key IS NOT NULL;
