@@ -33,6 +33,8 @@ export type NativePaymentStatusResult =
 export type NativeVerifiedProviderEvent = {
   evidence: NativePaymentEvidence;
   authenticatedProviderEventReference: string;
+  eventType: string;
+  checkoutId: string;
 };
 
 export interface NativePaymentAdapter {

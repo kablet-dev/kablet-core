@@ -170,7 +170,7 @@ function buildEvidence(event: StripeObject, object: StripeObject, account: Nativ
     authenticatedAt: observedAt,
     verifiedAt: observedAt,
   };
-  return { evidence, authenticatedProviderEventReference: evidence.providerEventReference };
+  return { evidence, authenticatedProviderEventReference: evidence.providerEventReference, eventType: asString(event.type, 'type'), checkoutId };
 }
 
 export function verifyStripeWebhookSignature(rawBody: Uint8Array, signature: string | null, secret: string, nowSeconds = Math.floor(Date.now() / 1000), toleranceSeconds = 300): boolean {
@@ -322,4 +322,16 @@ export function createStripeCredentialReader(input: { readSecret: (credentialRef
     if (!credentialReference) throw new StripeProviderError('credential_unavailable', `Stripe ${purpose === STRIPE_API_KEY_PURPOSE ? 'API' : 'webhook'} credential is not configured for this merchant account.`);
     return input.readSecret(credentialReference, purpose, requiredScopes);
   };
+}
+
+export function assertStripeHostedSessionBinding(input: { session: StripeObject; account: NativeMerchantPaymentAccount; payment: Pick<NativePaymentAttempt, 'paymentId' | 'organizationId' | 'businessId' | 'storeId' | 'checkoutId' | 'merchantPaymentAccountId' | 'amountMinor' | 'currency' | 'providerSessionReference'> }): string {
+  if (input.session.id !== input.payment.providerSessionReference) throw new StripeProviderError('payment_mismatch', 'The Stripe Checkout Session does not match the payment attempt.');
+  if (input.session.client_reference_id !== input.payment.paymentId) throw new StripeProviderError('payment_mismatch', 'The Stripe Checkout Session is not bound to the payment attempt.');
+  const metadata = eventMetadata(input.session);
+  if (metadata.kablet_payment_id !== input.payment.paymentId || metadata.kablet_checkout_id !== input.payment.checkoutId || metadata.kablet_organization_id !== input.payment.organizationId || metadata.kablet_business_id !== input.payment.businessId || metadata.kablet_store_id !== input.payment.storeId || metadata.kablet_merchant_payment_account_id !== input.payment.merchantPaymentAccountId || metadata.kablet_merchant_account_reference !== input.account.merchantAccountReference) throw new StripeProviderError('payment_mismatch', 'The Stripe Checkout Session metadata does not match the payment attempt.');
+  if (asAmount(input.session.amount_total) !== input.payment.amountMinor || asCurrency(input.session.currency) !== input.payment.currency) throw new StripeProviderError('payment_mismatch', 'The Stripe Checkout Session total does not match the payment attempt.');
+  const paymentIntent = input.session.payment_intent;
+  if (paymentIntent == null) throw new StripeProviderError('provider_unavailable', 'Stripe has not assigned a PaymentIntent to the Checkout Session yet.', true);
+  if (typeof paymentIntent !== 'string' || !/^pi_[A-Za-z0-9_]+$/.test(paymentIntent)) throw new StripeProviderError('payment_mismatch', 'The Stripe Checkout Session PaymentIntent reference is invalid.');
+  return paymentIntent;
 }

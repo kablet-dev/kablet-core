@@ -48,6 +48,7 @@
     { "idx": 43, "version": "7", "when": 1762992000000, "tag": "0043_native_payment_reconciliation_foundation", "breakpoints": true },
     { "idx": 44, "version": "7", "when": 1763078400000, "tag": "0044_native_reconciliation_authority", "breakpoints": true },
     { "idx": 45, "version": "7", "when": 1763164800000, "tag": "0045_native_stripe_verified_ingestion", "breakpoints": true },
-    { "idx": 46, "version": "7", "when": 1763251200000, "tag": "0046_native_payment_credential_purposes", "breakpoints": true }
+    { "idx": 46, "version": "7", "when": 1763251200000, "tag": "0046_native_payment_credential_purposes", "breakpoints": true },
+    { "idx": 47, "version": "7", "when": 1763337600000, "tag": "0047_native_payment_session_binding", "breakpoints": true }
   ]
 }

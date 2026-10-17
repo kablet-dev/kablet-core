@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { createStripeAdapter, verifyStripeWebhookSignature } from '../../apps/web/lib/stripe-provider';
+import { assertStripeHostedSessionBinding, createStripeAdapter, verifyStripeWebhookSignature } from '../../apps/web/lib/stripe-provider';
 import type { NativeMerchantPaymentAccount, NativePaymentAttempt } from '@kablet/domain';
 
 const account: NativeMerchantPaymentAccount = {
@@ -134,5 +134,12 @@ describe('Stripe BYOP provider boundary', () => {
     const adapter = createStripeAdapter({ account, credentialReader: vi.fn().mockResolvedValue('whsec_fixture'), now: () => 1_792_200_000 });
     await expect(adapter.verifyWebhook({ rawBody: new TextEncoder().encode(event), signature: signed(event), receivedAt: new Date().toISOString() })).rejects.toMatchObject({ code: 'account_mismatch' });
     await expect(adapter.verifyWebhook({ rawBody: new TextEncoder().encode(event), signature: 't=1,v1=forged', receivedAt: new Date().toISOString() })).rejects.toMatchObject({ code: 'signature_invalid' });
+  });
+
+  it('binds a retrieved Checkout Session only when its identity and PaymentIntent match', () => {
+    const session = { id: 'cs_fixture', client_reference_id: payment.paymentId, amount_total: 2400, currency: 'usd', payment_intent: 'pi_fixture', metadata: { kablet_payment_id: payment.paymentId, kablet_checkout_id: payment.checkoutId, kablet_organization_id: payment.organizationId, kablet_business_id: payment.businessId, kablet_store_id: payment.storeId, kablet_merchant_payment_account_id: account.paymentAccountId, kablet_merchant_account_reference: account.merchantAccountReference } };
+    expect(assertStripeHostedSessionBinding({ session, account, payment: { ...payment, providerSessionReference: 'cs_fixture' } })).toBe('pi_fixture');
+    expect(() => assertStripeHostedSessionBinding({ session: { ...session, payment_intent: null }, account, payment: { ...payment, providerSessionReference: 'cs_fixture' } })).toThrow();
+    expect(() => assertStripeHostedSessionBinding({ session: { ...session, amount_total: 2500 }, account, payment: { ...payment, providerSessionReference: 'cs_fixture' } })).toThrow();
   });
 });

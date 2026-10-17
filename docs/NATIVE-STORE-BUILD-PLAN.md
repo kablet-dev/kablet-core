@@ -125,6 +125,18 @@ Stripe setup workflow: the merchant creates a restricted test or live API key in
 
 This slice has offline mocked-provider coverage only. A real merchant-owned Stripe test-mode validation still requires a merchant-authorized restricted key, a verified HTTPS webhook endpoint/signing secret, Stripe test-mode account identity, controlled test payments including asynchronous and failed outcomes, duplicate/out-of-order delivery tests, and operational confirmation of Stripe terms, country/currency eligibility, PCI responsibilities, refunds, disputes, and seller-of-record obligations. No live activation claim is made.
 
+#### NS-04.5 — Authenticated Stripe webhook orchestration (D.2E.1)
+
+The server-only endpoint `POST /api/webhooks/stripe/:storeSlug` reads and size-checks raw request bytes, verifies the merchant-specific Stripe-Signature with the account's separate encrypted webhook-secret reference, and only then parses the event. The public store slug is an endpoint selector, not proof of authenticity: the runtime database resolves exactly one published store-scoped active Stripe account, and signed metadata is matched against the authoritative payment attempt for tenant, store, merchant account, checkout, amount, currency, and provider reference.
+
+Verified evidence is persisted only through the existing `kablet_control` database connection and the migration 0045 restricted ingestion function. Duplicate event delivery is acknowledged idempotently; unsupported events and `checkout.session.completed` are acknowledged as ignored; malformed, forged, mismatched, and unavailable requests fail without exposing internal details. The route never marks a payment captured, creates an order, decrements inventory, or releases an unknown reservation. Captured, asynchronous, failed, and out-of-order evidence remains subject to the existing payment-state and reconciliation authority boundaries.
+
+Webhook evidence is accepted only after the authoritative payment attempt already contains the exact Stripe PaymentIntent reference. Hosted Checkout Session creation currently returns and stores the Checkout Session reference, not a PaymentIntent reference; therefore an unbound attempt is rejected until a future trusted server-side retrieval/binding step establishes that reference. Signed webhook metadata cannot create or overwrite this binding.
+
+The trusted binding path now retrieves only the payment attempt's stored Checkout Session through the merchant's restricted API credential, validates the session ID, Kablet metadata, checkout identity, merchant account, amount, currency, mode-bound account, and PaymentIntent reference, then locks and updates the payment attempt atomically. Concurrent retries are idempotent; conflicting session or PaymentIntent references fail closed. The API-key permissions therefore include Checkout Session read in addition to the existing account, Checkout Session creation, and PaymentIntent read permissions.
+
+Operational prerequisites before sandbox use are a configured `CONTROL_DATABASE_URL` for the restricted control role, the encrypted credential-vault key, a merchant-owned HTTPS Stripe webhook endpoint, and independent API-key and webhook-signing-secret references. The HTTP endpoint still requires deployment-level rate limiting, observability without payload/secret logging, HTTPS termination, and real merchant-authorized Stripe test-mode validation. Provider-specific webhook ingestion and payment-state transition policies must be reviewed before live activation.
+
 ### NS-05 — Verified orders and merchant operations
 
 Dependencies: NS-04.
