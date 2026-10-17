@@ -159,6 +159,8 @@ The customer boundary is `/api/store/[storeSlug]/checkout`: it reuses the store-
 
 The current checkout surface is intentionally compact and canvas-integrated: it collects contact/shipping data, shows server totals and reservation expiry, opens merchant-hosted payment, and remains pending until the order API observes the authoritative verified order. A redirect or query parameter never confirms purchase. Real merchant sandbox validation still requires provider credentials, configured policies, webhook delivery, the control worker, rate limiting, observability, and operational reconciliation.
 
+Native verified-order attribution now uses the deterministic `last_native_exposure.v1` rule. The server-resolved native intelligence handle is copied into the checkout snapshot; the verified-order transaction creates one immutable `kablet_native_order_attributions` record after order commitment. Linked, partial, and unmatched orders remain distinct, and `createMeasurementQueryRepository().nativeVerifiedPurchaseRevenue()` reports verified purchases by composition, decision, status, and currency. This is observational lineage, not causal experiment measurement; unmatched orders remain valid commerce outcomes.
+
 ### NS-06 — Adaptive commerce experiences
 
 Dependencies: NS-01 and NS-02; verified catalog truth before product claims.

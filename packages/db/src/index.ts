@@ -25,5 +25,6 @@ export * from './native-payment.js';
 export * from './native-stripe.js';
 export * from './native-order.js';
 export * from './native-order-worker.js';
+export * from './native-attribution.js';
 export * from './native-checkout-policy.js';
 export * from './native-intelligence.js';

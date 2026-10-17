@@ -5,8 +5,9 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { loadTestManagerConfig } from '@kablet/config';
-import { createCredentialVault, createDb, createNativeStripeIngestionRepository, createNativeVerifiedOrderService, createNativeVerifiedOrderWorker } from '@kablet/db';
+import { createCredentialVault, createDb, createNativeIntelligenceService, createNativeStripeIngestionRepository, createNativeVerifiedOrderService, createNativeVerifiedOrderWorker } from '@kablet/db';
 import { nativeCartCookieName } from '../../apps/web/lib/native-cart-api';
+import { nativeIntelligenceCookieName } from '../../apps/web/lib/native-intelligence-api';
 
 const enabled = Boolean(process.env.TEST_BOOTSTRAP_USER && process.env.TEST_BOOTSTRAP_PASSWORD && process.env.TEST_ROLE_ADMIN_URL && process.env.TEST_APP_PASSWORD && process.env.TEST_CONTROL_PASSWORD);
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
@@ -103,7 +104,9 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       }) as typeof fetch;
       const { POST: prepare } = await import('../../apps/web/app/api/store/[storeSlug]/checkout/route');
-      const cookie = `${nativeCartCookieName('order-test-store')}=${f.cartToken}`;
+      const intelligence = createNativeIntelligenceService(resource.runtime.db, { organizationId: f.organizationId, businessId: f.businessId });
+      const intelligenceResult = await intelligence.resolve(null, 'discovery', randomBytes(32).toString('base64url'));
+      const cookie = `${nativeCartCookieName('order-test-store')}=${f.cartToken}; ${nativeIntelligenceCookieName('order-test-store')}=${intelligenceResult.handle}`;
       const prepareResponse = await prepare(new Request('https://example.test/api/store/order-test-store/checkout', { method: 'POST', headers: { origin: 'https://example.test', host: 'example.test', cookie, 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomBytes(32).toString('base64url'), contact: { email: 'visitor@example.test', name: 'A Visitor', phone: null }, shippingAddress: { recipientName: 'A Visitor', line1: '1 Test Street', line2: null, city: 'Test City', region: 'TS', postalCode: '00001', countryCode: 'US' } }) }), { params: Promise.resolve({ storeSlug: 'order-test-store' }) });
       const prepared = await prepareResponse.json() as { checkout?: { checkoutId: string; serverTotal: { amountMinor: string }; status: string }; message?: string };
       const preparedCheckoutId = prepared.checkout!.checkoutId;
@@ -140,6 +143,8 @@ describe.skipIf(!enabled)('native verified order commitment', () => {
       expect(await confirmationResponse.json()).toMatchObject({ order: { paymentId: initiatedPaymentId } });
       const committed = await resource.bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${f.organizationId}, true), set_config('kablet.business_id', ${f.businessId}, true)`); return tx.execute(sql`select p.inventory_quantity, count(o.id)::int as order_count from kablet_native_products p left join kablet_native_orders o on o.payment_id=${initiatedPaymentId}::uuid where p.id=${f.productId}::uuid group by p.inventory_quantity`); });
       expect(committed.rows[0]).toMatchObject({ inventory_quantity: 0, order_count: 1 });
+      const attribution = await resource.bootstrap.db.transaction(async tx => { await tx.execute(sql`select set_config('kablet.organization_id', ${f.organizationId}, true), set_config('kablet.business_id', ${f.businessId}, true)`); return tx.execute(sql`select a.status, a.composition_id, a.composition_version, a.decision_id, a.exposure_id, a.currency, a.revenue_amount_minor from kablet_native_order_attributions a join kablet_native_orders o on o.id=a.order_id where o.payment_id=${initiatedPaymentId}::uuid`); });
+      expect(attribution.rows[0]).toMatchObject({ status: 'linked', composition_id: 'discovery', composition_version: 'native-canvas.v1', decision_id: intelligenceResult.decisionId, exposure_id: intelligenceResult.exposureId, currency: 'USD', revenue_amount_minor: '2400' });
     } finally {
       globalThis.fetch = previous.fetch;
       if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;

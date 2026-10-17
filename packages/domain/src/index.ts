@@ -32,3 +32,4 @@ export * from './native-checkout';
 export * from './native-payment';
 export * from './native-payment-execution';
 export * from './native-order';
+export * from './native-attribution';

@@ -6,11 +6,21 @@ import { createInteractionSessionRepository } from './interaction.js';
 import { createVisitorStateRepository } from './visitor-state.js';
 
 type Context = { organizationId: string; businessId: string };
+export type NativeIntelligenceLineage = {
+  visitorIdentityId: string;
+  visitorSessionId: string;
+  interactionSessionId: string;
+  decisionId: string | null;
+  exposureId: string | null;
+  compositionId: string | null;
+  compositionVersion: string | null;
+};
 type Result = { handle: string | null; composition: 'entry' | 'discovery' | 'comparison'; compositionVersion: 'native-canvas.v1'; decisionId: string; visitorIdentityId: string; visitorSessionId: string; interactionSessionId: string; visitorStateRevisionId: string; exposureId: string };
 
 function signalIntent(signal: NativeCanvasSignal): 'explore_offerings' | 'select_offering' {
   return signal === 'discovery' ? 'explore_offerings' : 'select_offering';
 }
+function hashHandle(handle: string): Buffer { return createHash('sha256').update(handle, 'utf8').digest(); }
 
 export function createNativeIntelligenceService(db: Database['db'], context: Context) {
   const visitors = createVisitorStateRepository(db);
@@ -18,13 +28,39 @@ export function createNativeIntelligenceService(db: Database['db'], context: Con
   async function scoped<T>(work: (tx: DatabaseTransaction) => Promise<T>) {
     return db.transaction(async tx => {
       await tx.execute(sql`select set_config('kablet.organization_id', ${context.organizationId}, true), set_config('kablet.business_id', ${context.businessId}, true)`);
-      const business = await tx.execute(sql`select 1 from businesses where id=${context.businessId}::uuid and organization_id=${context.organizationId}::uuid and active`);
-      if (!business.rows[0]) throw new Error('native_intelligence_business_unavailable');
       return work(tx);
     });
   }
 
   return {
+    async resolveLineage(handle: string): Promise<NativeIntelligenceLineage | null> {
+      return scoped(async tx => {
+        const result = await tx.execute(sql`select i.visitor_identity_id, i.visitor_session_id, i.id as interaction_session_id, e.decision_id, e.id as exposure_id, e.composition_id, e.composition_version
+          from interaction_sessions i
+          left join lateral (
+            select e.id, e.decision_id, e.composition_id, e.composition_version
+              from experience_exposures e
+              join visitor_decisions d on d.organization_id=e.organization_id and d.business_id=e.business_id and d.id=e.decision_id
+             where e.organization_id=i.organization_id and e.business_id=i.business_id and e.interaction_session_id=i.id
+               and e.composition_version='native-canvas.v1'
+               and d.decision_type in ('native_entry','native_discovery','native_comparison')
+             order by e.exposure_sequence desc, e.id desc limit 1
+          ) e on true
+         where i.organization_id=${context.organizationId}::uuid and i.business_id=${context.businessId}::uuid
+           and i.handle_hash=${hashHandle(handle)} and i.status='active' and i.expires_at > now()`);
+        const row = result.rows[0] as Record<string, unknown> | undefined;
+        if (!row) return null;
+        return {
+          visitorIdentityId: String(row.visitor_identity_id),
+          visitorSessionId: String(row.visitor_session_id),
+          interactionSessionId: String(row.interaction_session_id),
+          decisionId: row.decision_id ? String(row.decision_id) : null,
+          exposureId: row.exposure_id ? String(row.exposure_id) : null,
+          compositionId: row.composition_id ? String(row.composition_id) : null,
+          compositionVersion: row.composition_version ? String(row.composition_version) : null,
+        };
+      });
+    },
     async resolve(handle: string | null, signal: NativeCanvasSignal | null, idempotencyKey: string): Promise<Result> {
       const parsedSignal = signal === null ? null : nativeCanvasSignalSchema.parse(signal);
       return scoped(async tx => {

@@ -3,7 +3,7 @@ import { conversionMeasurementQuerySchema, conversionMeasurementSchema, type Con
 import type { Database, DatabaseTransaction } from './index.js';
 
 export function createMeasurementQueryRepository(db: Database['db'], existingTx?: DatabaseTransaction) {
-  const run = async <T>(query: ConversionMeasurementQuery, fn: (tx: DatabaseTransaction) => Promise<T>) => {
+  const run = async <T>(query: { organizationId: string; businessId: string }, fn: (tx: DatabaseTransaction) => Promise<T>) => {
     const scoped = async (tx: DatabaseTransaction) => { await tx.execute(sql`select set_config('kablet.organization_id',${query.organizationId},true),set_config('kablet.business_id',${query.businessId},true)`); return fn(tx); };
     return existingTx ? scoped(existingTx) : db.transaction(scoped);
   };
@@ -18,6 +18,13 @@ export function createMeasurementQueryRepository(db: Database['db'], existingTx?
         const numerator = await tx.execute(sql`select count(distinct cf.outcome_id)::int as total,count(distinct case when oa.id is not null then cf.outcome_id end)::int as attributed from conversion_facts cf left join outcome_attributions oa on oa.organization_id=cf.organization_id and oa.business_id=cf.business_id and oa.outcome_id=cf.outcome_id where cf.organization_id=${query.organizationId}::uuid and cf.business_id=${query.businessId}::uuid and cf.conversion_definition_id=${query.conversionDefinitionId}::uuid and cf.occurred_at>=${query.windowStart} and cf.occurred_at<${query.windowEnd}`);
         const eligible = Number((denominator.rows[0] as Record<string, unknown>).count); const conversions = Number((numerator.rows[0] as Record<string, unknown>).total); const attributed = Number((numerator.rows[0] as Record<string, unknown>).attributed); const result = { contractVersion:'conversion-measurement.v1' as const, organizationId:query.organizationId, businessId:query.businessId, conversionDefinitionId:query.conversionDefinitionId, windowStart:query.windowStart, windowEnd:query.windowEnd, denominatorKind:'action_confirmation' as const, eligibleActionConfirmationCount:eligible, conversionCount:conversions, conversionRate:eligible === 0 ? 0 : conversions / eligible, attributedConversionCount:attributed, unattributedConversionCount:conversions-attributed };
         return conversionMeasurementSchema.parse(result);
+      });
+    },
+    async nativeVerifiedPurchaseRevenue(input: { organizationId: string; businessId: string; storeId?: string; windowStart: Date; windowEnd: Date }) {
+      return run(input, async tx => {
+        const storeFilter = input.storeId ? sql`and store_id=${input.storeId}::uuid` : sql``;
+        const result = await tx.execute(sql`select composition_id, composition_version, decision_id, status, currency, count(*)::int as purchase_count, sum(revenue_amount_minor)::text as revenue_amount_minor from kablet_native_order_attributions where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid ${storeFilter} and purchase_at>=${input.windowStart} and purchase_at<${input.windowEnd} group by composition_id, composition_version, decision_id, status, currency order by composition_id nulls last, decision_id nulls last`);
+        return result.rows.map(row => ({ compositionId: row.composition_id === null ? null : String(row.composition_id), compositionVersion: row.composition_version === null ? null : String(row.composition_version), decisionId: row.decision_id === null ? null : String(row.decision_id), status: String(row.status), currency: String(row.currency), purchaseCount: Number(row.purchase_count), revenueAmountMinor: String(row.revenue_amount_minor) }));
       });
     },
   };

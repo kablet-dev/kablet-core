@@ -16,6 +16,7 @@ import {
 } from '@kablet/domain';
 import type { Database, DatabaseTransaction } from './index.js';
 import { createNativeCartService, type NativeCartContext } from './native-cart.js';
+import type { NativeIntelligenceLineage } from './native-intelligence.js';
 
 type Tx = DatabaseTransaction;
 const reservationTtlMinutes = 15;
@@ -60,6 +61,7 @@ export type NativeReservationConfirmationInput = NativeCartContext & {
   idempotencyKey: string;
   contact: NativeCheckoutContact;
   shippingAddress: NativeShippingAddress | null;
+  attribution?: NativeIntelligenceLineage | null;
 };
 
 export type NativeReservationConfirmationResult = {
@@ -230,7 +232,7 @@ export function createNativeCheckoutReservationService(db: Database['db'], optio
         }
         const checkoutId = randomUUID();
         const fulfillmentType = Object.values(products).some(product => String(product.fulfillment_type ?? 'physical') === 'physical') ? 'physical' : 'digital';
-        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,contact_email,contact_name,contact_phone,shipping_address,shipping_eligibility,shipping_charge_state,shipping_charge_amount_minor,shipping_charge_currency,tax_state,tax_amount_minor,tax_currency,server_total_state,server_total_amount_minor,server_total_currency,customer_confirmation_revision,expires_at,shipping_policy_id,shipping_policy_revision,tax_policy_id,tax_policy_revision) values (${checkoutId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${cart.cartId}::uuid,${cart.version},1,${fulfillmentType},'reservation_pending',${cart.currency},${input.contact.email},${input.contact.name},${input.contact.phone},${JSON.stringify(input.shippingAddress)}::jsonb,${policy.shippingEligibility},${policy.shippingCharge.state},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.amountMinor : null},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.currency : null},${policy.tax.state},${policy.tax.state === 'calculated' ? policy.tax.amountMinor : null},${policy.tax.state === 'calculated' ? policy.tax.currency : null},'calculated',${policy.serverTotal.amountMinor},${policy.serverTotal.currency},1,now()+interval '15 minutes',${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null},${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null})`);
+        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,contact_email,contact_name,contact_phone,shipping_address,shipping_eligibility,shipping_charge_state,shipping_charge_amount_minor,shipping_charge_currency,tax_state,tax_amount_minor,tax_currency,server_total_state,server_total_amount_minor,server_total_currency,customer_confirmation_revision,expires_at,shipping_policy_id,shipping_policy_revision,tax_policy_id,tax_policy_revision,native_visitor_identity_id,native_visitor_session_id,native_interaction_session_id,native_decision_id,native_exposure_id,native_composition_id,native_composition_version) values (${checkoutId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${cart.cartId}::uuid,${cart.version},1,${fulfillmentType},'reservation_pending',${cart.currency},${input.contact.email},${input.contact.name},${input.contact.phone},${JSON.stringify(input.shippingAddress)}::jsonb,${policy.shippingEligibility},${policy.shippingCharge.state},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.amountMinor : null},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.currency : null},${policy.tax.state},${policy.tax.state === 'calculated' ? policy.tax.amountMinor : null},${policy.tax.state === 'calculated' ? policy.tax.currency : null},'calculated',${policy.serverTotal.amountMinor},${policy.serverTotal.currency},1,now()+interval '15 minutes',${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null},${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null},${input.attribution?.visitorIdentityId ?? null}::uuid,${input.attribution?.visitorSessionId ?? null}::uuid,${input.attribution?.interactionSessionId ?? null}::uuid,${input.attribution?.decisionId ?? null}::uuid,${input.attribution?.exposureId ?? null}::uuid,${input.attribution?.compositionId ?? null},${input.attribution?.compositionVersion ?? null})`);
         const lineIds = new Map<string, string>();
         for (const line of cart.lines) {
           const product = products[line.productId]; const lineId = randomUUID(); lineIds.set(line.productId, lineId);

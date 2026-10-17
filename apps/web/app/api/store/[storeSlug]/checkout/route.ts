@@ -1,6 +1,7 @@
 import { NativeCheckoutServiceError } from '@kablet/db';
 import { checkoutErrorResponse, checkoutJson, nativeCheckoutRequestSchema, openNativeCheckoutStore, requireCheckoutMutation } from '../../../../../lib/native-checkout-api';
 import { clearNativeCartCookie, readNativeCartJson, readNativeCartToken, setNativeCartCookie } from '../../../../../lib/native-cart-api';
+import { readNativeIntelligenceLineage } from '../../../../../lib/native-intelligence-api';
 
 type Params = { params: Promise<{ storeSlug: string }> };
 
@@ -14,7 +15,8 @@ export async function POST(request: Request, { params }: Params) {
     if (!opened) return checkoutJson({ code: 'store_not_found' }, 404);
     const token = readNativeCartToken(request, storeSlug);
     if (!token) return checkoutJson({ code: 'cart_not_found', message: 'A cart is required before checkout.' }, 401);
-    const result = await opened.service.confirmReservation({ ...opened.context, token, ...body });
+    const attribution = await readNativeIntelligenceLineage(opened.runtime.db, opened.context, request, storeSlug);
+    const result = await opened.service.confirmReservation({ ...opened.context, token, ...body, attribution });
     const response = checkoutJson({ checkout: result.checkout, reservations: result.reservations, idempotent: result.idempotent }, result.idempotent ? 200 : 201);
     setNativeCartCookie(response, storeSlug, token);
     return response;
