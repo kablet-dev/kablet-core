@@ -210,7 +210,7 @@ BEGIN
      OR e.amount_minor <> p.amount_minor OR e.currency <> p.currency THEN
     RAISE EXCEPTION 'captured payment evidence does not match payment attempt';
   END IF;
-  IF p.status NOT IN ('created','pending','authorized','captured') THEN
+  IF p.status NOT IN ('created','session_created','pending','authorized','captured') THEN
     INSERT INTO kablet_native_order_commitment_recoveries (
       id, organization_id, business_id, store_id, payment_id, merchant_payment_account_id, checkout_id, evidence_id, reason
     ) VALUES (gen_random_uuid(), p_organization_id, p_business_id, p_store_id, p.id, p.merchant_payment_account_id, p.checkout_id, e.id, 'payment_state_uncertain')

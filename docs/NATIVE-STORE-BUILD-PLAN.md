@@ -151,6 +151,14 @@ The existing worker process (`apps/worker/src/index.ts`) runs `processAvailableN
 
 This is a server-side worker boundary, not a public endpoint. Deployments must run the existing worker with `KABLET_WORKER_RUN=true`, `CONTROL_DATABASE_URL`, and the control-role permissions for migrations 0044, 0045, 0048 and 0049. The webhook acknowledges only after authenticated evidence and order work are durably registered; order creation is asynchronous. The current implementation remains offline/provider-mocked until real merchant-owned Stripe sandbox validation, operational rate limiting/observability, reconciliation ownership and the later verified-order/fulfillment slices are approved.
 
+### NS-06 — Customer checkout and trusted payment initiation
+
+Migration `0050_native_checkout_policy_and_fulfillment.sql` adds a tenant/store-scoped, versioned merchant checkout policy. It records eligible shipping countries, a configured shipping amount, tax-rate configuration, currency, and active/inactive state; ambiguous or missing active policy fails closed. Checkout sessions retain the policy identity/revision alongside server-calculated shipping, tax, and total snapshots. Products default to physical fulfillment but may be explicitly configured as digital; only physical lines reserve/decrement inventory.
+
+The customer boundary is `/api/store/[storeSlug]/checkout`: it reuses the store-resolved cart cookie, same-origin JSON protections, server cart truth, policy evaluation, 15-minute reservation TTL, and strict idempotency. `GET /api/store/[storeSlug]/checkout/[checkoutId]` returns only the cookie-authorized checkout and an order when the durable verified-order record exists. `POST /api/store/[storeSlug]/checkout/[checkoutId]/payment` creates the payment attempt from the authoritative checkout total, resolves the active merchant Stripe account server-side, creates the hosted Stripe session with the encrypted restricted API key, and persists the session reference through the control-only function from migration `0051_native_payment_session_persistence.sql` before returning a validated Stripe-hosted URL. The browser receives no credentials or provider identifiers beyond the hosted action URL and sanitized payment state.
+
+The current checkout surface is intentionally compact and canvas-integrated: it collects contact/shipping data, shows server totals and reservation expiry, opens merchant-hosted payment, and remains pending until the order API observes the authoritative verified order. A redirect or query parameter never confirms purchase. Real merchant sandbox validation still requires provider credentials, configured policies, webhook delivery, the control worker, rate limiting, observability, and operational reconciliation.
+
 ### NS-06 — Adaptive commerce experiences
 
 Dependencies: NS-01 and NS-02; verified catalog truth before product claims.

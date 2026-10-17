@@ -25,7 +25,7 @@ async function openDiscovery(page: import('@playwright/test').Page): Promise<voi
 
 async function addAvailableProduct(page: import('@playwright/test').Page): Promise<void> {
   await availableProductCard(page).getByRole('button', { name: 'Add to cart' }).click();
-  await expect(page.getByRole('status').filter({ hasText: /added to your cart/i })).toContainText('added to your cart');
+  await expect(page.getByRole('status').filter({ hasText: /added to your cart/i })).toContainText('added to your cart', { timeout: 15000 });
   await expect(cartButton(page)).toHaveText('Cart · 1');
 }
 

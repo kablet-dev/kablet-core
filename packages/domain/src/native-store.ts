@@ -5,6 +5,7 @@ export const nativeStoreSlugSchema = z.string().trim().toLowerCase().regex(/^[a-
 export const nativeStoreStatusSchema = z.enum(['draft', 'published', 'unavailable']);
 export const nativeProductStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const nativeProductAvailabilitySchema = z.enum(['unknown', 'available', 'unavailable', 'stale']);
+export const nativeProductFulfillmentTypeSchema = z.enum(['physical', 'digital']);
 export const nativeProductSkuSchema = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/, 'sku must be a stable product identifier');
 export const nativeInventoryQuantitySchema = z.number().int().nonnegative().nullable();
 export const nativePriceRevisionSchema = z.number().int().positive();
@@ -23,6 +24,7 @@ export const nativeProductSchema = z.object({
   priceRevision: nativePriceRevisionSchema,
   status: nativeProductStatusSchema,
   availability: nativeProductAvailabilitySchema,
+  fulfillmentType: nativeProductFulfillmentTypeSchema.default('physical'),
 });
 
 export const nativeStoreSchema = z.object({

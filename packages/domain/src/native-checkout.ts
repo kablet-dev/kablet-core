@@ -126,8 +126,8 @@ export const nativeCheckoutConfirmationSchema = z.object({
   checkoutId: uuidSchema,
   checkoutRevision: revisionSchema,
   contact: nativeCheckoutContactSchema,
-  shippingAddress: nativeShippingAddressSchema,
-  shippingEligibility: z.literal('eligible'),
+  shippingAddress: nativeShippingAddressSchema.nullable(),
+  shippingEligibility: z.enum(['eligible', 'not_required']),
   serverTotal: z.object({ state: z.literal('calculated'), amountMinor: amountMinorSchema, currency: nativeStoreCurrencySchema }).strict(),
 }).strict();
 export type NativeCheckoutConfirmation = z.infer<typeof nativeCheckoutConfirmationSchema>;

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createDb, createConversionRepository } from '@kablet/db';
+import { createCredentialVault, createDb, createConversionRepository } from '@kablet/db';
 import { loadTestManagerConfig } from '@kablet/config';
 import { seedBaselineIntentPolicy } from '../../integration/intent-policy-fixture';
 
@@ -17,6 +17,8 @@ const nativeUnknownInventoryProductId = '85000000-0000-4000-8000-000000000007';
 const isolatedBusinessId = '84000000-0000-4000-8000-000000000003';
 const isolatedStoreId = '85000000-0000-4000-8000-000000000005';
 const isolatedProductId = '85000000-0000-4000-8000-000000000006';
+const nativePaymentAccountId = '86000000-0000-4000-8000-000000000001';
+const nativeCheckoutPolicyId = '87000000-0000-4000-8000-000000000001';
 const cookieSecret = 'e2e-only-kablet-interaction-cookie-secret-2026';
 
 function fixtureDatabaseError(error: unknown): Error {
@@ -29,7 +31,7 @@ function fixtureDatabaseError(error: unknown): Error {
   return new Error(`browser fixture database setup failed (code=${code}${constraint ? `, constraint=${String(constraint)}` : ''}${safeDetail ? `, detail=${safeDetail}` : ''})`);
 }
 
-export type BrowserDatabase = { database: string; runtimeUrl: string; controlUrl: string; organizationId: string; businessId: string; cookieSecret: string; offeringId: string; offeringRevisionId: string; definitionId: string; cleanup: () => Promise<void> };
+export type BrowserDatabase = { database: string; runtimeUrl: string; controlUrl: string; credentialKey: string; credentialKeyVersion: string; organizationId: string; businessId: string; cookieSecret: string; nativeStoreId: string; nativeVisibleProductId: string; nativeSecondProductId: string; nativeCheckoutPolicyId: string; offeringId: string; offeringRevisionId: string; definitionId: string; cleanup: () => Promise<void> };
 
 export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
   const manager = loadTestManagerConfig();
@@ -42,7 +44,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
   const base = `postgresql://${encodeURIComponent(manager.TEST_MANAGER_USER)}:${encodeURIComponent(manager.TEST_MANAGER_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}`;
   const database = `kablet_e2e_${randomBytes(12).toString('hex')}`;
   const managerPool = new pg.Pool({ connectionString: `${base}/postgres`, max: 1 });
-  const offeringId = randomUUID(); const offeringRevisionId = randomUUID(); const definitionId = randomUUID();
+  const offeringId = randomUUID(); const offeringRevisionId = randomUUID(); const definitionId = randomUUID(); const credentialKey = randomBytes(32); const credentialKeyVersion = `browser-e2e-${randomBytes(8).toString('hex')}`; const createdBy = randomUUID();
   let runtime: ReturnType<typeof createDb> | undefined;
   let target: pg.Pool | undefined;
   let bootstrap: ReturnType<typeof createDb> | undefined;
@@ -68,6 +70,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
       await tx.execute(sql`insert into organizations(id,name) values (${organizationId}::uuid,'Browser E2E Organization')`);
       await tx.execute(sql`insert into businesses(id,organization_id,name) values (${businessId}::uuid,${organizationId}::uuid,'Browser E2E Business')`);
       await tx.execute(sql`insert into businesses(id,organization_id,name) values (${isolatedBusinessId}::uuid,${organizationId}::uuid,'Browser E2E Isolated Business')`);
+      await tx.execute(sql`insert into kablet_users(id,auth_provider,provider_subject) values (${createdBy}::uuid,'test','browser-e2e-checkout')`);
       await tx.execute(sql`insert into business_offerings(id,business_id,name) values (${offeringId}::uuid,${businessId}::uuid,'Browser E2E Offering')`);
       await tx.execute(sql`insert into business_offering_revisions(id,offering_id,revision_number,name,description,pricing_kind,visibility,approval_status,provenance_source_type,provenance_source_reference,provenance_captured_at,provenance_captured_by) values (${offeringRevisionId}::uuid,${offeringId}::uuid,1,'Browser E2E Offering','A published browser proof offering','unknown','public','approved','owner_input','browser-e2e',now(),'test')`);
       await tx.execute(sql`insert into offering_publications(offering_id,revision_id) values (${offeringId}::uuid,${offeringRevisionId}::uuid)`);
@@ -76,6 +79,12 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
       await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${nativeSecondProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'browser-native-alternate','NATIVE-ALTERNATE-001','Browser Native Alternate','A second published product for comparison coverage.','3600','USD',0,1,'published','stale')`);
       await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${nativeUnknownInventoryProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'browser-native-unknown-stock','NATIVE-UNKNOWN-001','Browser Native Unknown Stock','A published product whose inventory is not available to the storefront.','4200','USD',null,1,'published','available')`);
       await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${nativeDraftProductId}::uuid,${nativeStoreId}::uuid,${organizationId}::uuid,${businessId}::uuid,'private-draft-product','NATIVE-DRAFT-001','Private Draft Product','This must never render publicly.','9900','USD',3,1,'draft','available')`);
+      await tx.execute(sql`insert into kablet_native_checkout_policies(id,organization_id,business_id,store_id,revision,status,currency,eligible_countries,shipping_amount_minor,tax_rate_bps) values (${nativeCheckoutPolicyId}::uuid,${organizationId}::uuid,${businessId}::uuid,${nativeStoreId}::uuid,1,'active','USD',array['US'],500,875)`);
+      const encrypted = createCredentialVault(credentialKey, credentialKeyVersion).encrypt('rk_test_browser_fixture');
+      await tx.execute(sql`insert into kablet_provider_credentials(id,organization_id,business_id,provider_key,encrypted_secret,key_version,scopes,created_by) values (${randomUUID()}::uuid,${organizationId}::uuid,${businessId}::uuid,'stripe:test:api',${encrypted.ciphertext},${encrypted.keyVersion},${JSON.stringify(['checkout_sessions.create','checkout_sessions.read','payment_intents.read','account.read','webhooks.verify'])}::jsonb,${createdBy}::uuid)`);
+      const webhookEncrypted = createCredentialVault(credentialKey, credentialKeyVersion).encrypt('whsec_browserfixture');
+      await tx.execute(sql`insert into kablet_provider_credentials(id,organization_id,business_id,provider_key,encrypted_secret,key_version,scopes,created_by) values (${randomUUID()}::uuid,${organizationId}::uuid,${businessId}::uuid,'stripe:test:webhook',${webhookEncrypted.ciphertext},${webhookEncrypted.keyVersion},${JSON.stringify(['webhooks.verify'])}::jsonb,${createdBy}::uuid)`);
+      await tx.execute(sql`insert into kablet_native_payment_accounts(id,organization_id,business_id,store_id,provider_key,adapter_version,merchant_account_reference,credential_mode,credential_reference,webhook_signing_secret_reference,supported_countries,supported_currencies,status,can_authorize,can_capture,can_refund,can_receive_webhooks) values (${nativePaymentAccountId}::uuid,${organizationId}::uuid,${businessId}::uuid,${nativeStoreId}::uuid,'stripe','v1','acct_browser_fixture','test','stripe:test:api','stripe:test:webhook',array['US'],array['USD'],'active',true,true,false,true)`);
         await tx.execute(sql`select set_config('kablet.organization_id', ${organizationId}, true), set_config('kablet.business_id', ${isolatedBusinessId}, true)`);
         await tx.execute(sql`insert into kablet_native_stores(id,organization_id,business_id,public_slug,name,primary_currency,status) values (${isolatedStoreId}::uuid,${organizationId}::uuid,${isolatedBusinessId}::uuid,'browser-isolated-store','Isolated Native Store','USD','published')`);
         await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${isolatedProductId}::uuid,${isolatedStoreId}::uuid,${organizationId}::uuid,${isolatedBusinessId}::uuid,'isolated-native-product','NATIVE-ISOLATED-001','Isolated Native Product','A product belonging only to the second browser store.','1800','USD',8,1,'published','available')`);
@@ -88,7 +97,7 @@ export async function provisionBrowserDatabase(): Promise<BrowserDatabase> {
     runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
     await seedBaselineIntentPolicy(runtime.db, organizationId, businessId);
     await createConversionRepository(runtime.db).createDefinition({ id: definitionId, organizationId, businessId, definitionKey: 'lead', definitionVersion: 'v1', capabilityId: '91000000-0000-4000-8000-000000000001', capabilityVersion: '1', outcomeType: 'lead.delivered', active: true });
-    return { database, runtimeUrl: `postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, controlUrl: `postgresql://kablet_control:${encodeURIComponent(controlPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, organizationId, businessId, cookieSecret, offeringId, offeringRevisionId, definitionId, cleanup: async () => { try { await runtime?.pool.end(); } finally { await managerPool.query(`drop database if exists "${database}"`); await managerPool.end(); } } };
+    return { database, runtimeUrl: `postgresql://kablet_dev:${encodeURIComponent(appPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, controlUrl: `postgresql://kablet_control:${encodeURIComponent(controlPassword)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`, credentialKey: credentialKey.toString('base64'), credentialKeyVersion, organizationId, businessId, cookieSecret, nativeStoreId, nativeVisibleProductId, nativeSecondProductId, nativeCheckoutPolicyId, offeringId, offeringRevisionId, definitionId, cleanup: async () => { try { await runtime?.pool.end(); } finally { await managerPool.query(`drop database if exists "${database}"`); await managerPool.end(); } } };
   } catch (error) {
     await target?.end().catch(() => undefined);
     await bootstrap?.pool.end().catch(() => undefined);

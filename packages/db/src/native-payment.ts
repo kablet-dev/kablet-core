@@ -42,8 +42,8 @@ function mapAttempt(row: Record<string, unknown>, context: NativePaymentAttemptC
     currency: String(row.currency),
     operationId,
     idempotencyKeyHash: keyHash.toString('hex'),
-    providerPaymentReference: null,
-    providerSessionReference: null,
+    providerPaymentReference: row.provider_payment_reference == null ? null : String(row.provider_payment_reference),
+    providerSessionReference: row.provider_session_reference == null ? null : String(row.provider_session_reference),
     status: row.status,
     createdAt: isoTimestamp(row.created_at),
     updatedAt: isoTimestamp(row.updated_at),
@@ -60,13 +60,17 @@ export function createNativePaymentExecutionService(db: Database['db']) {
       const paymentId = randomUUID();
       let result;
       try {
-        result = await db.execute(sql`
+        result = await db.transaction(async tx => {
+          const lockIdentity = [input.organizationId, input.businessId, input.storeId, input.checkoutId, input.merchantPaymentAccountId, keyHash.toString('hex')].join(':');
+          await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${lockIdentity}, 0))`);
+          return tx.execute(sql`
           select * from kablet_create_native_payment_attempt(
             ${paymentId}::uuid, ${input.organizationId}::uuid, ${input.businessId}::uuid,
             ${input.storeId}::uuid, ${input.checkoutId}::uuid,
             ${input.merchantPaymentAccountId}::uuid, ${keyHash}, ${operationId}, ${input.captureMode}
           )
-        `);
+          `);
+        });
       } catch (error) {
         const cause = (error as { cause?: { message?: string } }).cause?.message;
         if (cause === 'payment idempotency conflict') throw new Error('payment idempotency conflict');
@@ -74,9 +78,16 @@ export function createNativePaymentExecutionService(db: Database['db']) {
       }
       const row = result.rows[0] as Record<string, unknown> | undefined;
       if (!row) throw new Error('payment attempt could not be created');
+      const loaded = await db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
+        const current = await tx.execute(sql`select id as payment_id, checkout_revision, amount_minor, currency, provider_payment_reference, provider_session_reference, status, created_at, updated_at, unknown_at, last_verified_at from kablet_native_payment_attempts where id=${String(row.payment_id)}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and merchant_payment_account_id=${input.merchantPaymentAccountId}::uuid`);
+        const currentRow = current.rows[0] as Record<string, unknown> | undefined;
+        if (!currentRow) throw new Error('payment attempt could not be loaded');
+        return currentRow;
+      });
       return {
         payment: mapAttempt(
-          row,
+          loaded,
           { organizationId: input.organizationId, businessId: input.businessId, storeId: input.storeId },
           input.checkoutId,
           input.merchantPaymentAccountId,
@@ -88,15 +99,10 @@ export function createNativePaymentExecutionService(db: Database['db']) {
     },
     async recordProviderSessionReference(input: NativePaymentAttemptContext & { paymentId: string; merchantPaymentAccountId: string; providerSessionReference: string }) {
       if (!/^cs_[A-Za-z0-9_]+$/.test(input.providerSessionReference)) throw new Error('payment session reference is invalid');
-      return db.transaction(async tx => {
-        await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
-        const result = await tx.execute(sql`select provider_session_reference from kablet_native_payment_attempts where id=${input.paymentId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and merchant_payment_account_id=${input.merchantPaymentAccountId}::uuid for update`);
-        const row = result.rows[0] as { provider_session_reference?: string | null } | undefined;
-        if (!row) throw new Error('payment attempt not found');
-        if (row.provider_session_reference && row.provider_session_reference !== input.providerSessionReference) throw new Error('payment session reference conflict');
-        if (!row.provider_session_reference) await tx.execute(sql`update kablet_native_payment_attempts set provider_session_reference=${input.providerSessionReference}, status=case when status='created' then 'session_created' else status end, updated_at=now() where id=${input.paymentId}::uuid and provider_session_reference is null`);
-        return { providerSessionReference: input.providerSessionReference, idempotent: Boolean(row.provider_session_reference) };
-      });
+      const result = await db.execute(sql`select * from kablet_record_native_payment_session(${input.paymentId}::uuid, ${input.organizationId}::uuid, ${input.businessId}::uuid, ${input.storeId}::uuid, ${input.merchantPaymentAccountId}::uuid, ${input.providerSessionReference})`);
+      const row = result.rows[0] as { provider_session_reference?: string; idempotent?: boolean } | undefined;
+      if (!row) throw new Error('payment session could not be recorded');
+      return { providerSessionReference: String(row.provider_session_reference), idempotent: Boolean(row.idempotent) };
     },
   };
 }

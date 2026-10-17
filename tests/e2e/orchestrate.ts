@@ -1,5 +1,7 @@
 import { writeFile, unlink, access } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { loadEnvFile } from 'node:process';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -7,6 +9,8 @@ import net from 'node:net';
 import pg from 'pg';
 import { loadTestManagerConfig } from '@kablet/config';
 import { provisionBrowserDatabase } from './support/disposable-postgres';
+
+if (existsSync('.env')) loadEnvFile('.env');
 
 function run(command: string, args: string[], env: NodeJS.ProcessEnv) {
   return new Promise<number>((resolve, reject) => {
@@ -160,6 +164,8 @@ async function main() {
       DATABASE_URL: database.runtimeUrl,
       TEST_DATABASE_URL: database.runtimeUrl,
       CONTROL_DATABASE_URL: database.controlUrl,
+      KABLET_CREDENTIAL_KEY: database.credentialKey,
+      KABLET_CREDENTIAL_KEY_VERSION: database.credentialKeyVersion,
       KABLET_INTERACTION_ORGANIZATION_ID: database.organizationId,
       KABLET_INTERACTION_BUSINESS_ID: database.businessId,
       KABLET_INTERACTION_COOKIE_SECRET: database.cookieSecret,

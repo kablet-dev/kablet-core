@@ -39,14 +39,16 @@ export type NativeCheckoutPolicyInput = {
   currency: string;
   lines: Array<Pick<NativeCheckoutLine, 'productId' | 'sku' | 'quantity' | 'unitAmountMinor' | 'lineAmountMinor' | 'currency' | 'priceRevision'>>;
   contact: NativeCheckoutContact;
-  shippingAddress: NativeShippingAddress;
+  shippingAddress: NativeShippingAddress | null;
 };
 
 export type NativeCheckoutPolicyResult = {
-  shippingEligibility: 'eligible' | 'ineligible' | 'unavailable';
+  shippingEligibility: 'eligible' | 'ineligible' | 'unavailable' | 'not_required';
   shippingCharge: NativeChargeSnapshot;
   tax: NativeChargeSnapshot;
   serverTotal: Extract<NativeChargeSnapshot, { state: 'calculated' }>;
+  policyId?: string;
+  policyRevision?: number;
 };
 
 export type NativeCheckoutServiceOptions = {
@@ -57,7 +59,7 @@ export type NativeReservationConfirmationInput = NativeCartContext & {
   token: string;
   idempotencyKey: string;
   contact: NativeCheckoutContact;
-  shippingAddress: NativeShippingAddress;
+  shippingAddress: NativeShippingAddress | null;
 };
 
 export type NativeReservationConfirmationResult = {
@@ -144,7 +146,7 @@ async function loadCheckout(tx: Tx, checkoutId: string): Promise<{ checkout: Nat
 }
 
 function assertPolicyResult(result: NativeCheckoutPolicyResult, currency: string): void {
-  if (result.shippingEligibility !== 'eligible') throw new NativeCheckoutServiceError('shipping_unavailable', 'Shipping is not available for this checkout.');
+  if (result.shippingEligibility !== 'eligible' && result.shippingEligibility !== 'not_required') throw new NativeCheckoutServiceError('shipping_unavailable', 'Shipping is not available for this checkout.');
   if (result.serverTotal.state !== 'calculated' || result.serverTotal.currency !== currency) throw new NativeCheckoutServiceError('policy_unavailable', 'The merchant checkout policy could not calculate a final total.');
   for (const charge of [result.shippingCharge, result.tax]) {
     if (charge.state === 'calculated' && charge.currency !== currency) throw new NativeCheckoutServiceError('currency_mismatch', 'A checkout charge uses an unsupported currency.');
@@ -166,9 +168,19 @@ async function findExistingMutation(db: Database['db'], context: NativeCartConte
 export function createNativeCheckoutReservationService(db: Database['db'], options: NativeCheckoutServiceOptions = {}) {
   const cartService = createNativeCartService(db);
   return {
+    async getCheckout(input: NativeCartContext & { token: string; checkoutId: string }): Promise<{ checkout: NativeCheckoutSession; reservations: NativeInventoryReservation[] }> {
+      assertUuid(input.checkoutId);
+      const tokenHash = hashToken(input.token);
+      return db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
+        const owned = await tx.execute(sql`select s.id from kablet_native_checkout_sessions s join kablet_native_carts c on c.id=s.cart_id and c.organization_id=s.organization_id and c.business_id=s.business_id and c.store_id=s.store_id where s.id=${input.checkoutId}::uuid and s.organization_id=${input.organizationId}::uuid and s.business_id=${input.businessId}::uuid and s.store_id=${input.storeId}::uuid and (c.token_hash=${tokenHash} or exists (select 1 from kablet_native_cart_tokens t where t.cart_id=c.id and t.token_hash=${tokenHash} and t.expires_at>now()))`);
+        if (!owned.rows[0]) throw new NativeCheckoutServiceError('checkout_not_found', 'The checkout was not found.');
+        return loadCheckout(tx, input.checkoutId);
+      });
+    },
     async confirmReservation(input: NativeReservationConfirmationInput): Promise<NativeReservationConfirmationResult> {
       assertUuid(input.organizationId); assertUuid(input.businessId); assertUuid(input.storeId);
-      nativeShippingAddressSchema.parse(input.shippingAddress);
+      if (input.shippingAddress) nativeShippingAddressSchema.parse(input.shippingAddress);
       if (!options.calculateShippingAndTax) throw new NativeCheckoutServiceError('policy_unavailable', 'Merchant shipping and tax policy is unavailable.');
       const cart = await cartService.getCart({ organizationId: input.organizationId, businessId: input.businessId, storeId: input.storeId, token: input.token });
       if (cart.lines.length === 0) throw new NativeCheckoutServiceError('cart_empty', 'The cart has no sellable lines.');
@@ -204,11 +216,11 @@ export function createNativeCheckoutReservationService(db: Database['db'], optio
         }
         const products: Record<string, Record<string, unknown>> = {};
         for (const line of [...cart.lines].sort((a, b) => a.productId.localeCompare(b.productId))) {
-          const productResult = await tx.execute(sql`select id, store_id, sku, title, amount_minor::text, currency, price_revision, status, availability, inventory_quantity from kablet_native_products where id=${line.productId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid for update`);
+          const productResult = await tx.execute(sql`select id, store_id, sku, title, amount_minor::text, currency, price_revision, status, availability, inventory_quantity, fulfillment_type from kablet_native_products where id=${line.productId}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid for update`);
           const product = productResult.rows[0] as Record<string, unknown> | undefined;
           if (!product || String(product.status) !== 'published') throw new NativeCheckoutServiceError('product_unpublished', 'A checkout product is no longer published.');
-          if (String(product.availability) !== 'available' || product.inventory_quantity === null) throw new NativeCheckoutServiceError('product_unavailable', 'A checkout product is unavailable.');
-          if (Number(product.inventory_quantity) < line.quantity) throw new NativeCheckoutServiceError('insufficient_inventory', 'The requested quantity is no longer available.');
+          if (String(product.fulfillment_type ?? 'physical') === 'physical' && (String(product.availability) !== 'available' || product.inventory_quantity === null)) throw new NativeCheckoutServiceError('product_unavailable', 'A checkout product is unavailable.');
+          if (String(product.fulfillment_type ?? 'physical') === 'physical' && Number(product.inventory_quantity) < line.quantity) throw new NativeCheckoutServiceError('insufficient_inventory', 'The requested quantity is no longer available.');
           if (String(product.currency) !== cart.currency) throw new NativeCheckoutServiceError('currency_mismatch', 'A checkout product uses an unsupported currency.');
           const accepted = line.priceAcceptance;
           const snapshotMatches = String(product.sku) === line.originalPrice.sku && String(product.amount_minor) === line.originalPrice.amountMinor && Number(product.price_revision) === line.originalPrice.priceRevision;
@@ -217,18 +229,21 @@ export function createNativeCheckoutReservationService(db: Database['db'], optio
           products[line.productId] = product;
         }
         const checkoutId = randomUUID();
-        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,contact_email,contact_name,contact_phone,shipping_address,shipping_eligibility,shipping_charge_state,shipping_charge_amount_minor,shipping_charge_currency,tax_state,tax_amount_minor,tax_currency,server_total_state,server_total_amount_minor,server_total_currency,customer_confirmation_revision,expires_at) values (${checkoutId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${cart.cartId}::uuid,${cart.version},1,'physical','reservation_pending',${cart.currency},${input.contact.email},${input.contact.name},${input.contact.phone},${JSON.stringify(input.shippingAddress)}::jsonb,${policy.shippingEligibility},${policy.shippingCharge.state},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.amountMinor : null},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.currency : null},${policy.tax.state},${policy.tax.state === 'calculated' ? policy.tax.amountMinor : null},${policy.tax.state === 'calculated' ? policy.tax.currency : null},'calculated',${policy.serverTotal.amountMinor},${policy.serverTotal.currency},1,now()+interval '15 minutes')`);
+        const fulfillmentType = Object.values(products).some(product => String(product.fulfillment_type ?? 'physical') === 'physical') ? 'physical' : 'digital';
+        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,contact_email,contact_name,contact_phone,shipping_address,shipping_eligibility,shipping_charge_state,shipping_charge_amount_minor,shipping_charge_currency,tax_state,tax_amount_minor,tax_currency,server_total_state,server_total_amount_minor,server_total_currency,customer_confirmation_revision,expires_at,shipping_policy_id,shipping_policy_revision,tax_policy_id,tax_policy_revision) values (${checkoutId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${cart.cartId}::uuid,${cart.version},1,${fulfillmentType},'reservation_pending',${cart.currency},${input.contact.email},${input.contact.name},${input.contact.phone},${JSON.stringify(input.shippingAddress)}::jsonb,${policy.shippingEligibility},${policy.shippingCharge.state},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.amountMinor : null},${policy.shippingCharge.state === 'calculated' ? policy.shippingCharge.currency : null},${policy.tax.state},${policy.tax.state === 'calculated' ? policy.tax.amountMinor : null},${policy.tax.state === 'calculated' ? policy.tax.currency : null},'calculated',${policy.serverTotal.amountMinor},${policy.serverTotal.currency},1,now()+interval '15 minutes',${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null},${policy.policyId ?? null}::uuid,${policy.policyRevision ?? null})`);
         const lineIds = new Map<string, string>();
         for (const line of cart.lines) {
           const product = products[line.productId]; const lineId = randomUUID(); lineIds.set(line.productId, lineId);
           const unit = String(product.amount_minor); const total = (BigInt(unit) * BigInt(line.quantity)).toString();
-          await tx.execute(sql`insert into kablet_native_checkout_lines(id,organization_id,business_id,store_id,checkout_id,product_id,fulfillment_type,sku_snapshot,quantity,unit_amount_minor,line_amount_minor,currency_snapshot,price_revision_snapshot,product_title_snapshot) values (${lineId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${checkoutId}::uuid,${line.productId}::uuid,'physical',${String(product.sku)},${line.quantity},${unit},${total},${String(product.currency)},${Number(product.price_revision)},${String(product.title)})`);
+          await tx.execute(sql`insert into kablet_native_checkout_lines(id,organization_id,business_id,store_id,checkout_id,product_id,fulfillment_type,sku_snapshot,quantity,unit_amount_minor,line_amount_minor,currency_snapshot,price_revision_snapshot,product_title_snapshot) values (${lineId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${checkoutId}::uuid,${line.productId}::uuid,${String(product.fulfillment_type ?? 'physical')},${String(product.sku)},${line.quantity},${unit},${total},${String(product.currency)},${Number(product.price_revision)},${String(product.title)})`);
         }
         for (const line of cart.lines) {
           const product = products[line.productId];
-          const reserved = await tx.execute(sql`select coalesce(sum(quantity),0)::int as quantity from kablet_native_inventory_reservations where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and product_id=${line.productId}::uuid and ((status='active' and expires_at>now()) or status='unknown')`);
-          if (Number((reserved.rows[0] as Record<string, unknown>).quantity) + line.quantity > Number(product.inventory_quantity)) throw new NativeCheckoutServiceError('insufficient_inventory', 'The requested quantity is no longer available.');
-          await tx.execute(sql`insert into kablet_native_inventory_reservations(id,organization_id,business_id,store_id,checkout_id,checkout_line_id,product_id,sku_snapshot,quantity,status,expires_at) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${checkoutId}::uuid,${lineIds.get(line.productId)}::uuid,${line.productId}::uuid,${String(product.sku)},${line.quantity},'active',now()+interval '15 minutes')`);
+          if (String(product.fulfillment_type ?? 'physical') === 'physical') {
+            const reserved = await tx.execute(sql`select coalesce(sum(quantity),0)::int as quantity from kablet_native_inventory_reservations where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and product_id=${line.productId}::uuid and ((status='active' and expires_at>now()) or status='unknown')`);
+            if (Number((reserved.rows[0] as Record<string, unknown>).quantity) + line.quantity > Number(product.inventory_quantity)) throw new NativeCheckoutServiceError('insufficient_inventory', 'The requested quantity is no longer available.');
+            await tx.execute(sql`insert into kablet_native_inventory_reservations(id,organization_id,business_id,store_id,checkout_id,checkout_line_id,product_id,sku_snapshot,quantity,status,expires_at) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${checkoutId}::uuid,${lineIds.get(line.productId)}::uuid,${line.productId}::uuid,${String(product.sku)},${line.quantity},'active',now()+interval '15 minutes')`);
+          }
         }
         await tx.execute(sql`update kablet_native_checkout_sessions set status='reserved', updated_at=now() where id=${checkoutId}::uuid`);
         await tx.execute(sql`insert into kablet_native_reservation_mutations(id,organization_id,business_id,store_id,cart_id,checkout_id,idempotency_key_hash,request_fingerprint,checkout_revision) values (${randomUUID()}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.storeId}::uuid,${cart.cartId}::uuid,${checkoutId}::uuid,${keyHash},${fingerprint},1)`);

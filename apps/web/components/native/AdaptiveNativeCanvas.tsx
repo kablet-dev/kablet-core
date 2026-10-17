@@ -6,6 +6,7 @@ import { initialNativeCanvasState, selectEntryStrategy, selectIntent, selectProd
 import { useNativeCart } from '../../lib/use-native-cart';
 import { isNativeProductSellable, nativeCartItemCount } from '../../lib/native-cart-presenter';
 import { NativeCartSurface } from './NativeCartSurface';
+import { NativeCheckoutSurface } from './NativeCheckoutSurface';
 
 type Props = { storefront: NativeStorefront; entryStrategyPreview?: EntryStrategy; approvedEditorialImageUrl?: string | null };
 
@@ -156,6 +157,7 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
   const [state, setState] = useState<NativeCanvasState>(initialNativeCanvasState);
   const cart = useNativeCart(storefront.publicSlug);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pendingProductId, setPendingProductId] = useState<string | null>(null);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
   const cartTriggerRef = useRef<HTMLButtonElement>(null);
@@ -191,7 +193,8 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
 
   return <main className="adaptive-store-shell">
     <header className="adaptive-store-header"><button type="button" className="adaptive-brand" onClick={() => setState(current => showEntry(current))} aria-label="Return to storefront entry"><span className="adaptive-brand-mark" aria-hidden="true">{storefront.brandMark ?? storefront.name.slice(0, 1)}</span><span>{storefront.name}</span></button><div className="adaptive-header-actions"><span className="adaptive-store-currency">{storefront.primaryCurrency}</span><button ref={cartTriggerRef} type="button" className="adaptive-cart-trigger" aria-expanded={cartOpen} aria-controls="adaptive-cart-panel" onClick={() => setCartOpen(current => !current)}>Cart{cart.loading ? ' · …' : ` · ${itemCount}`}</button></div></header>
-    {cartOpen && <NativeCartSurface cart={cart.cart} loading={cart.loading} pending={cart.pending} error={cart.error} onClose={closeCart} onUpdateQuantity={(lineId, quantity) => handleCartMutation(() => cart.updateLine(lineId, quantity), 'Cart quantity updated.')} onRemove={lineId => handleCartMutation(() => cart.removeLine(lineId), 'Item removed from your cart.')} onAcceptPrice={lineId => handleCartMutation(() => cart.acceptPrice(lineId), 'Current price accepted for this cart line.')} />}
+    {cartOpen && <NativeCartSurface cart={cart.cart} loading={cart.loading} pending={cart.pending} error={cart.error} onClose={closeCart} onUpdateQuantity={(lineId, quantity) => handleCartMutation(() => cart.updateLine(lineId, quantity), 'Cart quantity updated.')} onRemove={lineId => handleCartMutation(() => cart.removeLine(lineId), 'Item removed from your cart.')} onAcceptPrice={lineId => handleCartMutation(() => cart.acceptPrice(lineId), 'Current price accepted for this cart line.')} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }} />}
+    {checkoutOpen && cart.cart && <NativeCheckoutSurface storeSlug={storefront.publicSlug} cart={cart.cart} products={storefront.products} onClose={() => setCheckoutOpen(false)} />}
     <ContextStrip intent={state.intent} visible={state.contextVisible} onDismiss={() => setState(current => ({ ...current, contextVisible: false }))} />
     {state.composition === 'entry' && <BrandHero storefront={storefront} plan={entryStrategyPreview ? { contractVersion: 'entry.v1', strategy: entryStrategyPreview, approvedEditorialImageUrl: entryStrategyPreview === 'editorial' ? approvedEditorialImageUrl : null, publishedProductImageId: entryStrategyPreview === 'product-led' ? storefront.products.find(product => product.imageUrl)?.id ?? null : null } : entryPlan} preview={Boolean(entryStrategyPreview)} onStart={handleIntent} onSubmit={handleText} />}
     {state.composition === 'discovery' && <section className="adaptive-discovery" aria-labelledby="discovery-title"><div className="adaptive-discovery-intro"><div><p className="eyebrow">The collection</p><h1 id="discovery-title">A useful place to begin.</h1><p className="adaptive-guidance">A balanced view of published products, clear prices, and current availability from {storefront.name}.</p></div><div className="adaptive-discovery-actions"><button type="button" className="adaptive-back-action" onClick={() => setState(current => showEntry(current))}>Change direction</button><button type="button" className="adaptive-secondary-action" onClick={() => handleIntent('compare')}>Compare products</button></div></div><div className="adaptive-discovery-summary" aria-label="Collection summary"><span>{storefront.products.length} published {storefront.products.length === 1 ? 'product' : 'products'}</span><span>Prices in {storefront.primaryCurrency}</span></div><div className="adaptive-product-grid">{storefront.products.map(product => <ProductCard key={product.id} product={product} onSelect={() => handleProduct(product.id)} onAdd={() => void handleAdd(product)} adding={pendingProductId === product.id} onCompare={() => handleCompare(product.id)} compared={state.comparedProductIds.includes(product.id)} />)}</div></section>}

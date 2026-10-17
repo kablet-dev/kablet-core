@@ -281,7 +281,10 @@ export function createStripeAdapter(input: StripeAdapterInput): NativePaymentAda
       const response = await request('/v1/checkout/sessions', { method: 'POST', body: body.toString(), headers: { 'Idempotency-Key': payment.operationId } });
       const sessionReference = asString(response.id, 'id');
       const url = asString(response.url, 'url');
-      return { providerSessionReference: sessionReference, customerActionRequired: true, expiresAt: typeof response.expires_at === 'number' ? new Date(response.expires_at * 1000).toISOString() : null, url };
+      let hostedUrl: URL;
+      try { hostedUrl = new URL(url); } catch { throw new StripeProviderError('provider_unavailable', 'Stripe returned an invalid hosted payment destination.'); }
+      if (hostedUrl.protocol !== 'https:' || (hostedUrl.hostname !== 'checkout.stripe.com' && !hostedUrl.hostname.endsWith('.stripe.com'))) throw new StripeProviderError('provider_unavailable', 'Stripe returned an invalid hosted payment destination.');
+      return { providerSessionReference: sessionReference, customerActionRequired: true, expiresAt: typeof response.expires_at === 'number' ? new Date(response.expires_at * 1000).toISOString() : null, url: hostedUrl.toString() };
     },
     async retrieveHostedSession(sessionReference: string): Promise<StripeObject> {
       await ensureAccount();

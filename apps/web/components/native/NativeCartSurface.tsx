@@ -14,6 +14,7 @@ type Props = {
   onUpdateQuantity: (lineId: string, quantity: number) => Promise<unknown>;
   onRemove: (lineId: string) => Promise<unknown>;
   onAcceptPrice: (lineId: string) => Promise<unknown>;
+  onCheckout?: () => void;
 };
 
 function lineTotal(line: NativeCartLine): string {
@@ -44,7 +45,7 @@ function CartLine({ line, pending, onUpdateQuantity, onRemove, onAcceptPrice }: 
   </article>;
 }
 
-export function NativeCartSurface({ cart, loading, pending, error, onClose, onUpdateQuantity, onRemove, onAcceptPrice }: Props) {
+export function NativeCartSurface({ cart, loading, pending, error, onClose, onUpdateQuantity, onRemove, onAcceptPrice, onCheckout }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
     panelRef.current?.focus();
@@ -64,5 +65,6 @@ export function NativeCartSurface({ cart, loading, pending, error, onClose, onUp
     {cart && cart.lines.length > 0 && <div className="adaptive-cart-lines">{cart.lines.map(line => <CartLine key={line.lineId} line={line} pending={pending} onUpdateQuantity={onUpdateQuantity} onRemove={onRemove} onAcceptPrice={onAcceptPrice} />)}</div>}
     {error && <p className="adaptive-cart-error" role="alert">{error.message}</p>}
     {cart && cart.lines.length > 0 && <div className="adaptive-cart-summary"><div><span>Saved subtotal</span><strong>{formatNativeMoney(subtotalMinor, cart.currency)}</strong></div><p>Shown from the saved cart prices. Final checkout totals are not calculated here.</p></div>}
+    {cart && cart.lines.length > 0 && onCheckout && <button type="button" disabled={pending} onClick={onCheckout}>Continue to checkout</button>}
   </aside>;
 }

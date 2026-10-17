@@ -58,6 +58,16 @@ export type NativeVerifiedOrderCommitInput = {
 
 export function createNativeVerifiedOrderService(db: Database['db']) {
   return {
+    async getOrderForCheckout(input: { organizationId: string; businessId: string; storeId: string; checkoutId: string }): Promise<NativeVerifiedOrder | null> {
+      return db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${input.organizationId}, true), set_config('kablet.business_id', ${input.businessId}, true)`);
+        const orderResult = await tx.execute(sql`select id, organization_id, business_id, store_id, public_reference, checkout_id, cart_id, payment_id, merchant_payment_account_id, evidence_id, fulfillment_type, currency, subtotal_amount_minor, shipping_amount_minor, tax_amount_minor, total_amount_minor, payment_status, fulfillment_status, verified_at, created_at, updated_at from kablet_native_orders where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and checkout_id=${input.checkoutId}::uuid`);
+        const order = orderResult.rows[0] as Record<string, unknown> | undefined;
+        if (!order) return null;
+        const lines = await tx.execute(sql`select id, order_id, product_id, fulfillment_type, sku_snapshot, quantity, unit_amount_minor, line_amount_minor, currency, price_revision, product_title_snapshot, shipping_amount_minor, tax_amount_minor from kablet_native_order_lines where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and store_id=${input.storeId}::uuid and order_id=${String(order.id)}::uuid order by id`);
+        return mapOrder(order, lines.rows as Array<Record<string, unknown>>);
+      });
+    },
     async commitCapturedPayment(input: NativeVerifiedOrderCommitInput): Promise<NativeOrderCommitResult> {
       const commitmentKeyHash = hashCommitmentKey(input.commitmentKey);
       return db.transaction(async tx => {
