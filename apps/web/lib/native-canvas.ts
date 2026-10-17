@@ -19,6 +19,15 @@ export type EntryCompositionPlan = {
   publishedProductImageId: string | null;
 };
 
+/**
+ * Stable presentation fallback for discovery. The governed decision still
+ * chooses the composition; this rule only chooses its visual lead product.
+ */
+export function selectEditorialPrimaryProduct(products: NativeProduct[]): NativeProduct | null {
+  const published = products.filter(product => product.status === 'published');
+  return published.find(product => product.availability === 'available' && product.inventoryQuantity !== null && product.inventoryQuantity > 0) ?? published[0] ?? null;
+}
+
 function isProductOriented(input: EntryStrategyInput): boolean {
   return input.acquisitionContext === 'product' || input.visitorIntent === 'specific' || input.visitorIntent === 'compare';
 }
@@ -52,7 +61,6 @@ export type NativeCanvasState = {
   intent: CanvasIntent | null;
   selectedProductId: string | null;
   comparedProductIds: string[];
-  contextVisible: boolean;
 };
 
 export const initialNativeCanvasState: NativeCanvasState = {
@@ -60,7 +68,6 @@ export const initialNativeCanvasState: NativeCanvasState = {
   intent: null,
   selectedProductId: null,
   comparedProductIds: [],
-  contextVisible: true,
 };
 
 export function selectIntent(state: NativeCanvasState, intent: CanvasIntent, products: NativeProduct[]): NativeCanvasState {
