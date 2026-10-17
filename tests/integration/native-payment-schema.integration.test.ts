@@ -7,7 +7,7 @@ import { createDb } from '@kablet/db';
 import { loadTestManagerConfig } from '@kablet/config';
 import { describe, expect, it } from 'vitest';
 
-const enabled = Boolean(process.env.TEST_BOOTSTRAP_USER && process.env.TEST_BOOTSTRAP_PASSWORD && process.env.TEST_ROLE_ADMIN_URL && process.env.TEST_APP_PASSWORD);
+const enabled = Boolean(process.env.TEST_BOOTSTRAP_USER && process.env.TEST_BOOTSTRAP_PASSWORD && process.env.TEST_ROLE_ADMIN_URL && process.env.TEST_APP_PASSWORD && process.env.TEST_CONTROL_PASSWORD);
 const migrationsFolder = resolve(process.cwd(), 'packages/db/drizzle');
 
 describe.skipIf(!enabled)('native payment schema', () => {
@@ -15,13 +15,14 @@ describe.skipIf(!enabled)('native payment schema', () => {
     const manager = loadTestManagerConfig();
     const base = `postgresql://${encodeURIComponent(manager.TEST_MANAGER_USER)}:${encodeURIComponent(manager.TEST_MANAGER_PASSWORD)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}`;
     const database = `kablet_payment_${randomBytes(12).toString('hex')}`;
-    const org = randomUUID(); const biz = randomUUID(); const store = randomUUID(); const account = randomUUID(); const cart = randomUUID(); const checkout = randomUUID(); const payment = randomUUID(); const evidence = randomUUID();
+    const org = randomUUID(); const biz = randomUUID(); const store = randomUUID(); const account = randomUUID(); const cart = randomUUID(); const checkout = randomUUID(); const payment = randomUUID(); const evidence = randomUUID(); const reconciliationEvidence = randomUUID(); const product = randomUUID(); const line = randomUUID(); const reservation = randomUUID(); const checkout2 = randomUUID(); const line2 = randomUUID(); const reservation2 = randomUUID(); const payment2 = randomUUID(); const evidence2 = randomUUID(); const successEvidence2 = randomUUID();
     const reconciliationKeyHash = createHash('sha256').update('native-payment-reconciliation-fixture').digest();
     const managerPool = new pg.Pool({ connectionString: `${base}/postgres`, max: 1 });
-    let bootstrap: ReturnType<typeof createDb> | undefined; let runtime: ReturnType<typeof createDb> | undefined;
+    let bootstrap: ReturnType<typeof createDb> | undefined; let runtime: ReturnType<typeof createDb> | undefined; let control: ReturnType<typeof createDb> | undefined;
     try {
       await managerPool.query(`create database "${database}" owner "${manager.TEST_MANAGER_USER}"`);
       await managerPool.query(`grant connect, create on database "${database}" to "${process.env.TEST_BOOTSTRAP_USER}"`);
+      await managerPool.query(`grant connect on database "${database}" to kablet_control`);
       const target = new pg.Pool({ connectionString: `${base}/${database}`, max: 1 });
       await target.query(`grant usage, create on schema public to "${process.env.TEST_BOOTSTRAP_USER}"`);
       await target.query('grant usage, create on schema public to kablet_privacy_owner');
@@ -35,10 +36,17 @@ describe.skipIf(!enabled)('native payment schema', () => {
         await tx.execute(sql`insert into organizations(id,name) values (${org}::uuid,'Payment Schema Org')`);
         await tx.execute(sql`insert into businesses(id,organization_id,name) values (${biz}::uuid,${org}::uuid,'Payment Schema Business')`);
         await tx.execute(sql`insert into kablet_native_stores(id,organization_id,business_id,public_slug,name,primary_currency,status) values (${store}::uuid,${org}::uuid,${biz}::uuid,'payment-schema-store','Payment Schema Store','USD','published')`);
+        await tx.execute(sql`insert into kablet_native_products(id,store_id,organization_id,business_id,public_slug,sku,title,description,amount_minor,currency,inventory_quantity,price_revision,status,availability) values (${product}::uuid,${store}::uuid,${org}::uuid,${biz}::uuid,'payment-schema-product','PAY-001','Payment Product','Fixture','2400','USD',1,1,'published','available')`);
         await tx.execute(sql`insert into kablet_native_carts(id,organization_id,business_id,store_id,token_hash,currency,expires_at) values (${cart}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${Buffer.alloc(32, 3)},'USD',now()+interval '30 days')`);
-        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,shipping_eligibility,shipping_charge_state,tax_state,server_total_state,expires_at) values (${checkout}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${cart}::uuid,0,1,'physical','created','USD','pending','not_calculated','not_calculated','not_calculated',now()+interval '15 minutes')`);
-        await tx.execute(sql`insert into kablet_native_payment_accounts(id,organization_id,business_id,store_id,provider_key,adapter_version,merchant_account_reference,credential_reference,supported_countries,supported_currencies,status,can_authorize,can_capture,can_refund,can_receive_webhooks) values (${account}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,'provider-neutral','v1','opaque-account','vault-ref',array['US'],array['USD'],'pending',false,false,false,false)`);
-        await tx.execute(sql`insert into kablet_native_payment_attempts(id,organization_id,business_id,store_id,checkout_id,checkout_revision,merchant_payment_account_id,amount_minor,currency,operation_id,idempotency_key_hash,status) values (${payment}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout}::uuid,1,${account}::uuid,2400,'USD','operation-1',${Buffer.alloc(32, 4)},'unknown')`);
+        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,shipping_eligibility,shipping_charge_state,tax_state,server_total_state,server_total_amount_minor,server_total_currency,expires_at) values (${checkout}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${cart}::uuid,0,1,'physical','created','USD','pending','not_calculated','not_calculated','calculated',2400,'USD',now()+interval '15 minutes')`);
+        await tx.execute(sql`insert into kablet_native_checkout_lines(id,organization_id,business_id,store_id,checkout_id,product_id,fulfillment_type,sku_snapshot,quantity,unit_amount_minor,line_amount_minor,currency_snapshot,price_revision_snapshot,product_title_snapshot) values (${line}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout}::uuid,${product}::uuid,'physical','PAY-001',1,2400,2400,'USD',1,'Payment Product')`);
+        await tx.execute(sql`insert into kablet_native_inventory_reservations(id,organization_id,business_id,store_id,checkout_id,checkout_line_id,product_id,sku_snapshot,quantity,status,expires_at) values (${reservation}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout}::uuid,${line}::uuid,${product}::uuid,'PAY-001',1,'active',now()+interval '15 minutes')`);
+        await tx.execute(sql`insert into kablet_native_checkout_sessions(id,organization_id,business_id,store_id,cart_id,cart_version,checkout_revision,fulfillment_type,status,currency,shipping_eligibility,shipping_charge_state,tax_state,server_total_state,server_total_amount_minor,server_total_currency,expires_at) values (${checkout2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${cart}::uuid,0,1,'physical','created','USD','pending','not_calculated','not_calculated','calculated',2400,'USD',now()+interval '15 minutes')`);
+        await tx.execute(sql`insert into kablet_native_checkout_lines(id,organization_id,business_id,store_id,checkout_id,product_id,fulfillment_type,sku_snapshot,quantity,unit_amount_minor,line_amount_minor,currency_snapshot,price_revision_snapshot,product_title_snapshot) values (${line2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout2}::uuid,${product}::uuid,'physical','PAY-001',1,2400,2400,'USD',1,'Payment Product')`);
+        await tx.execute(sql`insert into kablet_native_inventory_reservations(id,organization_id,business_id,store_id,checkout_id,checkout_line_id,product_id,sku_snapshot,quantity,status,expires_at) values (${reservation2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout2}::uuid,${line2}::uuid,${product}::uuid,'PAY-001',1,'active',now()+interval '15 minutes')`);
+        await tx.execute(sql`insert into kablet_native_payment_accounts(id,organization_id,business_id,store_id,provider_key,adapter_version,merchant_account_reference,credential_reference,supported_countries,supported_currencies,status,can_authorize,can_capture,can_refund,can_receive_webhooks) values (${account}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,'provider-neutral','v1','opaque-account','vault-ref',array['US'],array['USD'],'active',true,true,false,false)`);
+        await tx.execute(sql`insert into kablet_native_payment_attempts(id,organization_id,business_id,store_id,checkout_id,checkout_revision,merchant_payment_account_id,amount_minor,currency,operation_id,idempotency_key_hash,provider_payment_reference,status) values (${payment}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout}::uuid,1,${account}::uuid,2400,'USD','operation-1',${Buffer.alloc(32, 4)},'payment','failed')`);
+        await tx.execute(sql`insert into kablet_native_payment_attempts(id,organization_id,business_id,store_id,checkout_id,checkout_revision,merchant_payment_account_id,amount_minor,currency,operation_id,idempotency_key_hash,provider_payment_reference,status) values (${payment2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${checkout2}::uuid,1,${account}::uuid,2400,'USD','operation-2',${Buffer.alloc(32, 5)},'payment-2','failed')`);
       });
       await bootstrap.db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
@@ -51,6 +59,8 @@ describe.skipIf(!enabled)('native payment schema', () => {
       await bootstrap.db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
         await tx.execute(sql`insert into kablet_native_payment_evidence(id,organization_id,business_id,store_id,payment_id,merchant_payment_account_id,provider_event_reference,provider_object_reference,provider_payment_reference,amount_minor,currency,payment_status,authentication_method,verification_status,provenance,observed_at) values (${evidence}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${payment}::uuid,${account}::uuid,'event-valid','object','payment',2400,'USD','captured','signed_webhook','pending','fixture',now())`);
+        await tx.execute(sql`insert into kablet_native_payment_evidence(id,organization_id,business_id,store_id,payment_id,merchant_payment_account_id,provider_event_reference,provider_object_reference,provider_payment_reference,amount_minor,currency,payment_status,authentication_method,verification_status,provenance,observed_at,authenticated_at,verified_at) values (${reconciliationEvidence}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${payment}::uuid,${account}::uuid,'event-reconciled','object','payment',2400,'USD','failed','signed_webhook','verified','fixture',now(),now(),now())`);
+        await tx.execute(sql`insert into kablet_native_payment_evidence(id,organization_id,business_id,store_id,payment_id,merchant_payment_account_id,provider_event_reference,provider_object_reference,provider_payment_reference,amount_minor,currency,payment_status,authentication_method,verification_status,provenance,observed_at,authenticated_at,verified_at) values (${evidence2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${payment2}::uuid,${account}::uuid,'event-reconciled-2','object-2','payment-2',2400,'USD','failed','signed_webhook','verified','fixture',now(),now(),now())`);
       });
       for (const [amount, currency] of [[2500, 'USD'], [2400, 'EUR']] as const) {
         await expect(bootstrap.db.transaction(async tx => {
@@ -79,8 +89,74 @@ describe.skipIf(!enabled)('native payment schema', () => {
       await expect(reconciliationInsert(randomUUID(), 'resolved_paid', evidence, 'authorized-ref', null)).rejects.toThrow();
       await reconciliationInsert(randomUUID(), 'resolved_paid', evidence, 'authorized-ref', new Date().toISOString());
       runtime = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
+      const runtime2 = createDb(`postgresql://kablet_dev:${encodeURIComponent(process.env.TEST_APP_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
+      const { createNativePaymentExecutionService } = await import('@kablet/db');
+      const paymentService = createNativePaymentExecutionService(runtime.db);
+      const paymentService2 = createNativePaymentExecutionService(runtime2.db);
+      const paymentInput = { organizationId: org, businessId: biz, storeId: store, checkoutId: checkout, merchantPaymentAccountId: account, idempotencyKey: 'schema-payment-retry', captureMode: 'authorize_only' as const };
+      const [paymentAttemptA, paymentAttemptB] = await Promise.all([paymentService.createPaymentAttempt(paymentInput), paymentService2.createPaymentAttempt(paymentInput)]);
+      expect(paymentAttemptA.payment.paymentId).toBe(paymentAttemptB.payment.paymentId);
+      expect(paymentAttemptA.payment.amountMinor).toBe(2400);
+      expect(paymentAttemptA.payment.currency).toBe('USD');
+      expect([paymentAttemptA.idempotent, paymentAttemptB.idempotent].sort()).toEqual([false, true]);
+      await expect(paymentService.createPaymentAttempt({ ...paymentInput, captureMode: 'authorize_and_capture' })).rejects.toThrow('payment idempotency conflict');
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`update kablet_native_payment_accounts set can_authorize=false where id=${account}::uuid`);
+      });
+      await expect(paymentService.createPaymentAttempt({ ...paymentInput, idempotencyKey: 'ineligible-account' })).rejects.toThrow();
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`update kablet_native_payment_accounts set can_authorize=true where id=${account}::uuid`);
+      });
+      await runtime2.pool.end();
       const checks = await runtime.db.execute(sql`select current_user, has_table_privilege(current_user,'kablet_native_payment_evidence','select') as evidence_select, has_table_privilege(current_user,'kablet_native_payment_evidence','insert') as evidence_insert, (select relrowsecurity from pg_class where relname='kablet_native_payment_evidence') as rls, (select relforcerowsecurity from pg_class where relname='kablet_native_payment_evidence') as forced`);
       expect(checks.rows[0]).toMatchObject({ current_user: 'kablet_dev', evidence_select: true, evidence_insert: false, rls: true, forced: true });
+      const authority = await runtime.db.execute(sql`select has_function_privilege(current_user, 'public.kablet_reconcile_unknown_reservation(uuid,uuid,uuid,uuid,uuid,character varying)', 'execute') as can_reconcile, pg_has_role(current_user, 'kablet_control', 'member') as can_set_control`);
+      expect(authority.rows[0].can_reconcile).toBe(false);
+      expect(authority.rows[0].can_set_control).toBe(false);
+      await expect(runtime.db.execute(sql`set role kablet_control`)).rejects.toThrow();
+      await runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`update kablet_native_inventory_reservations set status='unknown', updated_at=now() where id=${reservation}::uuid`);
+      });
+      await expect(runtime.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`update kablet_native_inventory_reservations set status='released', released_at=now() where id=${reservation}::uuid`);
+      })).rejects.toThrow();
+      control = createDb(`postgresql://kablet_control:${encodeURIComponent(process.env.TEST_CONTROL_PASSWORD!)}@${manager.TEST_MANAGER_HOST}:${manager.TEST_MANAGER_PORT}/${database}`);
+      const controlIdentity = await control.db.execute(sql`select current_user, has_function_privilege(current_user, 'public.kablet_reconcile_unknown_reservation(uuid,uuid,uuid,uuid,uuid,character varying)', 'execute') as can_reconcile`);
+      expect(controlIdentity.rows[0]).toMatchObject({ current_user: 'kablet_control', can_reconcile: true });
+      const reconcile = (reservationId: string, evidenceId: string) => control!.db.execute(sql`select kablet_reconcile_unknown_reservation(${org}::uuid, ${biz}::uuid, ${store}::uuid, ${reservationId}::uuid, ${evidenceId}::uuid, 'verified non-payment outcome')`);
+      const setFixtureState = (query: ReturnType<typeof sql>) => bootstrap!.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(query);
+      });
+      await setFixtureState(sql`update kablet_native_payment_attempts set status='created' where id=${payment}::uuid`);
+      await expect(reconcile(reservation, reconciliationEvidence)).rejects.toThrow();
+      await setFixtureState(sql`update kablet_native_payment_attempts set status='unknown' where id=${payment}::uuid`);
+      await expect(reconcile(reservation, reconciliationEvidence)).rejects.toThrow();
+      await setFixtureState(sql`update kablet_native_payment_attempts set status='failed' where id=${payment}::uuid`);
+      await reconcile(reservation, reconciliationEvidence);
+      const reconciled = await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        return tx.execute(sql`select status from kablet_native_inventory_reservations where id=${reservation}::uuid`);
+      });
+      expect(reconciled.rows[0].status).toBe('released');
+      await setFixtureState(sql`update kablet_native_inventory_reservations set status='unknown', updated_at=now() where id=${reservation2}::uuid`);
+      await bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`insert into kablet_native_payment_evidence(id,organization_id,business_id,store_id,payment_id,merchant_payment_account_id,provider_event_reference,provider_object_reference,provider_payment_reference,amount_minor,currency,payment_status,authentication_method,verification_status,provenance,observed_at,authenticated_at,verified_at) values (${successEvidence2}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${payment2}::uuid,${account}::uuid,'event-success-later','object-2','payment-2',2400,'USD','captured','signed_webhook','verified','fixture',now(),now(),now())`);
+      });
+      await expect(reconcile(reservation2, evidence2)).rejects.toThrow();
+      await setFixtureState(sql`update kablet_native_payment_attempts set status='captured' where id=${payment2}::uuid`);
+      await expect(reconcile(reservation2, evidence2)).rejects.toThrow();
+      await setFixtureState(sql`update kablet_native_payment_attempts set status='authorized' where id=${payment2}::uuid`);
+      await expect(reconcile(reservation2, evidence2)).rejects.toThrow();
+      await expect(bootstrap.db.transaction(async tx => {
+        await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
+        await tx.execute(sql`insert into kablet_native_payment_evidence(id,organization_id,business_id,store_id,payment_id,merchant_payment_account_id,provider_event_reference,provider_object_reference,provider_payment_reference,amount_minor,currency,payment_status,authentication_method,verification_status,provenance,observed_at,authenticated_at,verified_at) values (${randomUUID()}::uuid,${org}::uuid,${biz}::uuid,${store}::uuid,${payment2}::uuid,${account}::uuid,'event-provider-mismatch','object-2','wrong-provider-reference',2400,'USD','failed','signed_webhook','verified','fixture',now(),now(),now())`);
+      })).rejects.toThrow();
       const visible = await runtime.db.transaction(async tx => {
         await tx.execute(sql`select set_config('kablet.organization_id', ${org}, true), set_config('kablet.business_id', ${biz}, true)`);
         return tx.execute(sql`select id from kablet_native_payment_accounts where id=${account}::uuid`);
@@ -92,7 +168,7 @@ describe.skipIf(!enabled)('native payment schema', () => {
       });
       expect(hidden.rows).toHaveLength(0);
     } finally {
-      await runtime?.pool.end().catch(() => undefined); await bootstrap?.pool.end().catch(() => undefined);
+      await control?.pool.end().catch(() => undefined); await runtime?.pool.end().catch(() => undefined); await bootstrap?.pool.end().catch(() => undefined);
       await managerPool.query(`drop database if exists "${database}"`).catch(() => undefined); await managerPool.end();
     }
   }, 90000);

@@ -30,3 +30,4 @@ export * from './native-store';
 export * from './native-cart';
 export * from './native-checkout';
 export * from './native-payment';
+export * from './native-payment-execution';

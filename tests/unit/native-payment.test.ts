@@ -5,6 +5,7 @@ import {
   nativePaymentEvidenceSchema,
   nativePaymentReconciliationSchema,
   nativePaymentWebhookSchema,
+  assertNativePaymentCapability,
 } from '@kablet/domain';
 
 const ids = { org: '00000000-0000-4000-8000-000000000001', biz: '00000000-0000-4000-8000-000000000002', store: '00000000-0000-4000-8000-000000000003', account: '00000000-0000-4000-8000-000000000004', checkout: '00000000-0000-4000-8000-000000000005', payment: '00000000-0000-4000-8000-000000000006' };
@@ -25,5 +26,11 @@ describe('native payment contracts', () => {
     expect(() => nativePaymentAttemptSchema.parse({ paymentId: ids.payment, contractVersion: 'native-payment-attempt.v1', organizationId: ids.org, businessId: ids.biz, storeId: ids.store, checkoutId: ids.checkout, checkoutRevision: 1, merchantPaymentAccountId: ids.account, amountMinor: 1, currency: 'USD', operationId: 'op', idempotencyKey: 'raw-secret', idempotencyKeyHash: hash, providerPaymentReference: null, providerSessionReference: null, status: 'created', createdAt: now, updatedAt: now, unknownAt: null, lastVerifiedAt: null })).toThrow();
     expect(() => nativePaymentEvidenceSchema.parse({ contractVersion: 'native-payment-evidence.v1', evidenceId: ids.payment, organizationId: ids.org, businessId: ids.biz, storeId: ids.store, paymentId: ids.payment, merchantPaymentAccountId: ids.account, providerEventReference: 'evt', providerObjectReference: 'obj', providerPaymentReference: 'pay', amountMinor: 1, currency: 'USD', paymentStatus: 'captured', authenticationMethod: 'signed_webhook', verificationStatus: 'verified', provenance: 'redirect', observedAt: now, authenticatedAt: null, verifiedAt: null })).toThrow();
     expect(() => nativePaymentReconciliationSchema.parse({ contractVersion: 'native-payment-reconciliation.v1', reconciliationId: ids.payment, organizationId: ids.org, businessId: ids.biz, storeId: ids.store, paymentId: ids.payment, merchantPaymentAccountId: ids.account, reconciliationKeyHash: hash, reason: 'unknown_payment', status: 'resolved_not_paid', resolutionEvidenceId: null, authorizedResolutionReference: null, createdAt: now, updatedAt: now, resolvedAt: null })).toThrow();
+  });
+
+  it('fails closed when merchant account capability or currency is incompatible', () => {
+    expect(() => assertNativePaymentCapability({ accountStatus: 'suspended', supportedCurrencies: ['USD'], captureModes: ['authorize_only'], currency: 'USD', captureMode: 'authorize_only' })).toThrow();
+    expect(() => assertNativePaymentCapability({ accountStatus: 'active', supportedCurrencies: ['EUR'], captureModes: ['authorize_only'], currency: 'USD', captureMode: 'authorize_only' })).toThrow();
+    expect(() => assertNativePaymentCapability({ accountStatus: 'active', supportedCurrencies: ['USD'], captureModes: ['authorize_only'], currency: 'USD', captureMode: 'authorize_and_capture' })).toThrow();
   });
 });
