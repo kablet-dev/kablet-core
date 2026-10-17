@@ -20,6 +20,7 @@ export type NativePaymentSessionResult = {
   providerSessionReference: string;
   customerActionRequired: boolean;
   expiresAt: string | null;
+  url?: string;
 };
 
 export type NativePaymentStatusResult =

@@ -22,3 +22,4 @@ export * from './native-store.js';
 export * from './native-cart.js';
 export * from './native-checkout.js';
 export * from './native-payment.js';
+export * from './native-stripe.js';
