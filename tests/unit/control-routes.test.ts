@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   resolveControlContext: vi.fn(), authorizeControlCapability: vi.fn(), resolvePlatformOperatorContext: vi.fn(), authorizePlatformCapability: vi.fn(), resolveSupportControlContext: vi.fn(),
-  createDb: vi.fn(), createSecurityRepository: vi.fn(), createIntentPolicyRepository: vi.fn(),
+  createDb: vi.fn(), createSecurityRepository: vi.fn(), createIntentPolicyRepository: vi.fn(), createNativeEvidenceRepository: vi.fn(),
   loadControlCredentialVault: vi.fn(),
 }));
 
 vi.mock('../../apps/web/lib/control-auth', () => ({ resolveControlContext: mocks.resolveControlContext, authorizeControlCapability: mocks.authorizeControlCapability, resolvePlatformOperatorContext: mocks.resolvePlatformOperatorContext, authorizePlatformCapability: mocks.authorizePlatformCapability, resolveSupportControlContext: mocks.resolveSupportControlContext }));
 vi.mock('../../apps/web/lib/control-credential-vault', () => ({ loadControlCredentialVault: mocks.loadControlCredentialVault }));
 vi.mock('@kablet/config', () => ({ loadServerConfig: () => ({ DATABASE_URL: 'postgres://test' }), loadControlServerConfig: () => ({ DATABASE_URL: 'postgres://control-test' }) }));
-vi.mock('@kablet/db', () => ({ createDb: mocks.createDb, createSecurityRepository: mocks.createSecurityRepository, createIntentPolicyRepository: mocks.createIntentPolicyRepository }));
+vi.mock('@kablet/db', () => ({ createDb: mocks.createDb, createSecurityRepository: mocks.createSecurityRepository, createIntentPolicyRepository: mocks.createIntentPolicyRepository, createNativeEvidenceRepository: mocks.createNativeEvidenceRepository }));
 
 import { POST as membershipPost } from '../../apps/web/app/api/control/membership/route';
 import { POST as credentialPost } from '../../apps/web/app/api/control/credential/route';
@@ -17,11 +17,13 @@ import { POST as privacyPost } from '../../apps/web/app/api/control/privacy/rout
 import { POST as policyPost } from '../../apps/web/app/api/control/policy/route';
 import { POST as supportPost } from '../../apps/web/app/api/control/support/route';
 import { POST as platformSafetyPost } from '../../apps/web/app/api/control/platform-safety/route';
+import { GET as evidenceGet } from '../../apps/web/app/api/control/evidence/route';
 
 const context = { actorId: '10000000-0000-4000-8000-000000000001', actorType: 'merchant_user' as const, organizationId: '20000000-0000-4000-8000-000000000001', businessId: '30000000-0000-4000-8000-000000000001', capabilities: ['user.manage', 'credential.rotate', 'privacy.manage', 'policy.approve', 'truth.read'] as const, sessionId: '40000000-0000-4000-8000-000000000001' };
 const platformContext = { actorId: '10000000-0000-4000-8000-000000000002', actorType: 'platform_operator' as const, organizationId: null, businessId: null, capabilities: ['support.grant', 'platform.safety.manage'] as const, sessionId: '40000000-0000-4000-8000-000000000002' };
 const db = { pool: { end: vi.fn().mockResolvedValue(undefined) }, db: {} };
 const security = { addMembership: vi.fn(), audit: vi.fn(), auditPlatform: vi.fn(), saveProviderCredential: vi.fn(), revokeProviderCredential: vi.fn(), grantConsent: vi.fn(), revokeConsent: vi.fn(), exportVisitor: vi.fn(), deleteVisitor: vi.fn(), requestPolicyApproval: vi.fn(), approvePolicy: vi.fn(), isPolicyApproved: vi.fn(), requestSupportGrant: vi.fn(), approveSupportGrant: vi.fn(), revokeSupportGrant: vi.fn(), setPlatformSafetyRule: vi.fn() };
+const evidence = { getTimeline: vi.fn() };
 
 function request(body: unknown) { return new Request('http://localhost/api/control', { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }); }
 
@@ -30,6 +32,7 @@ describe('authenticated control-plane entry points', () => {
     vi.clearAllMocks();
     mocks.createDb.mockReturnValue(db);
     mocks.createSecurityRepository.mockReturnValue(security);
+    mocks.createNativeEvidenceRepository.mockReturnValue(evidence);
     mocks.resolveControlContext.mockResolvedValue(context);
     mocks.authorizeControlCapability.mockImplementation((resolved: typeof context | null, capability: string) => Boolean(resolved?.capabilities.includes(capability as never)));
     mocks.resolvePlatformOperatorContext.mockResolvedValue(platformContext);
@@ -51,6 +54,7 @@ describe('authenticated control-plane entry points', () => {
     security.approveSupportGrant.mockResolvedValue({ rows: [{ id: '80000000-0000-4000-8000-000000000001' }] });
     security.revokeSupportGrant.mockResolvedValue({ rows: [{ id: '80000000-0000-4000-8000-000000000001' }] });
     security.setPlatformSafetyRule.mockResolvedValue({ rows: [{ rule_key: 'baseline', effect: 'deny', version: 2 }] });
+    evidence.getTimeline.mockResolvedValue({ events: [], verifiedOutcomes: [], nextCursor: null });
   });
 
   it('rejects unauthenticated membership administration before repository mutation', async () => {
@@ -152,5 +156,19 @@ describe('authenticated control-plane entry points', () => {
     expect(security.auditPlatform).toHaveBeenCalledWith(expect.objectContaining({ action: 'platform.safety.deny', actorId: platformContext.actorId }));
     mocks.authorizePlatformCapability.mockReturnValue(false);
     expect((await platformSafetyPost(request({ ruleKey: 'baseline', effect: 'allow', reason: 'Attempted merchant override' }))).status).toBe(403);
+  });
+
+  it('keeps the evidence timeline behind reporting authorization and tenant-scoped query inputs', async () => {
+    const url = new URL('http://localhost/api/control/evidence');
+    url.searchParams.set('organizationId', context.organizationId);
+    url.searchParams.set('businessId', context.businessId);
+    url.searchParams.set('storeId', '50000000-0000-4000-8000-000000000001');
+    url.searchParams.set('visitorSessionId', '60000000-0000-4000-8000-000000000001');
+    mocks.authorizeControlCapability.mockReturnValue(false);
+    expect((await evidenceGet(new Request(url))).status).toBe(403);
+    mocks.authorizeControlCapability.mockReturnValue(true);
+    const response = await evidenceGet(new Request(url));
+    expect(response.status).toBe(200);
+    expect(evidence.getTimeline).toHaveBeenCalledWith(expect.objectContaining({ organizationId: context.organizationId, businessId: context.businessId, storeId: '50000000-0000-4000-8000-000000000001' }), '60000000-0000-4000-8000-000000000001', 100, undefined);
   });
 });

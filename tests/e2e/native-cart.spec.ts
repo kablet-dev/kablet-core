@@ -8,10 +8,6 @@ function cartButton(page: import('@playwright/test').Page) {
   return page.getByRole('button', { name: /^Cart/ });
 }
 
-function availableProductCard(page: import('@playwright/test').Page) {
-  return page.locator('article').filter({ hasText: 'Browser Native Product' }).first();
-}
-
 async function waitForCartHydration(page: import('@playwright/test').Page): Promise<void> {
   await expect(cartButton(page)).toHaveText(/^Cart · \d+$/);
 }
@@ -20,11 +16,11 @@ async function openDiscovery(page: import('@playwright/test').Page): Promise<voi
   await page.goto(storePath, { waitUntil: 'load' });
   await waitForCartHydration(page);
   await page.getByRole('button', { name: 'Help me find something' }).click();
-  await expect(page.getByRole('heading', { name: 'A useful place to begin.' })).toBeVisible();
+  await expect(page.getByText('Browser Native Product').first()).toBeVisible();
 }
 
 async function addAvailableProduct(page: import('@playwright/test').Page): Promise<void> {
-  await availableProductCard(page).getByRole('button', { name: 'Add to cart' }).click();
+  await page.getByRole('button', { name: 'Add to cart' }).first().click();
   await expect(page.getByRole('status').filter({ hasText: /added to your cart/i })).toContainText('added to your cart', { timeout: 15000 });
   await expect(cartButton(page)).toHaveText('Cart · 1');
 }
@@ -33,7 +29,7 @@ test('adds from discovery, issues an HttpOnly cookie, and persists after reload'
   await openDiscovery(page);
   await addAvailableProduct(page);
   await expect(cartButton(page)).toHaveText('Cart · 1');
-  await expect(page.getByRole('heading', { name: 'A useful place to begin.' })).toBeVisible();
+  await expect(page.getByText('Browser Native Product').first()).toBeVisible();
 
   const cookies = await context.cookies();
   const cartCookie = cookies.find(cookie => cookie.name.startsWith('kablet_cart_'));
@@ -50,6 +46,8 @@ test('adds from discovery, issues an HttpOnly cookie, and persists after reload'
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(cartButton(page)).toHaveText('Cart · 1');
+  await page.getByRole('button', { name: 'Help me find something' }).click();
+  await expect(page.getByText('Browser Native Product').first()).toBeVisible();
   await cartButton(page).click();
   await expect(page.getByRole('dialog')).toContainText('Browser Native Product');
   await expect(page.getByRole('dialog')).toContainText('USD 24.00');
@@ -58,7 +56,7 @@ test('adds from discovery, issues an HttpOnly cookie, and persists after reload'
 
 test('adds from spotlight without changing the active composition', async ({ page }) => {
   await openDiscovery(page);
-  await availableProductCard(page).getByRole('button', { name: 'View product' }).click();
+  await page.getByRole('button', { name: 'View product' }).first().click();
   await expect(page.getByRole('heading', { name: 'Browser Native Product' })).toBeVisible();
   await page.getByRole('button', { name: 'Add to cart' }).click();
   await expect(page.getByRole('status').filter({ hasText: /added to your cart/i })).toContainText('added to your cart');
@@ -86,7 +84,7 @@ test('does not offer unavailable or unpublished products for adding', async ({ p
   await expect(page.getByText('Private Draft Product')).toHaveCount(0);
   const unavailable = page.locator('article').filter({ hasText: 'Browser Native Alternate' }).first();
   await expect(unavailable.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
-  await expect(availableProductCard(page).getByRole('button', { name: 'Add to cart' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Add to cart' }).first()).toBeEnabled();
 });
 
 test('requires explicit acceptance when the authoritative price changes', async ({ page }) => {
@@ -96,6 +94,7 @@ test('requires explicit acceptance when the authoritative price changes', async 
     await addAvailableProduct(page);
     await updateDisposableNativeProductPrice({ amountMinor: 2700, priceRevision: 2 });
     await page.reload({ waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Help me find something' }).click();
     await cartButton(page).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('Saved unit price: USD 24.00');
@@ -119,11 +118,13 @@ test('keeps carts isolated between published stores', async ({ page }) => {
   await waitForCartHydration(page);
   await expect(cartButton(page)).toHaveText('Cart · 0');
   await page.getByRole('button', { name: 'Help me find something' }).click();
-  await page.locator('article').filter({ hasText: 'Isolated Native Product' }).getByRole('button', { name: 'Add to cart' }).click();
+  await page.getByRole('button', { name: 'Add to cart' }).first().click();
   await expect(cartButton(page)).toHaveText('Cart · 1');
   await page.goto(storePath, { waitUntil: 'load' });
   await waitForCartHydration(page);
   await expect(cartButton(page)).toHaveText('Cart · 1');
+  await page.getByRole('button', { name: 'Help me find something' }).click();
+  await expect(page.getByText('Browser Native Product').first()).toBeVisible();
   await cartButton(page).click();
   await expect(page.getByRole('dialog')).toContainText('Browser Native Product');
   await expect(page.getByRole('dialog')).not.toContainText('Isolated Native Product');
@@ -153,6 +154,7 @@ test('clears an expired cart without silently creating a replacement', async ({ 
   await expireDisposableNativeCarts();
   await page.reload({ waitUntil: 'load' });
   await expect(cartButton(page)).toHaveText('Cart · 0');
+  await page.getByRole('button', { name: 'Help me find something' }).click();
   await cartButton(page).click();
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Your cart is empty' })).toBeVisible();
 });
@@ -164,6 +166,7 @@ test('surfaces a cart version conflict without duplicating or recreating the car
   await secondPage.goto(storePath, { waitUntil: 'load' });
   await waitForCartHydration(secondPage);
   await expect(cartButton(secondPage)).toHaveText('Cart · 1');
+  await secondPage.getByRole('button', { name: 'Help me find something' }).click();
   await cartButton(page).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Increase quantity for Browser Native Product' }).click();
   await expect(cartButton(page)).toHaveText('Cart · 2');

@@ -7,7 +7,7 @@ async function openCheckout(page: import('@playwright/test').Page): Promise<void
   await page.goto(storePath, { waitUntil: 'load' });
   await expect(page.getByRole('button', { name: /^Cart/ })).toHaveText('Cart · 0');
   await page.getByRole('button', { name: 'Help me find something' }).click();
-  await page.getByRole('article').filter({ hasText: 'Browser Native Product' }).getByRole('button', { name: 'Add to cart' }).click();
+  await page.getByRole('button', { name: 'Add to cart' }).first().click();
   await expect(page.getByRole('status').filter({ hasText: /added to your cart/i })).toContainText('added to your cart', { timeout: 15000 });
   await page.getByRole('button', { name: 'Cart · 1' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Continue to checkout' }).click();

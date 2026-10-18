@@ -20,7 +20,7 @@ export type SettleAiIntentRequest =
       interpretation: {
         normalizedIntent: 'explore_offerings' | 'request_information' | 'select_offering' | 'unclear';
         reasonCode: 'intent_extracted' | 'ambiguous' | 'unsupported_request' | 'safety_filtered';
-        confidence?: number;
+        confidence?: number | null;
         interpreterVersion: string;
       };
       providerRequestReference?: string;
@@ -73,13 +73,15 @@ export interface ClaimAiIntentInput {
   inputFingerprint: Uint8Array;
   interpreterVersion: string;
   reservationUnits: number;
+  visitorIdentityId?: string;
+  visitorSessionId?: string;
 }
 
 export type ClaimClock = () => Date;
 
 export type AiIntentClaimResult =
   | { outcome: 'created'; invocationId: string; dailyPeriodId: string; monthlyPeriodId: string; reservedUnits: number }
-  | { outcome: 'replay'; invocationId: string; status: string; reservedUnits: number }
+  | { outcome: 'replay'; invocationId: string; status: 'claimed' | 'succeeded' | 'failed' | 'unknown'; reservedUnits: number }
   | { outcome: 'idempotency_conflict'; invocationId: string }
   | { outcome: 'budget_exhausted'; period: 'daily' | 'monthly' }
   | { outcome: 'accounting_period_missing'; period: 'daily' | 'monthly' }
@@ -114,7 +116,7 @@ function assertProviderReference(value: string | undefined) {
 function assertInterpretation(value: SettleAiIntentSucceededInput['interpretation']) {
   if (!value || !['explore_offerings', 'request_information', 'select_offering', 'unclear'].includes(value.normalizedIntent)) throw new Error('settlement interpretation is invalid');
   if (!['intent_extracted', 'ambiguous', 'unsupported_request', 'safety_filtered'].includes(value.reasonCode)) throw new Error('settlement reason code is invalid');
-  if (value.confidence !== undefined && (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1)) throw new Error('settlement confidence is invalid');
+  if (value.confidence !== undefined && value.confidence !== null && (!Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1)) throw new Error('settlement confidence is invalid');
   if (!value.interpreterVersion || value.interpreterVersion.length > 64) throw new Error('settlement interpreter version is invalid');
 }
 
@@ -196,7 +198,7 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
         await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(concat(${input.organizationId}::text,':',${input.businessId}::text,':',${input.interactionSessionId}::text,':',${input.idempotencyKey}::text),0))`);
         const existing = await tx.execute(sql`select id,status,reserved_units,input_fingerprint,interpreter_version from ai_intent_invocations where organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid and interaction_session_id=${input.interactionSessionId}::uuid and idempotency_key=${input.idempotencyKey} limit 1`);
         if (existing.rows.length > 0) {
-          const row = existing.rows[0] as { id: string; status: string; reserved_units: string; input_fingerprint: Buffer | null; interpreter_version: string };
+          const row = existing.rows[0] as { id: string; status: 'claimed' | 'succeeded' | 'failed' | 'unknown'; reserved_units: string; input_fingerprint: Buffer | null; interpreter_version: string };
           const sameFingerprint = row.input_fingerprint !== null && Buffer.from(input.inputFingerprint).equals(row.input_fingerprint);
           if (!sameFingerprint || row.interpreter_version !== input.interpreterVersion) return { outcome: 'idempotency_conflict', invocationId: row.id };
           return { outcome: 'replay', invocationId: row.id, status: row.status, reservedUnits: Number(row.reserved_units) };
@@ -213,7 +215,7 @@ export function createAiIntentRepository(database: Database['db'], clock: ClaimC
         await tx.execute(sql`update ai_intent_accounting_periods set reserved_units=reserved_units+${input.reservationUnits} where id=${daily.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
         await tx.execute(sql`update ai_intent_accounting_periods set reserved_units=reserved_units+${input.reservationUnits} where id=${monthly.id}::uuid and organization_id=${input.organizationId}::uuid and business_id=${input.businessId}::uuid`);
         const invocationId = randomUUID();
-        await tx.execute(sql`insert into ai_intent_invocations (id,organization_id,business_id,interaction_session_id,idempotency_key,input_fingerprint,status,interpreter_version,reserved_units,daily_period_id,monthly_period_id,claimed_at) values (${invocationId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.interactionSessionId}::uuid,${input.idempotencyKey},${Buffer.from(input.inputFingerprint)},'claimed',${input.interpreterVersion},${input.reservationUnits},${daily.id}::uuid,${monthly.id}::uuid,${claimTime}::timestamptz)`);
+        await tx.execute(sql`insert into ai_intent_invocations (id,organization_id,business_id,visitor_identity_id,visitor_session_id,interaction_session_id,idempotency_key,input_fingerprint,status,interpreter_version,reserved_units,daily_period_id,monthly_period_id,claimed_at) values (${invocationId}::uuid,${input.organizationId}::uuid,${input.businessId}::uuid,${input.visitorIdentityId ?? null}::uuid,${input.visitorSessionId ?? null}::uuid,${input.interactionSessionId}::uuid,${input.idempotencyKey},${Buffer.from(input.inputFingerprint)},'claimed',${input.interpreterVersion},${input.reservationUnits},${daily.id}::uuid,${monthly.id}::uuid,${claimTime}::timestamptz)`);
         return { outcome: 'created', invocationId, dailyPeriodId: daily.id, monthlyPeriodId: monthly.id, reservedUnits: input.reservationUnits };
       });
     },

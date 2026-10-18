@@ -34,3 +34,7 @@ export * from './native-payment-execution';
 export * from './native-order';
 export * from './native-attribution';
 export * from './native-experiment';
+export * from './native-guidance';
+export * from './native-rule';
+export * from './native-ai-interpretation';
+export * from './native-evidence';

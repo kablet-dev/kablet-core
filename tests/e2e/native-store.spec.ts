@@ -114,8 +114,9 @@ test('adapts the canvas through discovery, spotlight, and comparison', async ({ 
   await page.getByRole('button', { name: 'View Browser Native Product' }).first().click();
   await page.getByRole('button', { name: 'View Browser Native Alternate' }).first().click();
   await expect(page.getByRole('heading', { name: 'A clear comparison' })).toBeVisible();
-  await expect(page.getByText('USD 24.00')).toBeVisible();
-  await expect(page.getByText('USD 36.00')).toBeVisible();
+  const comparison = page.getByRole('table', { name: 'Selected product comparison' });
+  await expect(comparison.getByText('USD 24.00')).toBeVisible();
+  await expect(comparison.getByText('USD 36.00')).toBeVisible();
 });
 
 test('presents an editorial spotlight and preserves cart and navigation actions', async ({ page }) => {

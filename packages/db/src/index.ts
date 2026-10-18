@@ -29,3 +29,5 @@ export * from './native-attribution.js';
 export * from './native-checkout-policy.js';
 export * from './native-intelligence.js';
 export * from './native-experiment.js';
+export * from './native-rule.js';
+export * from './native-evidence.js';

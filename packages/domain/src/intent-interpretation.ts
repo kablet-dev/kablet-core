@@ -14,7 +14,7 @@ export const intentInterpretationOutputSchema = z.object({
   contractVersion: z.literal(intentInterpretationContractVersion),
   normalizedIntent: interactionIntentSchema.or(z.literal('unclear')),
   reasonCode: intentInterpretationReasonCodeSchema,
-  confidence: z.number().finite().min(0).max(1).optional(),
+  confidence: z.number().finite().min(0).max(1).nullable().optional(),
   interpreterVersion: z.string().trim().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/),
 }).strict();
 

@@ -28,13 +28,14 @@ type RailProps = {
   intent: string | null;
   actions: NativeContextualAction[];
   intentInput?: ReactNode;
+  guidance?: ReactNode;
   feedback?: string | null;
   error?: string | null;
   onClose?: () => void;
   compact?: boolean;
 };
 
-export function NativeIntelligenceRail({ intent, actions, intentInput, feedback, error, onClose, compact = false }: RailProps) {
+export function NativeIntelligenceRail({ intent, actions, intentInput, guidance, feedback, error, onClose, compact = false }: RailProps) {
   const availableActions = actions.filter(action => action.available);
   const heading = compact ? 'Keep your place.' : intent === 'compare' ? 'Compare with intent.' : intent === 'find' ? 'Explore with intent.' : 'Choose a direction.';
   return <div className={`adaptive-intelligence-rail${compact ? ' is-compact' : ''}`}>
@@ -46,6 +47,7 @@ export function NativeIntelligenceRail({ intent, actions, intentInput, feedback,
       {onClose && <button type="button" onClick={onClose}>Close panel</button>}
     </nav>
     {intent && <p className="adaptive-workspace-rail-state" role="status">Current direction: <strong>{intent === 'compare' ? 'comparison' : intent === 'find' ? 'discovery' : intent}</strong></p>}
+    {guidance}
     {feedback && <p className="adaptive-workspace-rail-feedback" role="status" aria-live="polite">{feedback}</p>}
     {error && <p className="adaptive-workspace-rail-feedback is-error" role="alert">{error}</p>}
   </div>;

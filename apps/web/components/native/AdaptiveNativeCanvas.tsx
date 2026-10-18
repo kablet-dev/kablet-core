@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatNativeMoney, type NativeProduct, type NativeStorefront } from '@kablet/domain';
+import { formatNativeMoney, type NativeGuidanceRequest, type NativeGuidanceResponse, type NativeProduct, type NativeStorefront } from '@kablet/domain';
 import { initialNativeCanvasState, selectEditorialPrimaryProduct, selectEntryStrategy, selectIntent, selectProduct, showDiscovery, showEntry, toggleComparedProduct, type CanvasComposition, type CanvasIntent, type EntryCompositionPlan, type EntryStrategy, type NativeCanvasState } from '../../lib/native-canvas';
 import { useNativeCart } from '../../lib/use-native-cart';
 import { isNativeProductSellable, nativeCartItemCount } from '../../lib/native-cart-presenter';
@@ -10,6 +10,7 @@ import { NativeCheckoutSurface } from './NativeCheckoutSurface';
 import { NativeDiscoveryExperience } from './NativeDiscoveryExperience';
 import { availabilityLabel, ProductSpotlight } from './NativeProductSpotlight';
 import { NativeContextProof, NativeIntelligenceRail, NativeWorkspaceShell, type NativeContextualAction } from './NativeWorkspace';
+import { NativeGuidance } from './NativeGuidance';
 
 type Props = { storefront: NativeStorefront; entryStrategyPreview?: EntryStrategy; approvedEditorialImageUrl?: string | null };
 
@@ -106,14 +107,6 @@ export function PersistentIntentInput({ onSubmit, variant = 'persistent' }: { on
   </form>;
 }
 
-function reduceTextIntent(text: string): CanvasIntent {
-  const normalized = text.toLowerCase();
-  if (normalized.includes('compar')) return 'compare';
-  if (normalized.includes('best') || normalized.includes('choose') || normalized.includes('recommend')) return 'best';
-  if (normalized.includes('want') || normalized.includes('specific')) return 'specific';
-  return 'find';
-}
-
 export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approvedEditorialImageUrl = null }: Props) {
   const [state, setState] = useState<NativeCanvasState>(initialNativeCanvasState);
   const cart = useNativeCart(storefront.publicSlug);
@@ -121,6 +114,7 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pendingProductId, setPendingProductId] = useState<string | null>(null);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+  const [guidance, setGuidance] = useState<NativeGuidanceResponse | null>(null);
   const cartTriggerRef = useRef<HTMLButtonElement>(null);
   const intelligenceRequestRef = useRef(0);
   const selectedProduct = useMemo(() => storefront.products.find(product => product.id === state.selectedProductId) ?? null, [state.selectedProductId, storefront.products]);
@@ -134,6 +128,12 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
   }), [state.intent, storefront.products]);
 
   function intelligenceKey(): string { const bytes = new Uint8Array(32); crypto.getRandomValues(bytes); return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, ''); }
+  function recordEvidence(eventKind: string, idempotencyKey: string, metadata: Record<string, string | number | boolean | null> = {}) {
+    void fetch(`/api/store/${storefront.publicSlug}/evidence`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventKind, idempotencyKey, metadata }) }).catch(() => undefined);
+  }
+  useEffect(() => {
+    if (state.composition === 'discovery' && editorialPrimaryProduct) recordEvidence('product_impression', `impression:${editorialPrimaryProduct.id}`, { productId: editorialPrimaryProduct.id });
+  }, [editorialPrimaryProduct, state.composition]);
   useEffect(() => {
     // Bootstrap establishes/resumes the server visitor session, but a persisted
     // composition is not permission to skip the cinematic entry. Only an
@@ -144,24 +144,44 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
       .then(() => { if (requestId !== intelligenceRequestRef.current) return; })
       .catch(() => undefined);
   }, [storefront.publicSlug]);
-  async function selectServerIntent(intent: CanvasIntent) {
-    const signal = intent === 'compare' ? 'comparison' : intent === 'find' ? 'discovery' : null;
-    if (!signal) { handleIntent(intent); return; }
-    ++intelligenceRequestRef.current;
-    try { const response = await fetch(`/api/store/${storefront.publicSlug}/intelligence`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signal, idempotencyKey: intelligenceKey() }) }); const value = await response.json() as { composition?: CanvasComposition }; if (!response.ok || !value.composition) throw new Error('experience unavailable'); setState(current => ({ ...selectIntent(current, intent, storefront.products), composition: value.composition as CanvasComposition })); } catch { setCartFeedback('This experience could not be updated.'); }
+  async function postIntelligence(signal: 'discovery' | 'comparison' | null, guidanceRequest?: NativeGuidanceRequest, text?: string) {
+    const requestId = ++intelligenceRequestRef.current;
+    const idempotencyKey = intelligenceKey();
+    const request = () => fetch(`/api/store/${storefront.publicSlug}/intelligence`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ signal, idempotencyKey, guidance: guidanceRequest, ...(text ? { text } : {}) }) });
+    let response = await request(); if (response.status === 401) response = await request();
+    const value = await response.json() as { composition?: CanvasComposition; guidance?: NativeGuidanceResponse | null; interpretation?: { output?: { normalizedIntent?: string } | null } };
+    if (!response.ok || !value.composition) throw new Error('experience unavailable');
+    if (requestId !== intelligenceRequestRef.current) return null;
+    setGuidance(value.guidance ?? null);
+    return value;
   }
+  async function selectServerIntent(intent: CanvasIntent, guidanceRequest?: NativeGuidanceRequest) {
+    const signal = intent === 'compare' ? 'comparison' : 'discovery';
+    setCartFeedback(null);
+    try { const value = await postIntelligence(signal, guidanceRequest ?? (intent === 'compare' ? { mode: 'comparison', preference: null, productId: null } : { mode: 'discovery', preference: null, productId: null })); if (!value) return; if (guidanceRequest?.preference) recordEvidence('preference_changed', `preference:${guidanceRequest.preference}:${value.composition}`, { preference: guidanceRequest.preference }); setState(current => ({ ...selectIntent(current, intent, storefront.products), composition: value.composition as CanvasComposition })); } catch { setCartFeedback('This experience could not be updated.'); }
+  }
+  async function requestGuidance(guidanceRequest: NativeGuidanceRequest) { setCartFeedback(null); try { await postIntelligence(null, guidanceRequest); } catch { setCartFeedback('Guidance is temporarily unavailable.'); } }
 
   function handleIntent(intent: CanvasIntent) { setState(current => selectIntent(current, intent, storefront.products)); }
-  function handleText(text: string) { void selectServerIntent(reduceTextIntent(text)); }
-  function handleProduct(productId: string) { setState(current => selectProduct(current, productId, storefront.products)); }
-  function handleCompare(productId: string) { setState(current => toggleComparedProduct(current, productId, storefront.products)); }
+  async function handleText(text: string) {
+    setCartFeedback(null);
+    try {
+      const value = await postIntelligence(null, undefined, text);
+      if (!value) return;
+      const interpreted = value.interpretation?.output?.normalizedIntent;
+      const intent: CanvasIntent = interpreted === 'select_offering' ? 'compare' : interpreted === 'request_information' ? 'find' : interpreted === 'explore_offerings' ? (/\b(want|specific|know what)\b/i.test(text) ? 'specific' : 'find') : 'find';
+      setState(current => ({ ...selectIntent(current, intent, storefront.products), composition: value.composition as CanvasComposition }));
+    } catch { setCartFeedback('This experience could not be updated.'); }
+  }
+  function handleProduct(productId: string) { recordEvidence('product_viewed', `product-view:${productId}`, { productId }); setState(current => selectProduct(current, productId, storefront.products)); }
+  function handleCompare(productId: string) { recordEvidence('comparison_selected', `comparison:${productId}`, { productId }); setState(current => toggleComparedProduct(current, productId, storefront.products)); }
   function handleBack() { setState(current => showDiscovery(current)); }
   function closeCart() { setCartOpen(false); requestAnimationFrame(() => cartTriggerRef.current?.focus()); }
   async function handleAdd(product: NativeProduct) {
     const sellable = product.availability === 'available' && product.inventoryQuantity !== null && product.inventoryQuantity > 0;
     if (!sellable || cart.pending) return;
     setPendingProductId(product.id); setCartFeedback(null);
-    try { await cart.addLine(product.id, 1); setCartFeedback(`${product.title} added to your cart.`); }
+    try { await cart.addLine(product.id, 1); recordEvidence('cart_added', `cart-added:${product.id}`, { productId: product.id, quantity: 1 }); setCartFeedback(`${product.title} added to your cart.`); }
     catch (error) { setCartFeedback(error instanceof Error ? error.message : 'The cart could not be updated.'); }
     finally { setPendingProductId(null); }
   }
@@ -173,25 +193,27 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
   function focusWorkspaceElement(id: string) { requestAnimationFrame(() => document.getElementById(id)?.focus({ preventScroll: false })); }
   function contextualActions(): NativeContextualAction[] {
     if (state.composition === 'discovery') return [
-      { id: 'discovery-explore', label: 'Explore products', available: storefront.products.length > 0, onSelect: () => void selectServerIntent('find') },
-      { id: 'discovery-compare', label: 'Compare products', available: storefront.products.length >= 2, onSelect: () => void selectServerIntent('compare') },
-      { id: 'discovery-refine', label: 'Refine direction', available: storefront.products.length > 0, onSelect: () => void selectServerIntent('find') },
+      { id: 'discovery-explore', label: 'Explore products', available: storefront.products.length > 0, onSelect: () => void selectServerIntent('find', { mode: 'discovery', preference: null, productId: null }) },
+      { id: 'discovery-compare', label: 'Compare products', available: storefront.products.length >= 2, onSelect: () => void selectServerIntent('compare', { mode: 'comparison', preference: null, productId: null }) },
+      { id: 'discovery-refine', label: 'Refine direction', available: storefront.products.length > 0, onSelect: () => void selectServerIntent('find', { mode: 'discovery', preference: null, productId: null }) },
+      { id: 'discovery-reassurance', label: 'Check store policies', available: true, onSelect: () => void requestGuidance({ mode: 'reassurance', preference: null, productId: null }) },
       { id: 'discovery-entry', label: 'Return to entry', available: true, onSelect: () => setState(current => showEntry(current)) },
     ];
     if (state.composition === 'spotlight' && selectedProduct) return [
-      { id: 'spotlight-view-product', label: 'View product information', available: true, onSelect: () => focusWorkspaceElement('spotlight-title') },
+      { id: 'spotlight-view-product', label: 'View product information', available: true, onSelect: () => { void requestGuidance({ mode: 'product', preference: null, productId: selectedProduct.id }); focusWorkspaceElement('spotlight-title'); } },
+      { id: 'spotlight-purchase-readiness', label: 'Check purchase readiness', available: true, onSelect: () => void requestGuidance({ mode: 'purchase_readiness', preference: null, productId: selectedProduct.id }) },
       { id: 'spotlight-compare', label: 'Compare with alternatives', available: storefront.products.length >= 2, onSelect: () => setState(current => ({ ...current, composition: 'comparison', comparedProductIds: current.selectedProductId ? [current.selectedProductId] : [] })) },
       { id: 'spotlight-return', label: 'Return to discovery', available: true, onSelect: handleBack },
     ];
     if (state.composition === 'comparison') return [
-      { id: 'comparison-review', label: 'Review selected products', available: comparedProducts.length > 0, onSelect: () => focusWorkspaceElement(comparedProducts.length === 2 ? 'comparison-result-title' : 'comparison-title') },
+      { id: 'comparison-review', label: 'Review selected products', available: comparedProducts.length > 0, onSelect: () => { void requestGuidance({ mode: 'comparison', preference: null, productId: null }); focusWorkspaceElement(comparedProducts.length === 2 ? 'comparison-result-title' : 'comparison-title'); } },
       { id: `comparison-inspect-${comparedProducts[0]?.id ?? 'none'}`, label: 'Inspect a selected product', available: comparedProducts.length > 0, onSelect: () => { if (comparedProducts[0]) handleProduct(comparedProducts[0].id); } },
       { id: 'comparison-return', label: 'Return to discovery', available: true, onSelect: handleBack },
     ];
     return [];
   }
   const itemCount = nativeCartItemCount(cart.cart);
-  const explorationRail = <NativeIntelligenceRail intent={state.intent} actions={contextualActions()} intentInput={<PersistentIntentInput onSubmit={handleText} />} feedback={cartFeedback} error={cart.error?.message} />;
+  const explorationRail = <NativeIntelligenceRail intent={state.intent} actions={contextualActions()} intentInput={<PersistentIntentInput onSubmit={handleText} />} guidance={<NativeGuidance guidance={guidance} products={storefront.products} onPreference={preference => void selectServerIntent('find', { mode: 'discovery', preference, productId: null })} onProduct={handleProduct} />} feedback={cartFeedback} error={cart.error?.message} />;
 
   const exploration = <>
     {state.composition === 'discovery' && <NativeDiscoveryExperience products={storefront.products} primaryProduct={editorialPrimaryProduct} comparedProductIds={state.comparedProductIds} onSelect={handleProduct} onCompare={handleCompare} onAdd={product => void handleAdd(product)} addingProductId={pendingProductId} />}
@@ -202,7 +224,7 @@ export function AdaptiveNativeCanvas({ storefront, entryStrategyPreview, approve
 
   return <main className={`adaptive-store-shell${state.composition === 'entry' ? ' is-entry' : ''}`}>
     <header className="adaptive-store-header"><button type="button" className="adaptive-brand" onClick={() => setState(current => showEntry(current))} aria-label="Return to storefront entry"><span className="adaptive-brand-mark" aria-hidden="true">{storefront.brandMark ?? storefront.name.slice(0, 1)}</span><span>{storefront.name}</span></button><div className="adaptive-header-actions"><span className="adaptive-store-currency">{storefront.primaryCurrency}</span><button ref={cartTriggerRef} type="button" className="adaptive-cart-trigger" aria-expanded={cartOpen} aria-controls="adaptive-cart-panel" onClick={() => { setCheckoutOpen(false); setCartOpen(current => !current); }}>Cart{cart.loading ? ' · …' : ` · ${itemCount}`}</button></div></header>
-    {state.composition === 'entry' ? <BrandHero storefront={storefront} plan={entryStrategyPreview ? { contractVersion: 'entry.v1', strategy: entryStrategyPreview, approvedEditorialImageUrl: entryStrategyPreview === 'editorial' ? approvedEditorialImageUrl : null, publishedProductImageId: entryStrategyPreview === 'product-led' ? storefront.products.find(product => product.imageUrl)?.id ?? null : null } : entryPlan} preview={Boolean(entryStrategyPreview)} onStart={selectServerIntent} onSubmit={handleText} /> : checkoutOpen && cart.cart ? <NativeWorkspaceShell mode="checkout" rail={<NativeIntelligenceRail intent={state.intent} actions={[]} compact feedback={cartFeedback} error={cart.error?.message} onClose={() => setCheckoutOpen(false)} />} proof={<NativeContextProof eyebrow="Order review" title="A focused finish." facts={['Server totals are recalculated before reservation.', 'Payment remains pending until authenticated provider evidence.']} />}><NativeCheckoutSurface storeSlug={storefront.publicSlug} cart={cart.cart} products={storefront.products} onClose={() => setCheckoutOpen(false)} /></NativeWorkspaceShell> : cartOpen ? <NativeWorkspaceShell mode="cart" rail={<NativeIntelligenceRail intent={state.intent} actions={[]} compact feedback={cartFeedback} error={cart.error?.message} onClose={closeCart} />} proof={<NativeContextProof eyebrow="Your selections" title="Keep the useful choices." facts={[`${itemCount} ${itemCount === 1 ? 'item' : 'items'} saved in this browser.`, `Prices shown in ${storefront.primaryCurrency}.`]} />}><NativeCartSurface cart={cart.cart} loading={cart.loading} pending={cart.pending} error={cart.error} onClose={closeCart} onUpdateQuantity={(lineId, quantity) => handleCartMutation(() => cart.updateLine(lineId, quantity), 'Cart quantity updated.')} onRemove={lineId => handleCartMutation(() => cart.removeLine(lineId), 'Item removed from your cart.')} onAcceptPrice={lineId => handleCartMutation(() => cart.acceptPrice(lineId), 'Current price accepted for this cart line.')} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }} /></NativeWorkspaceShell> : <NativeWorkspaceShell mode="exploration" rail={explorationRail} proof={<NativeContextProof eyebrow={selectedProduct ? 'Selected product' : 'Featured product'} title={state.composition === 'comparison' ? 'Compare the selected products.' : selectedProduct ? 'Selected product facts.' : editorialPrimaryProduct ? 'Ready to choose.' : 'Collection status.'} facts={state.composition === 'comparison' ? [`${comparedProducts.length} products selected.`, ...Array.from(new Set(comparedProducts.map(product => product.currency))).map(currency => `Prices in ${currency}.`)] : (selectedProduct ?? editorialPrimaryProduct) ? [availabilityLabel((selectedProduct ?? editorialPrimaryProduct)!.availability), (selectedProduct ?? editorialPrimaryProduct)!.fulfillmentType === 'digital' ? 'Digital fulfillment.' : 'Physical fulfillment.'] : ['No published product is available.']} />}>{exploration}</NativeWorkspaceShell>}
+    {state.composition === 'entry' ? <BrandHero storefront={storefront} plan={entryStrategyPreview ? { contractVersion: 'entry.v1', strategy: entryStrategyPreview, approvedEditorialImageUrl: entryStrategyPreview === 'editorial' ? approvedEditorialImageUrl : null, publishedProductImageId: entryStrategyPreview === 'product-led' ? storefront.products.find(product => product.imageUrl)?.id ?? null : null } : entryPlan} preview={Boolean(entryStrategyPreview)} onStart={selectServerIntent} onSubmit={handleText} /> : checkoutOpen && cart.cart ? <NativeWorkspaceShell mode="checkout" rail={<NativeIntelligenceRail intent={state.intent} actions={[]} compact feedback={cartFeedback} error={cart.error?.message} onClose={() => setCheckoutOpen(false)} />} proof={<NativeContextProof eyebrow="Order review" title="A focused finish." facts={['Server totals are recalculated before reservation.', 'Payment remains pending until authenticated provider evidence.']} />}><NativeCheckoutSurface storeSlug={storefront.publicSlug} cart={cart.cart} products={storefront.products} onClose={() => setCheckoutOpen(false)} /></NativeWorkspaceShell> : cartOpen ? <NativeWorkspaceShell mode="cart" rail={<NativeIntelligenceRail intent={state.intent} actions={[]} compact feedback={cartFeedback} error={cart.error?.message} onClose={closeCart} />} proof={<NativeContextProof eyebrow="Your selections" title="Keep the useful choices." facts={[`${itemCount} ${itemCount === 1 ? 'item' : 'items'} saved in this browser.`, `Prices shown in ${storefront.primaryCurrency}.`]} />}><NativeCartSurface cart={cart.cart} loading={cart.loading} pending={cart.pending} error={cart.error} onClose={closeCart} onUpdateQuantity={(lineId, quantity) => handleCartMutation(() => cart.updateLine(lineId, quantity), 'Cart quantity updated.')} onRemove={lineId => handleCartMutation(() => cart.removeLine(lineId), 'Item removed from your cart.')} onAcceptPrice={lineId => handleCartMutation(() => cart.acceptPrice(lineId), 'Current price accepted for this cart line.')} onCheckout={() => { recordEvidence('checkout_started', `checkout:${cart.cart?.cartId ?? 'unknown'}`, { cartVersion: cart.cart?.version ?? null }); setCartOpen(false); setCheckoutOpen(true); }} /></NativeWorkspaceShell> : <NativeWorkspaceShell mode="exploration" rail={explorationRail} proof={<NativeContextProof eyebrow={selectedProduct ? 'Selected product' : 'Featured product'} title={state.composition === 'comparison' ? 'Compare the selected products.' : selectedProduct ? 'Selected product facts.' : editorialPrimaryProduct ? 'Ready to choose.' : 'Collection status.'} facts={state.composition === 'comparison' ? [`${comparedProducts.length} products selected.`, ...Array.from(new Set(comparedProducts.map(product => product.currency))).map(currency => `Prices in ${currency}.`)] : (selectedProduct ?? editorialPrimaryProduct) ? [availabilityLabel((selectedProduct ?? editorialPrimaryProduct)!.availability), (selectedProduct ?? editorialPrimaryProduct)!.fulfillmentType === 'digital' ? 'Digital fulfillment.' : 'Physical fulfillment.'] : ['No published product is available.']} />}>{exploration}</NativeWorkspaceShell>}
     <footer className="adaptive-store-footer">{storefront.name} · Prices shown in {storefront.primaryCurrency}</footer>
   </main>;
 }

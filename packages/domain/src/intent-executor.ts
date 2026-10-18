@@ -20,9 +20,11 @@ export type IntentExecutionSettlement =
   | { outcome: 'settlement_conflict'; status: string }
   | { outcome: 'not_found' };
 
+export type IntentProviderDiagnostic = 'response_envelope' | 'malformed_json' | 'schema_validation' | 'provider_refusal' | 'truncated_output';
+
 export type IntentProviderResult =
   | { outcome: 'success'; output: unknown; providerKey?: string; providerReference?: string }
-  | { outcome: 'failure'; category: 'timeout' | 'unavailable' | 'ambiguous'; providerKey?: string; providerReference?: string };
+  | { outcome: 'failure'; category: 'timeout' | 'unavailable' | 'ambiguous'; providerKey?: string; providerReference?: string; providerStatus?: number; diagnostic?: IntentProviderDiagnostic };
 
 export interface IntentProvider {
   interpret(input: IntentInterpretationInput): Promise<IntentProviderResult>;

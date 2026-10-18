@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import net from 'node:net';
 import pg from 'pg';
 import { loadTestManagerConfig } from '@kablet/config';
-import { provisionBrowserDatabase } from './support/disposable-postgres';
+import { provisionBrowserDatabase, seedSolenneDemo } from './support/disposable-postgres';
 
 if (existsSync('.env')) loadEnvFile('.env');
 
@@ -158,6 +158,7 @@ async function main() {
     const port = await freePort();
     serverPort = String(port);
     const baseURL = `http://127.0.0.1:${port}`;
+    await seedSolenneDemo(database, baseURL);
     stateFile = join(tmpdir(), `kablet-e2e-${database.database}.json`);
     const environment = {
       ...process.env,
@@ -175,6 +176,9 @@ async function main() {
       PORT: String(port),
       KABLET_E2E_BASE_URL: baseURL,
       KABLET_PUBLIC_ORIGIN: baseURL,
+      // Keep ordinary regressions deterministic while allowing the explicitly
+      // opt-in live smoke to exercise the configured server-side provider.
+      KABLET_AI_INTERPRETATION_ENABLED: process.env.KABLET_AI_LIVE_SMOKE === 'true' ? 'true' : 'false',
     };
     await writeFile(stateFile, JSON.stringify({ database: database.database, organizationId: database.organizationId, businessId: database.businessId, offeringId: database.offeringId, offeringRevisionId: database.offeringRevisionId, definitionId: database.definitionId, runtimeUrl: database.runtimeUrl }));
     const launcher = pnpmLauncher();
@@ -182,7 +186,12 @@ async function main() {
     const serverOutput = captureServerOutput(server);
     await waitForServer(`${baseURL}/api/health`, server, '127.0.0.1', port, serverOutput.tail);
     await warmDevelopmentRoutes(baseURL);
-    const result = await run(launcher.command, [...launcher.prefix, 'exec', 'playwright', 'test'], environment);
+    const playwrightArgs = [...launcher.prefix, 'exec', 'playwright', 'test'];
+    const testFiles = process.env.KABLET_E2E_FILES?.split(',').map(value => value.trim()).filter(Boolean)
+      ?? (process.env.KABLET_E2E_FILE ? [process.env.KABLET_E2E_FILE] : []);
+    playwrightArgs.push(...testFiles);
+    if (process.env.KABLET_E2E_GREP) playwrightArgs.push('--grep', process.env.KABLET_E2E_GREP);
+    const result = await run(launcher.command, playwrightArgs, environment);
     if (result !== 0) throw new Error(`Playwright exited with status ${result}`);
   } catch (error) {
     primaryError = error;
